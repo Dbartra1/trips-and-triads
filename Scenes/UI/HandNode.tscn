@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://c3e74pivpja5s"]
+
+[ext_resource type="Script" uid="uid://f58xykykhnip" path="res://Scripts/UI/HandNode.cs" id="1_dl3qq"]
+
+[node name="HandNode" type="Control" unique_id=1094449164 node_paths=PackedStringArray("CardSlots")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dl3qq")
+CardSlots = NodePath("CardSlots")
+
+[node name="CardSlots" type="HBoxContainer" parent="." unique_id=1059582739]
+custom_minimum_size = Vector2(650, 180)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 5

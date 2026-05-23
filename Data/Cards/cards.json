@@ -1,0 +1,35 @@
+[
+  {
+	"Id": "card_001",
+	"Name": "Imp",
+	"Top": 2,
+	"Right": 3,
+	"Bottom": 1,
+	"Left": 2,
+	"Level": 1,
+	"Element": null,
+	"ArtPath": ""
+  },
+  {
+	"Id": "card_002",
+	"Name": "Geezard",
+	"Top": 1,
+	"Right": 4,
+	"Bottom": 1,
+	"Left": 5,
+	"Level": 1,
+	"Element": null,
+	"ArtPath": ""
+  },
+  {
+	"Id": "card_003",
+	"Name": "Inferno",
+	"Top": 7,
+	"Right": 3,
+	"Bottom": 6,
+	"Left": 2,
+	"Level": 4,
+	"Element": "Fire",
+	"ArtPath": ""
+  }
+]

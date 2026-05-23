@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://bpjvs88hegka4"]
+
+[ext_resource type="Script" uid="uid://dhr642gv5kt3u" path="res://Scripts/UI/CardNode.cs" id="1_gt0ak"]
+
+[node name="CardNode" type="Control" unique_id=169865950 node_paths=PackedStringArray("Background", "CardArt", "LabelTop", "LabelRight", "LabelBottom", "LabelLeft")]
+custom_minimum_size = Vector2(120, 160)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_gt0ak")
+Background = NodePath("Panel")
+CardArt = NodePath("CardArt")
+LabelTop = NodePath("LabelTop")
+LabelRight = NodePath("LabelRight")
+LabelBottom = NodePath("LabelBottom")
+LabelLeft = NodePath("LabelLeft")
+
+[node name="Panel" type="Panel" parent="." unique_id=1002227354]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CardArt" type="TextureRect" parent="." unique_id=1364213549]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LabelTop" type="Label" parent="." unique_id=2031661054]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="LabelRight" type="Label" parent="." unique_id=1915384760]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="LabelLeft" type="Label" parent="." unique_id=871150860]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="LabelBottom" type="Label" parent="." unique_id=252772532]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0

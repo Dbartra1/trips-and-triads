@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://bxxhiaxifhcfo"]
+
+[ext_resource type="Script" uid="uid://dc0okchbb2iqj" path="res://Scripts/Core/GameBoard.cs" id="1_luxp4"]
+[ext_resource type="PackedScene" uid="uid://c3e74pivpja5s" path="res://Scenes/UI/HandNode.tscn" id="2_l414y"]
+
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand")]
+script = ExtResource("1_luxp4")
+BoardContainer = NodePath("CanvasLayer/BoardContainer")
+PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1780249952]
+
+[node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 445.0
+offset_top = 80.0
+offset_right = 485.0
+offset_bottom = 120.0
+mouse_filter = 1
+
+[node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
+custom_minimum_size = Vector2(650, 180)
+layout_mode = 3
+anchors_preset = 0
+offset_left = 315.0
+offset_top = 560.0
+offset_right = 1065.0
+offset_bottom = 740.0
+
+[node name="HandNode" parent="CanvasLayer/HandContainer" unique_id=1094449164 instance=ExtResource("2_l414y")]
+layout_mode = 1

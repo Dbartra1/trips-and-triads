@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://8cflo0bcert8"]
+
+[ext_resource type="Script" uid="uid://dbuvjnuckor7q" path="res://Scripts/UI/CellNode.cs" id="1_q0oe5"]
+
+[node name="CellNode" type="Control" unique_id=503181948 node_paths=PackedStringArray("CellButton", "CardContainer")]
+custom_minimum_size = Vector2(120, 160)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_q0oe5")
+CellButton = NodePath("Button")
+CardContainer = NodePath("CellButton")
+
+[node name="CellButton" type="Control" parent="." unique_id=200684686]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Button" type="Button" parent="." unique_id=1310206886]
+layout_mode = 0
+offset_right = 8.0
+offset_bottom = 8.0

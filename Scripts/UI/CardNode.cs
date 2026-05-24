@@ -135,13 +135,13 @@ namespace TripsAndTriads.UI
             LabelLeft       ??= GetNodeOrNull<Label>("LabelLeft");
             LabelName       ??= GetNodeOrNull<Label>("LabelName");
 
-            var data = _cardInstance.Data;
-
-            if (LabelTop    != null) LabelTop.Text    = data.Top.ToString();
-            if (LabelRight  != null) LabelRight.Text  = data.Right.ToString();
-            if (LabelBottom != null) LabelBottom.Text = data.Bottom.ToString();
-            if (LabelLeft   != null) LabelLeft.Text   = data.Left.ToString();
-            if (LabelName   != null) LabelName.Text   = data.Name;
+            // Read edges from the instance (respects overrides from Vesna/Sumi/Lethe).
+            // Name comes from CardData — it never changes.
+            if (LabelTop    != null) LabelTop.Text    = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Top).ToString();
+            if (LabelRight  != null) LabelRight.Text  = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Right).ToString();
+            if (LabelBottom != null) LabelBottom.Text = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Bottom).ToString();
+            if (LabelLeft   != null) LabelLeft.Text   = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Left).ToString();
+            if (LabelName   != null) LabelName.Text   = _cardInstance.Data.Name;
 
             SetOwnerColor(_cardInstance.OwnerId);
         }

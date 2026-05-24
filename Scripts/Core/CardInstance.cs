@@ -4,17 +4,24 @@ namespace TripsAndTriads.Core
 {
 	public class CardInstance
 	{
-		public CardData    Data    { get; }
-		public int         OwnerId { get; set; }  // 1 = Player, 2 = Opponent
+		public CardData     Data    { get; }
+		public int          OwnerId { get; set; }  // 1 = Player, 2 = Opponent
 		public ICardAbility Ability { get; set; }  // null for non-hero cards
 
 		// Per-instance edge overrides — null means "use CardData value".
-		// Vesna writes these to decay; Sumi writes these to compound.
-		// CaptureResolver and everything else calls GetValue(), never Data.Top etc. directly.
+		// Vesna writes these to decay; Sumi/Ledger write these to compound.
+		// Always access edges through GetValue(), never Data.Top etc. directly.
 		public int? TopOverride    { get; set; }
 		public int? RightOverride  { get; set; }
 		public int? BottomOverride { get; set; }
 		public int? LeftOverride   { get; set; }
+
+		// Transient domain bonuses — reset and recomputed by DomainResolver each turn.
+		// Represent the aura a hero projects onto adjacent friendly cards.
+		public int DomainBonusTop    { get; set; }
+		public int DomainBonusRight  { get; set; }
+		public int DomainBonusBottom { get; set; }
+		public int DomainBonusLeft   { get; set; }
 
 		public CardInstance(CardData data, int ownerId)
 		{
@@ -22,27 +29,41 @@ namespace TripsAndTriads.Core
 			OwnerId = ownerId;
 		}
 
-		// Single read path for any edge — override wins, falls back to CardData.
+		// Single read path for any edge.
+		// Priority: (Override ?? CardData) + DomainBonus
 		public int GetValue(Direction direction) => direction switch
 		{
-			Direction.Top    => TopOverride    ?? Data.Top,
-			Direction.Right  => RightOverride  ?? Data.Right,
-			Direction.Bottom => BottomOverride ?? Data.Bottom,
-			Direction.Left   => LeftOverride   ?? Data.Left,
+			Direction.Top    => (TopOverride    ?? Data.Top)    + DomainBonusTop,
+			Direction.Right  => (RightOverride  ?? Data.Right)  + DomainBonusRight,
+			Direction.Bottom => (BottomOverride ?? Data.Bottom) + DomainBonusBottom,
+			Direction.Left   => (LeftOverride   ?? Data.Left)   + DomainBonusLeft,
 			_                => 0
 		};
 
-		// Convenience: apply a flat delta to all four overrides (used by Sumi +1, Vesna -1).
-		// Floors at 0 — an edge can decay to nothing but never go negative.
+		// Flat delta applied to all four override slots (Sumi +1, Vesna -1, Ledger +1).
+		// Floors at 0 — edges cannot go negative.
 		public void AdjustAllEdges(int delta)
 		{
-			TopOverride    = System.Math.Max(0, GetValue(Direction.Top)    + delta);
-			RightOverride  = System.Math.Max(0, GetValue(Direction.Right)  + delta);
-			BottomOverride = System.Math.Max(0, GetValue(Direction.Bottom) + delta);
-			LeftOverride   = System.Math.Max(0, GetValue(Direction.Left)   + delta);
+			// Use base value (override ?? data) without domain bonus for the calculation,
+			// since domain bonuses are transient and shouldn't compound into overrides.
+			int baseTop    = TopOverride    ?? Data.Top;
+			int baseRight  = RightOverride  ?? Data.Right;
+			int baseBottom = BottomOverride ?? Data.Bottom;
+			int baseLeft   = LeftOverride   ?? Data.Left;
+
+			TopOverride    = System.Math.Max(0, baseTop    + delta);
+			RightOverride  = System.Math.Max(0, baseRight  + delta);
+			BottomOverride = System.Math.Max(0, baseBottom + delta);
+			LeftOverride   = System.Math.Max(0, baseLeft   + delta);
 		}
 
-		// True if any override is active (used for debug / UI hint later).
+		// Zeros all domain bonuses. Called by DomainResolver before recomputing.
+		public void ResetDomainBonuses()
+		{
+			DomainBonusTop = DomainBonusRight = DomainBonusBottom = DomainBonusLeft = 0;
+		}
+
+		// True if any edge override is active.
 		public bool IsModified =>
 			TopOverride != null || RightOverride != null ||
 			BottomOverride != null || LeftOverride != null;

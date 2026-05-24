@@ -38,7 +38,6 @@ namespace TripsAndTriads.Core
 			GD.Print($"Hands dealt. P1: {_hands[1].Count} cards, P2: {_hands[2].Count} cards.");
 		}
 
-		// Maps card IDs to their ability class. Only heroes have abilities.
 		private static ICardAbility CreateAbility(CardData data) => data.Id switch
 		{
 			"hch_hero_vesna"       => new VesnaAbility(),
@@ -49,7 +48,6 @@ namespace TripsAndTriads.Core
 
 		public List<CardInstance> GetHand(int playerId) => _hands[playerId];
 
-		// Returns captured positions, or null if the move was illegal.
 		public List<(int row, int col)> PlayCard(int handIndex, int row, int col)
 		{
 			if (GameOver)
@@ -76,19 +74,24 @@ namespace TripsAndTriads.Core
 			hand.RemoveAt(handIndex);
 			Board.PlaceCard(card, row, col);
 
-			// Fire placement ability (Lethe copies here)
+			// Placement ability (Lethe copies here)
 			card.Ability?.OnPlaced(Board, card, row, col);
+
+			// Compute domain bonuses before capture so they're factored in
+			DomainResolver.Apply(Board);
 
 			var captured = _resolver.Resolve(Board, row, col);
 
 			GD.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
 			         $"Captured: {captured.Count}.");
 
-			// Fire turn-end abilities for all cards owned by the current player
+			// Turn-end abilities (Vesna decays, Sumi compounds + Ledger spreads)
 			ApplyTurnEndAbilities();
 
-			// After abilities fire, re-check captures for any card whose stats changed.
-			// A decayed Vesna may now be beatable by cards already adjacent to her.
+			// Refresh domain bonuses after abilities changed stats
+			DomainResolver.Apply(Board);
+
+			// Re-check captures for any card whose stats changed due to abilities
 			var decayCaptured = ResolveDecayCaptures();
 			captured.AddRange(decayCaptured);
 
@@ -100,24 +103,17 @@ namespace TripsAndTriads.Core
 			return captured;
 		}
 
-		// Calls OnTurnEnd on every board card owned by the player who just moved.
 		private void ApplyTurnEndAbilities()
 		{
 			for (int r = 0; r < BoardState.Size; r++)
-			{
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
-					if (card == null) continue;
-					if (card.OwnerId != CurrentPlayerId) continue;
+					if (card == null || card.OwnerId != CurrentPlayerId) continue;
 					card.Ability?.OnTurnEnd(Board, card, r, c);
 				}
-			}
 		}
 
-		// After turn-end abilities alter stats, check whether any modified card
-		// is now beatable by an already-placed enemy neighbor.
-		// This lets Vesna flip ownership as she decays below adjacent cards.
 		private List<(int row, int col)> ResolveDecayCaptures()
 		{
 			var captured = new List<(int row, int col)>();
@@ -129,17 +125,14 @@ namespace TripsAndTriads.Core
 					var card = Board.GetCard(r, c);
 					if (card == null || !card.IsModified) continue;
 
-					// Check each direction — can an adjacent enemy now beat this card?
 					foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 					{
 						var (nRow, nCol) = Board.GetNeighbor(r, c, dir);
 						if (!Board.IsInBounds(nRow, nCol)) continue;
 
 						var neighbor = Board.GetCard(nRow, nCol);
-						if (neighbor == null) continue;
-						if (neighbor.OwnerId == card.OwnerId) continue;
+						if (neighbor == null || neighbor.OwnerId == card.OwnerId) continue;
 
-						// neighbor attacks from the opposite direction into this card
 						Direction attackDir = card.Data.Opposite(dir);
 						int attackVal = neighbor.GetValue(attackDir);
 						int defendVal = card.GetValue(dir);
@@ -151,7 +144,7 @@ namespace TripsAndTriads.Core
 							         $"beats {card.Data.Name}'s {dir}({defendVal}).");
 							card.OwnerId = neighbor.OwnerId;
 							captured.Add((r, c));
-							break; // card is flipped, stop checking directions
+							break;
 						}
 					}
 				}
@@ -168,12 +161,9 @@ namespace TripsAndTriads.Core
 
 			GD.Print($"Game Over! P1: {p1Score} | P2: {p2Score}");
 
-			if (p1Score > p2Score)
-				GD.Print("Player 1 wins!");
-			else if (p2Score > p1Score)
-				GD.Print("Player 2 wins!");
-			else
-				GD.Print("It's a draw!");
+			if (p1Score > p2Score)      GD.Print("Player 1 wins!");
+			else if (p2Score > p1Score) GD.Print("Player 2 wins!");
+			else                        GD.Print("It's a draw!");
 		}
 
 		public void PrintScores()

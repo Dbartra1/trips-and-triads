@@ -1,9 +1,12 @@
+using TripsAndTriads.Rules;
+
 namespace TripsAndTriads.Core
 {
 	public class CardInstance
 	{
-		public CardData Data    { get; }
-		public int      OwnerId { get; set; }  // 1 = Player, 2 = Opponent
+		public CardData    Data    { get; }
+		public int         OwnerId { get; set; }  // 1 = Player, 2 = Opponent
+		public ICardAbility Ability { get; set; }  // null for non-hero cards
 
 		// Per-instance edge overrides — null means "use CardData value".
 		// Vesna writes these to decay; Sumi writes these to compound.

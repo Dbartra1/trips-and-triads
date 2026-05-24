@@ -21,7 +21,7 @@ public partial class GameBoard : Node2D
 	private const int CellHeight  = CardHeight + CellPadding * 2; // 192
 
 	private GameManager  _game;
-	private CellNode[,]  _cells = new CellNode[BoardState.Size, BoardState.Size];
+	private CellNode[,]  _cells                = new CellNode[BoardState.Size, BoardState.Size];
 	private CardNode     _selectedCard         = null;
 	private CardInstance _selectedCardInstance = null;
 	private int          _selectedHandIndex    = -1;
@@ -121,6 +121,15 @@ public partial class GameBoard : Node2D
 		if (ScoreP2 != null) ScoreP2.Text = $"{_game.Board.GetScore(2)}  P2";
 	}
 
+	// Refreshes every occupied cell — keeps edge numbers in sync after
+	// Vesna decays or Sumi compounds at turn-end.
+	private void RefreshAllCells()
+	{
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+				_cells[r, c].RefreshCard();
+	}
+
 	private void ShowGameOver()
 	{
 		if (GameOverPanel == null) return;
@@ -216,6 +225,9 @@ public partial class GameBoard : Node2D
 		foreach (var (r, c) in captured)
 			_cells[r, c].RefreshCard();
 
+		// Sync all cells — abilities may have changed edge values this turn
+		RefreshAllCells();
+
 		_selectedCard         = null;
 		_selectedCardInstance = null;
 		_selectedHandIndex    = -1;
@@ -273,6 +285,9 @@ public partial class GameBoard : Node2D
 
 		foreach (var (cr, cc) in captured)
 			_cells[cr, cc].RefreshCard();
+
+		// Sync all cells — abilities may have changed edge values this turn
+		RefreshAllCells();
 
 		UpdateScores();
 		GD.Print($"AI played {hand[bestHandIndex].Data.Name} at ({bestRow},{bestCol}) capturing {captured.Count}.");

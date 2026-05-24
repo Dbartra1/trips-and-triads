@@ -4,11 +4,15 @@ namespace TripsAndTriads.UI
 {
     public partial class CellNode : Control
     {
-        [Export] public Button CellButton { get; set; }
+        [Export] public Button  CellButton    { get; set; }
         [Export] public Control CardContainer { get; set; }
 
         public int Row { get; private set; }
         public int Col { get; private set; }
+
+        private const int CardWidth  = 120;
+        private const int CardHeight = 160;
+        private const int CardOffset = 16;
 
         private CardNode _currentCard;
         private bool _isOccupied = false;
@@ -22,7 +26,6 @@ namespace TripsAndTriads.UI
 
             if (CellButton != null)
             {
-                // Full rect anchors — fills parent automatically
                 CellButton.AnchorLeft   = 0;
                 CellButton.AnchorTop    = 0;
                 CellButton.AnchorRight  = 1;
@@ -78,13 +81,19 @@ namespace TripsAndTriads.UI
         public void PlaceCard(CardNode cardNode)
         {
             _currentCard = cardNode;
-            _isOccupied = true;
+            _isOccupied  = true;
 
             if (CellButton != null)
                 CellButton.Disabled = true;
 
+            cardNode.SizeFlagsVertical   = SizeFlags.ShrinkCenter;
+            cardNode.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+
             CardContainer.AddChild(cardNode);
-            cardNode.Position = Vector2.Zero;
+            cardNode.Position = new Vector2(CardOffset, CardOffset);
+
+            cardNode.CustomMinimumSize = new Vector2(CardWidth, CardHeight);
+            cardNode.CallDeferred("set_size", new Vector2(CardWidth, CardHeight));
         }
 
         public void RefreshCard()

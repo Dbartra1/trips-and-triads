@@ -36,6 +36,10 @@ namespace TripsAndTriads.UI
             for (int i = 0; i < hand.Count; i++)
             {
                 var cardNode = cardScene.Instantiate<CardNode>();
+
+                // Prevent HBoxContainer from stretching the card vertically
+                cardNode.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+
                 CardSlots.AddChild(cardNode);
                 cardNode.Initialize(hand[i]);
                 cardNode.CustomMinimumSize = new Vector2(120, 160);

@@ -3,30 +3,119 @@
 [ext_resource type="Script" uid="uid://dc0okchbb2iqj" path="res://Scripts/Core/GameBoard.cs" id="1_luxp4"]
 [ext_resource type="PackedScene" uid="uid://c3e74pivpja5s" path="res://Scenes/UI/HandNode.tscn" id="2_l414y"]
 
-[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand")]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gameover"]
+bg_color = Color(0.08, 0.08, 0.14, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.35, 0.55, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "ScoreP1", "ScoreP2", "GameOverPanel", "GameOverLabel", "GameOverScores", "RestartButton")]
 script = ExtResource("1_luxp4")
 BoardContainer = NodePath("CanvasLayer/BoardContainer")
 PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
+ScoreP1 = NodePath("CanvasLayer/ScoreBar/LabelP1")
+ScoreP2 = NodePath("CanvasLayer/ScoreBar/LabelP2")
+GameOverPanel = NodePath("CanvasLayer/GameOverPanel")
+GameOverLabel = NodePath("CanvasLayer/GameOverPanel/LabelResult")
+GameOverScores = NodePath("CanvasLayer/GameOverPanel/LabelScores")
+RestartButton = NodePath("CanvasLayer/GameOverPanel/ButtonRestart")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1780249952]
+
+[node name="ScoreBar" type="Control" parent="CanvasLayer" unique_id=111111001]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 412.0
+offset_top = 30.0
+offset_right = 868.0
+offset_bottom = 72.0
+
+[node name="LabelP1" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111002]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.29, 0.565, 0.851, 1)
+theme_override_font_sizes/font_size = 22
+text = "P1  5"
+vertical_alignment = 1
+
+[node name="LabelP2" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111003]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.851, 0.29, 0.29, 1)
+theme_override_font_sizes/font_size = 22
+text = "5  P2"
+horizontal_alignment = 2
+vertical_alignment = 1
 
 [node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 445.0
+offset_left = 412.0
 offset_top = 80.0
-offset_right = 485.0
-offset_bottom = 120.0
+offset_right = 868.0
+offset_bottom = 656.0
 mouse_filter = 1
 
 [node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
-custom_minimum_size = Vector2(650, 180)
+custom_minimum_size = Vector2(760, 192)
 layout_mode = 3
 anchors_preset = 0
-offset_left = 315.0
-offset_top = 560.0
-offset_right = 1065.0
-offset_bottom = 740.0
+offset_left = 260.0
+offset_top = 680.0
+offset_right = 1020.0
+offset_bottom = 872.0
 
 [node name="HandNode" parent="CanvasLayer/HandContainer" unique_id=1094449164 instance=ExtResource("2_l414y")]
 layout_mode = 1
+
+[node name="GameOverPanel" type="Panel" parent="CanvasLayer" unique_id=333333001]
+visible = false
+offset_left = 440.0
+offset_top = 370.0
+offset_right = 840.0
+offset_bottom = 590.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_gameover")
+
+[node name="LabelResult" type="Label" parent="CanvasLayer/GameOverPanel" unique_id=333333002]
+layout_mode = 0
+offset_top = 20.0
+offset_right = 400.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 30
+text = "Player 1 Wins!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LabelScores" type="Label" parent="CanvasLayer/GameOverPanel" unique_id=333333003]
+layout_mode = 0
+offset_top = 86.0
+offset_right = 400.0
+offset_bottom = 122.0
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+text = "P1: 5   |   P2: 4"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ButtonRestart" type="Button" parent="CanvasLayer/GameOverPanel" unique_id=333333004]
+layout_mode = 0
+offset_left = 125.0
+offset_top = 148.0
+offset_right = 275.0
+offset_bottom = 192.0
+text = "Play Again"

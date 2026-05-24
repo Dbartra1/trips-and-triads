@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TripsAndTriads.Core
 {
@@ -23,10 +24,19 @@ namespace TripsAndTriads.Core
 			var json = file.GetAsText();
 			file.Close();
 
-			var cards = JsonSerializer.Deserialize<List<CardData>>(json, new JsonSerializerOptions
+			var options = new JsonSerializerOptions
 			{
-				PropertyNameCaseInsensitive = true
-			});
+				PropertyNameCaseInsensitive = true,
+				Converters = { new JsonStringEnumConverter() }  // deserialize "Ascendant" → Faction.Ascendant
+			};
+
+			var cards = JsonSerializer.Deserialize<List<CardData>>(json, options);
+
+			if (cards == null)
+			{
+				GD.PrintErr("CardDatabase: deserialization returned null.");
+				return;
+			}
 
 			foreach (var card in cards)
 				_cards[card.Id] = card;
@@ -34,10 +44,10 @@ namespace TripsAndTriads.Core
 			GD.Print($"CardDatabase: loaded {_cards.Count} cards.");
 		}
 
-		public CardData GetCard(string id) => 
+		public CardData GetCard(string id) =>
 			_cards.TryGetValue(id, out var card) ? card : null;
 
-		public List<CardData> GetAllCards() => 
+		public List<CardData> GetAllCards() =>
 			new List<CardData>(_cards.Values);
 	}
 }

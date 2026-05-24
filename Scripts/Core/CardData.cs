@@ -2,15 +2,17 @@ namespace TripsAndTriads.Core
 {
 	public class CardData
 	{
-		public string Id { get; set; }
-		public string Name { get; set; }
-		public int Top { get; set; }
-		public int Right { get; set; }
-		public int Bottom { get; set; }
-		public int Left { get; set; }
-		public int Level { get; set; }        // 1-10, like FF8
-		public string Element { get; set; }   // null if no element
-		public string ArtPath { get; set; }   // path to card art texture
+		public string  Id      { get; set; }
+		public string  Name    { get; set; }
+		public int     Top     { get; set; }
+		public int     Right   { get; set; }
+		public int     Bottom  { get; set; }
+		public int     Left    { get; set; }
+		public int     Level   { get; set; }       // 1-10, like FF8
+		public string  Element { get; set; }       // null if no element
+		public string  ArtPath { get; set; }       // path to card art texture
+		public Faction Faction { get; set; } = Faction.None;
+		public Tier    Tier    { get; set; } = Tier.Street;
 
 		public int GetValue(Direction direction) => direction switch
 		{
@@ -37,5 +39,25 @@ namespace TripsAndTriads.Core
 		Right,
 		Bottom,
 		Left
+	}
+
+	public enum Faction
+	{
+		None,
+		Ascendant,
+		Razorkin,
+		Ghostwire,
+		Commons,
+		Effigy,
+		Lacquer,
+		HollowChoir
+	}
+
+	public enum Tier
+	{
+		Street,
+		Pro,
+		TopTier,
+		Hero
 	}
 }

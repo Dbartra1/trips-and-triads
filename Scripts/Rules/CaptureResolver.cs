@@ -5,11 +5,11 @@ namespace TripsAndTriads.Rules
 {
 	public class CaptureResolver
 	{
-		// Returns list of (row, col) positions that were captured
+		// Returns list of (row, col) positions that were captured.
 		public List<(int row, int col)> Resolve(BoardState board, int row, int col)
 		{
 			var captured = new List<(int, int)>();
-			var placed = board.GetCard(row, col);
+			var placed   = board.GetCard(row, col);
 
 			if (placed == null) return captured;
 
@@ -24,8 +24,10 @@ namespace TripsAndTriads.Rules
 				if (neighbor == null) continue;
 				if (neighbor.OwnerId == placed.OwnerId) continue;
 
-				int attackVal = placed.Data.GetValue(dir);
-				int defendVal = neighbor.Data.GetValue(placed.Data.Opposite(dir));
+				// Use CardInstance.GetValue() so per-instance overrides (Vesna decay,
+				// Sumi compound) are respected. Never read Data.GetValue() directly.
+				int attackVal = placed.GetValue(dir);
+				int defendVal = neighbor.GetValue(placed.Data.Opposite(dir));
 
 				if (attackVal > defendVal)
 				{

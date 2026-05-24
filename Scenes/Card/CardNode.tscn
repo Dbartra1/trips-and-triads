@@ -2,19 +2,33 @@
 
 [ext_resource type="Script" uid="uid://dhr642gv5kt3u" path="res://Scripts/UI/CardNode.cs" id="1_gt0ak"]
 
-[node name="CardNode" type="Control" unique_id=169865950 node_paths=PackedStringArray("Background", "CardArt", "LabelTop", "LabelRight", "LabelBottom", "LabelLeft")]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_selection"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1.0, 0.85, 0.2, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="CardNode" type="Control" unique_id=169865950 node_paths=PackedStringArray("Background", "CardArt", "LabelTop", "LabelRight", "LabelBottom", "LabelLeft", "LabelName", "SelectionBorder")]
 custom_minimum_size = Vector2(120, 160)
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_gt0ak")
-Background = NodePath("Panel")
-CardArt = NodePath("CardArt")
-LabelTop = NodePath("LabelTop")
-LabelRight = NodePath("LabelRight")
-LabelBottom = NodePath("LabelBottom")
-LabelLeft = NodePath("LabelLeft")
+Background      = NodePath("Panel")
+CardArt         = NodePath("CardArt")
+LabelTop        = NodePath("LabelTop")
+LabelRight      = NodePath("LabelRight")
+LabelBottom     = NodePath("LabelBottom")
+LabelLeft       = NodePath("LabelLeft")
+LabelName       = NodePath("LabelName")
+SelectionBorder = NodePath("SelectionBorder")
 
 [node name="Panel" type="Panel" parent="." unique_id=1002227354]
 layout_mode = 1
@@ -48,3 +62,30 @@ offset_bottom = 23.0
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
+
+[node name="LabelName" type="Label" parent="." unique_id=444444001]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 9
+autowrap_mode = 2
+
+[node name="SelectionBorder" type="Panel" parent="." unique_id=222222222]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_selection")

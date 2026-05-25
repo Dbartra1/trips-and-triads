@@ -119,7 +119,9 @@ public partial class PreMatchScreen : Control
 
 			var captured = card;
 			var btn = new Button();
-			btn.Text = $"+ {card.Name}";
+			btn.Text              = $"+ {card.Name}";
+			btn.AutowrapMode      = TextServer.AutowrapMode.WordSmart;
+			btn.CustomMinimumSize = new Vector2(120, 36);
 			btn.Pressed += () =>
 			{
 				AddToDeck(captured);
@@ -149,7 +151,8 @@ public partial class PreMatchScreen : Control
 
 			var captured = card;
 			var btn = new Button();
-			btn.Text = $"✕ Remove";
+			btn.Text              = "✕ Remove";
+			btn.CustomMinimumSize = new Vector2(100, 36);
 			btn.Pressed += () =>
 			{
 				RemoveFromDeck(captured);

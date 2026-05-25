@@ -174,6 +174,11 @@ public partial class PreMatchScreen : Control
 			GD.Print("PreMatch: deck is full (5 cards).");
 			return;
 		}
+		if (_selectedDeck.Contains(card))
+		{
+			GD.Print($"PreMatch: {card.Name} is already in the deck.");
+			return;
+		}
 		if (card.Tier == Tier.Hero && _selectedDeck.Exists(c => c.Tier == Tier.Hero))
 		{
 			GD.Print("PreMatch: deck already has a hero.");
@@ -211,8 +216,6 @@ public partial class PreMatchScreen : Control
 
 		if (DeckCountLabel != null)
 			DeckCountLabel.Text = $"Only {session.Roster.Count} cards remain — crew is gone.";
-		
-		StartButton.Disabled = false;
 	}
 
 	private void OnNewRun()

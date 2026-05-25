@@ -39,7 +39,7 @@ public partial class GameBoard : Node2D
 	// MatchConfig.PowderRoom()  — The Tally + Handshake
 	// MatchConfig.TheHush()     — Cascade + Wall Signature + Handshake
 	// MatchConfig.TheVault()    — all protocols
-	private MatchConfig _matchConfig = MatchConfig.BaseRules();
+	private MatchConfig _matchConfig = MatchConfig.PowderRoom();
 
 	public override void _Ready()
 	{

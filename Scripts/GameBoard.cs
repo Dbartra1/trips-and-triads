@@ -174,13 +174,13 @@ public partial class GameBoard : Node2D
 			if (playerWon)
 			{
 				// P1 wins — take the first P2 card on the board
-				var won = GetFirstBoardCard(ownerId: 2);
+				var won = GetFirstBoardCard(originalOwnerId: 2);
 				if (won != null) session.CardsWon.Add(won);
 			}
 			else
 			{
 				// P2 wins — player loses one of their on-board cards
-				var lost = GetFirstBoardCard(ownerId: 1);
+				var lost = GetFirstBoardCard(originalOwnerId: 1);
 				if (lost != null) session.CardsLost.Add(lost);
 			}
 		}

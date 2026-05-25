@@ -9,7 +9,6 @@ namespace TripsAndTriads.Core
 		public ICardAbility Ability { get; set; }
 
 		// Per-instance edge overrides — null means "use CardData value".
-		// Written by Vesna (decay), Sumi/Ledger (compound), Contamination (−1 lowest).
 		public int? TopOverride    { get; set; }
 		public int? RightOverride  { get; set; }
 		public int? BottomOverride { get; set; }
@@ -22,17 +21,18 @@ namespace TripsAndTriads.Core
 		public int DomainBonusLeft   { get; set; }
 
 		// Transient bond bonuses — reset and recomputed by BondResolver each turn.
-		// Kept separate from domain bonuses so the two systems don't interfere.
 		public int BondBonusTop    { get; set; }
 		public int BondBonusRight  { get; set; }
 		public int BondBonusBottom { get; set; }
 		public int BondBonusLeft   { get; set; }
 
-		// Behavioral bond flags — read by CaptureResolver.
-		// BlockChoir: Riven (The Listener) — cannot capture Hollow Choir cards.
-		// RivalryActive: Yune or Grin — must resolve capture vs. the other first if adjacent.
-		public bool BlockChoir     { get; set; }
-		public bool RivalryActive  { get; set; }
+		// Behavioral bond flags — reset each BondResolver pass (transient).
+		public bool BlockChoir    { get; set; }
+		public bool RivalryActive { get; set; }
+
+		// Permanent state flags — never reset by BondResolver.
+		// IsContaminated: Contamination has already been applied once — don't re-apply.
+		public bool IsContaminated { get; set; }
 
 		public CardInstance(CardData data, int ownerId)
 		{
@@ -65,23 +65,18 @@ namespace TripsAndTriads.Core
 		}
 
 		// Clamps a specific edge override to a maximum value.
-		// Used by The Understudy — highest edge of both cards drops to 5.
 		public void ClampEdge(Direction dir, int max)
 		{
 			switch (dir)
 			{
-				case Direction.Top:
-					TopOverride    = System.Math.Min(GetBaseValue(dir), max); break;
-				case Direction.Right:
-					RightOverride  = System.Math.Min(GetBaseValue(dir), max); break;
-				case Direction.Bottom:
-					BottomOverride = System.Math.Min(GetBaseValue(dir), max); break;
-				case Direction.Left:
-					LeftOverride   = System.Math.Min(GetBaseValue(dir), max); break;
+				case Direction.Top:    TopOverride    = System.Math.Min(GetBaseValue(dir), max); break;
+				case Direction.Right:  RightOverride  = System.Math.Min(GetBaseValue(dir), max); break;
+				case Direction.Bottom: BottomOverride = System.Math.Min(GetBaseValue(dir), max); break;
+				case Direction.Left:   LeftOverride   = System.Math.Min(GetBaseValue(dir), max); break;
 			}
 		}
 
-		// Base value without domain or bond bonuses — used for clamping.
+		// Base value without domain or bond bonuses.
 		public int GetBaseValue(Direction dir) => dir switch
 		{
 			Direction.Top    => TopOverride    ?? Data.Top,
@@ -109,6 +104,7 @@ namespace TripsAndTriads.Core
 			DomainBonusTop = DomainBonusRight = DomainBonusBottom = DomainBonusLeft = 0;
 		}
 
+		// Resets transient bond state only — never touches IsContaminated.
 		public void ResetBondBonuses()
 		{
 			BondBonusTop = BondBonusRight = BondBonusBottom = BondBonusLeft = 0;

@@ -14,6 +14,7 @@ public partial class GameBoard : Node2D
 	[Export] public Label    GameOverLabel  { get; set; }
 	[Export] public Label    GameOverScores { get; set; }
 	[Export] public Button   RestartButton  { get; set; }
+	[Export] public Label    DistrictLabel  { get; set; } // optional — shows active district name
 
 	private const int CardWidth   = 120;
 	private const int CardHeight  = 160;
@@ -26,28 +27,42 @@ public partial class GameBoard : Node2D
 	private CardNode     _selectedCard         = null;
 	private CardInstance _selectedCardInstance = null;
 	private int          _selectedHandIndex    = -1;
+	private MatchConfig  _matchConfig;
 
 	private PackedScene _cardScene;
 	private PackedScene _cellScene;
-
-	// Change this to test different district rules:
-	// MatchConfig.BaseRules()   — no protocols
-	// MatchConfig.GlassSpire()  — Intercept + Wall Signature + Handshake
-	// MatchConfig.Killfloor()   — Conscription + Standoff
-	// MatchConfig.DeadChannel() — Intercept + Cascade
-	// MatchConfig.SprawlMarket()— Conscription
-	// MatchConfig.PowderRoom()  — The Tally + Handshake
-	// MatchConfig.TheHush()     — Cascade + Wall Signature + Handshake
-	// MatchConfig.TheVault()    — all protocols
-	private MatchConfig _matchConfig = MatchConfig.PowderRoom();
 
 	public override void _Ready()
 	{
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
+		// Load databases
 		CardDatabase.Instance.Load();
+		DistrictDatabase.Instance.Load();
+		DistrictManager.Instance.Initialize();
+
+		// Select starting district — "the_stub" for base rules.
+		// Change this string to test different districts:
+		// "the_stub"          — base rules
+		// "glass_spire"       — Intercept + Wall Signature + Handshake
+		// "the_killfloor"     — Conscription + Standoff
+		// "dead_channel"      — Intercept + Cascade
+		// "the_sprawl_market" — Conscription
+		// "the_powder_room"   — Tally + Handshake
+		// "the_hush"          — Cascade + Wall Signature + Handshake
+		// "the_vault"         — all protocols (locked by default)
+		DistrictManager.Instance.SelectDistrict("the_stub");
+
+		_matchConfig = DistrictManager.Instance.BuildMatchConfig();
 		_game = new GameManager(_matchConfig);
+
+		var district = DistrictManager.Instance.ActiveDistrict;
+		GD.Print($"District: {district?.Name} | Stake: {district?.Stake}");
+		GD.Print($"Active protocols: {string.Join(", ", _matchConfig.Protocols.ConvertAll(p => p.Name))}");
+
+		if (DistrictLabel != null)
+			DistrictLabel.Text = district?.Name ?? "";
 
 		var p1Cards = BuildHand(
 			"asc_hero_seraph_yune",
@@ -73,10 +88,7 @@ public partial class GameBoard : Node2D
 
 		_game.DealHands(p1Cards, p2Cards);
 
-		GD.Print($"PlayerHand is null: {PlayerHand == null}");
-		GD.Print($"BoardContainer is null: {BoardContainer == null}");
 		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
-		GD.Print($"Active protocols: {string.Join(", ", _matchConfig.Protocols.ConvertAll(p => p.Name))}");
 
 		SpawnGrid();
 		RefreshHand();
@@ -146,6 +158,15 @@ public partial class GameBoard : Node2D
 		int p1Score = _game.Board.GetScore(1);
 		int p2Score = _game.Board.GetScore(2);
 
+		bool playerWon = p1Score > p2Score;
+
+		// Apply Spreading Rule — use the hero P1 fielded (first hero in hand if any)
+		string heroFaction = GetPlayerHeroFaction();
+		DistrictManager.Instance.ApplySpreading(
+			DistrictManager.Instance.ActiveDistrictId,
+			heroFaction,
+			playerWon);
+
 		string resultText;
 		Color  resultColor;
 
@@ -175,6 +196,19 @@ public partial class GameBoard : Node2D
 			GameOverScores.Text = $"P1: {p1Score}   |   P2: {p2Score}";
 
 		GameOverPanel.Visible = true;
+	}
+
+	private string GetPlayerHeroFaction()
+	{
+		// Find P1's hero on the board (used for Spreading Rule)
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+			{
+				var card = _game.Board.GetCard(r, c);
+				if (card != null && card.OwnerId == 1 && card.Data.Tier == Tier.Hero)
+					return card.Data.Faction.ToString();
+			}
+		return "None";
 	}
 
 	private void OnCardSelected(int handIndex, CardNode cardNode)

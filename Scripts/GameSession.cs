@@ -63,8 +63,8 @@ public partial class GameSession : Node
 		var crew = CrewGenerator.Generate();
 		Roster   = new List<CardData>(crew);
 
-		// Auto-select best 5 as default deck
-		SelectedDeck = CrewGenerator.SelectBestFive(crew);
+		// Deck starts empty — player picks manually on PreMatchScreen
+		SelectedDeck = new List<CardData>();
 
 		SelectedDistrictId = "the_stub";
 		IsInitialized      = true;

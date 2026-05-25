@@ -187,13 +187,15 @@ public partial class GameBoard : Node2D
 		// Additional stakes (TheSpread, AsFlipped, Everything) handled in Phase 7
 	}
 
-	private CardData GetFirstBoardCard(int ownerId)
+	private CardData GetFirstBoardCard(int originalOwnerId)
 	{
+		// Use OriginalOwnerId — current OwnerId may have flipped during captures.
+		// For stake: we want the card that originally belonged to that player.
 		for (int r = 0; r < BoardState.Size; r++)
 			for (int c = 0; c < BoardState.Size; c++)
 			{
 				var card = _game.Board.GetCard(r, c);
-				if (card != null && card.OwnerId == ownerId)
+				if (card != null && card.OriginalOwnerId == originalOwnerId)
 					return card.Data;
 			}
 		return null;

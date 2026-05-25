@@ -44,8 +44,7 @@ public partial class PreMatchScreen : Control
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
-		if (GameSession.Instance != null && GameSession.Instance.SelectedDeck.Count > 0)
-			_selectedDeck = new List<CardData>(GameSession.Instance.SelectedDeck);
+		// Deck always starts empty — player picks manually each visit.
 	}
 
 	// ── District selection ────────────────────────────────────────────────────
@@ -188,6 +187,39 @@ public partial class PreMatchScreen : Control
 	{
 		_selectedDeck.Remove(card);
 		GD.Print($"PreMatch: removed {card.Name} from deck ({_selectedDeck.Count}/5).");
+	}
+
+	// ── Run over check ──────────────────────────────────────────────────────────
+
+	private void CheckRunOver()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		if (session.Roster.Count >= MaxDeckSize) return;
+
+		// Not enough cards to field a full deck — run is over
+		GD.Print($"PreMatch: roster has {session.Roster.Count} cards — run over.");
+
+		if (StartButton != null)
+		{
+			StartButton.Disabled = true;
+			StartButton.Text     = "Run Over — New Run";
+			StartButton.Pressed -= OnStartPressed;
+			StartButton.Pressed += OnNewRun;
+		}
+
+		if (DeckCountLabel != null)
+			DeckCountLabel.Text = $"Only {session.Roster.Count} cards remain — crew is gone.";
+		
+		StartButton.Disabled = false;
+	}
+
+	private void OnNewRun()
+	{
+		GD.Print("PreMatch: starting new run.");
+		GameSession.Instance?.InitializeNewRun();
+		GetTree().ReloadCurrentScene();
 	}
 
 	// ── Start match ───────────────────────────────────────────────────────────

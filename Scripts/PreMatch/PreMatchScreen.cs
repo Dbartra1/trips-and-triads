@@ -120,8 +120,8 @@ public partial class PreMatchScreen : Control
 			var captured = card;
 			var btn = new Button();
 			btn.Text              = $"+ {card.Name}";
-			btn.AutowrapMode      = TextServer.AutowrapMode.WordSmart;
-			btn.CustomMinimumSize = new Vector2(120, 36);
+			btn.ClipText          = true;
+			btn.CustomMinimumSize = new Vector2(120, 30);
 			btn.Pressed += () =>
 			{
 				AddToDeck(captured);

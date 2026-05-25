@@ -4,345 +4,259 @@ using TripsAndTriads.Core;
 using TripsAndTriads.Rules;
 using TripsAndTriads.UI;
 
-public partial class GameBoard : Node2D
+public partial class PreMatchScreen : Control
 {
-	[Export] public Control  BoardContainer { get; set; }
-	[Export] public HandNode PlayerHand     { get; set; }
-	[Export] public Label    ScoreP1        { get; set; }
-	[Export] public Label    ScoreP2        { get; set; }
-	[Export] public Label    DistrictLabel  { get; set; }
-
-	private const int CardWidth   = 120;
-	private const int CardHeight  = 160;
-	private const int CellPadding = 16;
-	private const int CellWidth   = CardWidth  + CellPadding * 2;
-	private const int CellHeight  = CardHeight + CellPadding * 2;
-
-	private GameManager  _game;
-	private CellNode[,]  _cells                = new CellNode[BoardState.Size, BoardState.Size];
-	private CardNode     _selectedCard         = null;
-	private CardInstance _selectedCardInstance = null;
-	private int          _selectedHandIndex    = -1;
-	private MatchConfig  _matchConfig;
+	[Export] public GridContainer DistrictGrid         { get; set; }
+	[Export] public GridContainer RosterGrid           { get; set; }
+	[Export] public GridContainer DeckGrid             { get; set; }
+	[Export] public Label         DeckCountLabel       { get; set; }
+	[Export] public Button        StartButton          { get; set; }
+	[Export] public Label         DistrictNameLabel    { get; set; }
+	[Export] public Label         DistrictDescLabel    { get; set; }
+	[Export] public Label         DistrictStakeLabel   { get; set; }
+	[Export] public Label         DistrictProtocolLabel{ get; set; }
 
 	private PackedScene _cardScene;
-	private PackedScene _cellScene;
+	private string _selectedDistrictId = "the_stub";
+	private List<CardData> _selectedDeck = new();
+	private const int MaxDeckSize = 5;
+	private bool _isRunOver = false;
 
 	public override void _Ready()
 	{
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
-		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
-		// Databases may already be loaded by GameSession autoload — safe to call again
-		CardDatabase.Instance.Load();
-		DistrictDatabase.Instance.Load();
-		DistrictManager.Instance.Initialize();
+		// Resolve node refs by path as fallback
+		DistrictGrid          ??= GetNodeOrNull<GridContainer>("HSplit/Left/DistrictSection/DistrictGrid");
+		RosterGrid            ??= GetNodeOrNull<GridContainer>("HSplit/Right/RosterSection/RosterScroll/RosterGrid");
+		DeckGrid              ??= GetNodeOrNull<GridContainer>("HSplit/Left/DeckSection/DeckGrid");
+		DeckCountLabel        ??= GetNodeOrNull<Label>("HSplit/Left/DeckSection/DeckCountLabel");
+		StartButton           ??= GetNodeOrNull<Button>("HSplit/Left/StartButton");
+		DistrictNameLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictNameLabel");
+		DistrictDescLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictDescLabel");
+		DistrictStakeLabel    ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictStakeLabel");
+		DistrictProtocolLabel ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictProtocolLabel");
 
-		// ── Read district and deck from GameSession if available ──────────────
-		string districtId = "the_stub";
-		List<CardData> p1Cards;
+		if (StartButton != null)
+			StartButton.Pressed += OnStartPressed;
 
+		BuildDistrictButtons();
+		RefreshRoster();
+		RefreshDeckDisplay();
+		SelectDistrict("the_stub");
+
+		// Deck always starts empty — player picks manually each visit.
+	}
+
+	// ── District selection ────────────────────────────────────────────────────
+
+	private void BuildDistrictButtons()
+	{
+		if (DistrictGrid == null) return;
+
+		foreach (var child in DistrictGrid.GetChildren())
+			child.QueueFree();
+
+		var districts = DistrictDatabase.Instance.GetAllDistricts();
+		foreach (var district in districts)
+		{
+			var btn = new Button();
+			btn.Text              = district.Name;
+			btn.Disabled          = district.IsLocked;
+			btn.CustomMinimumSize = new Vector2(160, 40);
+
+			var id = district.Id;
+			btn.Pressed += () => SelectDistrict(id);
+			DistrictGrid.AddChild(btn);
+		}
+	}
+
+	private void SelectDistrict(string districtId)
+	{
+		_selectedDistrictId = districtId;
+		var district = DistrictDatabase.Instance.GetDistrict(districtId);
+		if (district == null) return;
+
+		if (DistrictNameLabel    != null) DistrictNameLabel.Text  = district.Name;
+		if (DistrictDescLabel    != null) DistrictDescLabel.Text  = district.Description;
+		if (DistrictStakeLabel   != null) DistrictStakeLabel.Text = $"Stake: {district.Stake}";
+
+		var protocols = new List<string>(district.Protocols);
+		if (district.Intercept)    protocols.Add("Intercept");
+		if (district.Conscription) protocols.Add("Conscription");
+		if (district.Cascade)      protocols.Add("Cascade");
+		if (district.Standoff)     protocols.Add("Standoff");
+
+		if (DistrictProtocolLabel != null)
+			DistrictProtocolLabel.Text = protocols.Count > 0
+				? $"Rules: {string.Join(", ", protocols)}"
+				: "Rules: Base capture only";
+
+		GD.Print($"PreMatch: selected district '{district.Name}'.");
+	}
+
+	// ── Roster + deck builder ─────────────────────────────────────────────────
+
+	private void RefreshRoster()
+	{
+		if (RosterGrid == null || GameSession.Instance == null) return;
+
+		foreach (var child in RosterGrid.GetChildren())
+			child.QueueFree();
+
+		foreach (var card in GameSession.Instance.Roster)
+		{
+			// Wrap card + button in a VBoxContainer so the button sits below,
+			// fully outside the CardNode — no mouse filter issues.
+			var wrapper = new VBoxContainer();
+			wrapper.CustomMinimumSize = new Vector2(120, 0);
+			RosterGrid.AddChild(wrapper);
+
+			var cardNode = _cardScene.Instantiate<CardNode>();
+			wrapper.AddChild(cardNode);
+			cardNode.Initialize(new CardInstance(card, ownerId: 1));
+			cardNode.CustomMinimumSize = new Vector2(120, 160);
+
+			var captured = card;
+			var btn = new Button();
+			btn.Text              = $"+ {card.Name}";
+			btn.ClipText          = true;
+			btn.CustomMinimumSize = new Vector2(120, 30);
+			btn.Pressed += () =>
+			{
+				AddToDeck(captured);
+				RefreshDeckDisplay();
+			};
+			wrapper.AddChild(btn);
+		}
+	}
+
+	private void RefreshDeckDisplay()
+	{
+		if (DeckGrid == null) return;
+
+		foreach (var child in DeckGrid.GetChildren())
+			child.QueueFree();
+
+		foreach (var card in _selectedDeck)
+		{
+			var wrapper = new VBoxContainer();
+			wrapper.CustomMinimumSize = new Vector2(100, 0);
+			DeckGrid.AddChild(wrapper);
+
+			var cardNode = _cardScene.Instantiate<CardNode>();
+			wrapper.AddChild(cardNode);
+			cardNode.Initialize(new CardInstance(card, ownerId: 1));
+			cardNode.CustomMinimumSize = new Vector2(100, 133);
+
+			var captured = card;
+			var btn = new Button();
+			btn.Text              = "✕ Remove";
+			btn.CustomMinimumSize = new Vector2(100, 36);
+			btn.Pressed += () =>
+			{
+				RemoveFromDeck(captured);
+				RefreshDeckDisplay();
+			};
+			wrapper.AddChild(btn);
+		}
+
+		if (DeckCountLabel != null)
+			DeckCountLabel.Text = $"{_selectedDeck.Count} / {MaxDeckSize}";
+
+		if (StartButton != null)
+			StartButton.Disabled = _selectedDeck.Count != MaxDeckSize;
+	}
+
+	private void AddToDeck(CardData card)
+	{
+		if (_isRunOver) return;
+		if (_selectedDeck.Count >= MaxDeckSize)
+		{
+			GD.Print("PreMatch: deck is full (5 cards).");
+			return;
+		}
+		if (_selectedDeck.Contains(card))
+		{
+			GD.Print($"PreMatch: {card.Name} is already in the deck.");
+			return;
+		}
+		if (card.Tier == Tier.Hero && _selectedDeck.Exists(c => c.Tier == Tier.Hero))
+		{
+			GD.Print("PreMatch: deck already has a hero.");
+			return;
+		}
+		_selectedDeck.Add(card);
+		GD.Print($"PreMatch: added {card.Name} to deck ({_selectedDeck.Count}/5).");
+	}
+
+	private void RemoveFromDeck(CardData card)
+	{
+		_selectedDeck.Remove(card);
+		GD.Print($"PreMatch: removed {card.Name} from deck ({_selectedDeck.Count}/5).");
+	}
+
+	// ── Run over check ──────────────────────────────────────────────────────────
+
+	private void CheckRunOver()
+	{
 		var session = GameSession.Instance;
-		if (session != null && session.SelectedDeck.Count == 5)
+		if (session == null) return;
+
+		if (session.Roster.Count >= MaxDeckSize) return;
+
+		// Not enough cards to field a full deck — run is over
+		_isRunOver = true;
+		GD.Print($"PreMatch: roster has {session.Roster.Count} cards — run over.");
+
+		if (StartButton != null)
 		{
-			districtId = session.SelectedDistrictId;
-			// Under Conscription, pass the full roster so the random draw has the whole pool.
-			// Otherwise pass the selected 5-card deck.
-			bool isConscription = DistrictDatabase.Instance
-				.GetDistrict(districtId)?.Conscription ?? false;
-			p1Cards = isConscription
-				? new List<CardData>(session.Roster)
-				: new List<CardData>(session.SelectedDeck);
-			GD.Print($"GameBoard: loaded {(isConscription ? "roster" : "deck")} " +
-			         $"from GameSession ({p1Cards.Count} cards).");
-		}
-		else
-		{
-			// Fallback — generate a crew directly (used when running GameBoard scene standalone)
-			GD.Print("GameBoard: no GameSession deck found — generating crew directly.");
-			var crew = CrewGenerator.Generate();
-			p1Cards  = CrewGenerator.SelectBestFive(crew);
-			GD.Print("=== Generated Crew (standalone) ===");
-			foreach (var c in crew)
-				GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} | Domain:{c.DomainType} Ability:{c.AbilityType}");
-			GD.Print("=== Playing best 5 ===");
-			foreach (var c in p1Cards)
-				GD.Print($"  {c.Name} ({c.Tier})");
+			StartButton.Disabled = true;
+			StartButton.Text     = "Run Over — New Run";
+			StartButton.Pressed -= OnStartPressed;
+			StartButton.Pressed += OnNewRun;
 		}
 
-		DistrictManager.Instance.SelectDistrict(districtId);
-		_matchConfig = DistrictManager.Instance.BuildMatchConfig();
-		_game = new GameManager(_matchConfig);
+		if (DeckCountLabel != null)
+			DeckCountLabel.Text = $"Only {session.Roster.Count} cards remain — crew is gone.";
 
-		var district = DistrictManager.Instance.ActiveDistrict;
-		GD.Print($"District: {district?.Name} | Stake: {district?.Stake}");
-		GD.Print($"Active protocols: {string.Join(", ", _matchConfig.Protocols.ConvertAll(p => p.Name))}");
-
-		if (DistrictLabel != null)
-			DistrictLabel.Text = district?.Name ?? "";
-
-		// ── AI hand ───────────────────────────────────────────────────────────
-		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
-		GD.Print("=== AI Hand ===");
-		foreach (var c in p2Cards)
-			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left}");
-
-		if (p1Cards.Count < 5 || (!_matchConfig.Conscription && p2Cards.Count < 5))
+		// Replace roster with a message — no + buttons in run-over state
+		if (RosterGrid != null)
 		{
-			GD.PrintErr("GameBoard: could not build full hands.");
+			foreach (var child in RosterGrid.GetChildren())
+				child.QueueFree();
+			var msg = new Label();
+			msg.Text = $"Crew lost. {session.Roster.Count} card(s) remain — not enough to field a team.";
+			msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			RosterGrid.AddChild(msg);
+		}
+	}
+
+	private void OnNewRun()
+	{
+		GD.Print("PreMatch: starting new run.");
+		GameSession.Instance?.InitializeNewRun();
+		GetTree().ReloadCurrentScene();
+	}
+
+	// ── Start match ───────────────────────────────────────────────────────────
+
+	private void OnStartPressed()
+	{
+		if (_selectedDeck.Count != MaxDeckSize)
+		{
+			GD.Print("PreMatch: need exactly 5 cards to start.");
 			return;
 		}
 
-		_game.DealHands(p1Cards, p2Cards);
-		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
-
-		SpawnGrid();
-		RefreshHand();
-		UpdateScores();
-
-		if (PlayerHand != null)
-			PlayerHand.CardSelected += OnCardSelected;
-
-		GD.Print("Board ready. Player 1's turn.");
-	}
-
-	private void SpawnGrid()
-	{
-		for (int row = 0; row < BoardState.Size; row++)
-			for (int col = 0; col < BoardState.Size; col++)
-			{
-				var cell = _cellScene.Instantiate<CellNode>();
-				BoardContainer.AddChild(cell);
-				cell.Initialize(row, col);
-				cell.Position = new Vector2(col * CellWidth, row * CellHeight);
-				cell.CallDeferred("set_size", new Vector2(CellWidth, CellHeight));
-				cell.CellClicked += OnCellClicked;
-				_cells[row, col] = cell;
-			}
-	}
-
-	private void RefreshHand()
-	{
-		if (PlayerHand == null) return;
-		PlayerHand.PopulateHand(_game.GetHand(1));
-	}
-
-	private void UpdateScores()
-	{
-		if (ScoreP1 != null) ScoreP1.Text = $"P1  {_game.Board.GetScore(1)}";
-		if (ScoreP2 != null) ScoreP2.Text = $"{_game.Board.GetScore(2)}  P2";
-	}
-
-	private void RefreshAllCells()
-	{
-		for (int r = 0; r < BoardState.Size; r++)
-			for (int c = 0; c < BoardState.Size; c++)
-				_cells[r, c].RefreshCard();
-	}
-
-	private void EndMatchAndTransition()
-	{
-		int p1Score   = _game.Board.GetScore(1);
-		int p2Score   = _game.Board.GetScore(2);
-		bool playerWon = p1Score > p2Score;
-
-		string heroFaction = GetPlayerHeroFaction();
-		DistrictManager.Instance.ApplySpreading(
-			DistrictManager.Instance.ActiveDistrictId, heroFaction, playerWon);
-
-		// Write result to GameSession for PostMatchScreen to read
-		var session = GameSession.Instance;
-		if (session != null)
+		if (GameSession.Instance != null)
 		{
-			session.P1FinalScore = p1Score;
-			session.P2FinalScore = p2Score;
-			session.PlayerWon    = playerWon;
-			session.WinnerText   = playerWon ? "Player 1 Wins!"
-				: p2Score > p1Score ? "Player 2 Wins!" : "Draw";
-
-			// Stake resolution — OneJob: winner takes one card
-			ResolveStake(session, playerWon);
+			GameSession.Instance.SelectedDeck       = new List<CardData>(_selectedDeck);
+			GameSession.Instance.SelectedDistrictId = _selectedDistrictId;
+			GameSession.Instance.ClearMatchResult();
 		}
 
-		GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
-	}
-
-	private void ResolveStake(GameSession session, bool playerWon)
-	{
-		var district = DistrictManager.Instance.ActiveDistrict;
-		string stake = district?.Stake ?? "OneJob";
-
-		session.CardsWon.Clear();
-		session.CardsLost.Clear();
-
-		if (stake == "OneJob")
-		{
-			// Winner takes one card from the loser's on-board cards
-			if (playerWon)
-			{
-				// P1 wins — take the first P2 card on the board
-				var won = GetFirstBoardCard(originalOwnerId: 2);
-				if (won != null) session.CardsWon.Add(won);
-			}
-			else
-			{
-				// P2 wins — player loses one of their on-board cards
-				var lost = GetFirstBoardCard(originalOwnerId: 1);
-				if (lost != null) session.CardsLost.Add(lost);
-			}
-		}
-		// Additional stakes (TheSpread, AsFlipped, Everything) handled in Phase 7
-	}
-
-	private CardData GetFirstBoardCard(int originalOwnerId)
-	{
-		// Use OriginalOwnerId — current OwnerId may have flipped during captures.
-		// Prefer non-hero cards first — heroes require the Hunt system (Phase 7)
-		// to recover. Taking a hero under basic stake resolution is currently
-		// unrecoverable, so we skip them until the Hunt is implemented.
-		CardData fallback = null;
-
-		for (int r = 0; r < BoardState.Size; r++)
-			for (int c = 0; c < BoardState.Size; c++)
-			{
-				var card = _game.Board.GetCard(r, c);
-				if (card == null || card.OriginalOwnerId != originalOwnerId) continue;
-
-				if (card.Data.Tier != Tier.Hero)
-					return card.Data; // take the first non-hero card found
-
-				fallback ??= card.Data; // remember hero as last resort
-			}
-
-		return fallback; // only take hero if no non-hero cards exist on board
-	}
-
-	private string GetPlayerHeroFaction()
-	{
-		for (int r = 0; r < BoardState.Size; r++)
-			for (int c = 0; c < BoardState.Size; c++)
-			{
-				var card = _game.Board.GetCard(r, c);
-				if (card != null && card.OwnerId == 1 && card.Data.Tier == Tier.Hero)
-					return card.Data.Faction.ToString();
-			}
-		return "None";
-	}
-
-	private void OnCardSelected(int handIndex, CardNode cardNode)
-	{
-		if (_selectedCard == cardNode)
-		{
-			_selectedCard.SetSelected(false);
-			_selectedCard = null; _selectedCardInstance = null;
-			return;
-		}
-		_selectedCard?.SetSelected(false);
-		_selectedCard         = cardNode;
-		_selectedCardInstance = cardNode.GetCardInstance();
-		_selectedCard.SetSelected(true);
-		GD.Print($"Card selected: {_selectedCardInstance.Data.Name}");
-	}
-
-	private void OnCellClicked(int row, int col)
-	{
-		if (_selectedCard == null || _selectedCardInstance == null)
-		{ GD.Print("No card selected from hand yet."); return; }
-
-		if (_game.CurrentPlayerId != 1)
-		{ GD.Print("Not Player 1's turn."); return; }
-
-		var hand         = _game.GetHand(1);
-		int currentIndex = hand.IndexOf(_selectedCardInstance);
-
-		if (currentIndex < 0)
-		{
-			GD.PrintErr("Selected card not found in hand.");
-			_selectedCard?.SetSelected(false);
-			_selectedCard = null; _selectedCardInstance = null;
-			return;
-		}
-
-		var captured = _game.PlayCard(currentIndex, row, col);
-		if (captured == null) return;
-
-		_selectedCard.SetSelected(false);
-		int visualIndex = PlayerHand.GetCardNodeIndex(_selectedCard);
-		PlayerHand.RemoveCard(visualIndex);
-		_cells[row, col].PlaceCard(_selectedCard);
-
-		foreach (var (r, c) in captured) _cells[r, c].RefreshCard();
-		RefreshAllCells();
-
-		_selectedCard = null; _selectedCardInstance = null; _selectedHandIndex = -1;
-
-		UpdateScores();
-		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
-
-		if (_game.StandoffTriggered)
-		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
-		if (_game.GameOver) { EndMatchAndTransition(); return; }
-
-		RunAI();
-	}
-
-	private void RunAI()
-	{
-		var hand = _game.GetHand(2);
-		if (hand.Count == 0) return;
-
-		int bestScore = -1, bestHandIndex = 0, bestRow = -1, bestCol = -1;
-
-		for (int handIndex = 0; handIndex < hand.Count; handIndex++)
-			for (int r = 0; r < BoardState.Size; r++)
-				for (int c = 0; c < BoardState.Size; c++)
-				{
-					if (!_game.Board.IsEmpty(r, c)) continue;
-					int captures = SimulateCaptures(hand[handIndex], r, c);
-					if (captures > bestScore)
-					{ bestScore = captures; bestHandIndex = handIndex; bestRow = r; bestCol = c; }
-				}
-
-		if (bestRow < 0 || bestHandIndex >= hand.Count) return; // no valid move found
-		// Capture name BEFORE PlayCard — PlayCard removes the card from hand,
-		// making hand[bestHandIndex] stale after the call.
-		string aiCardName = hand[bestHandIndex].Data.Name;
-
-		var aiCard = _cardScene.Instantiate<CardNode>();
-		aiCard.Initialize(hand[bestHandIndex]);
-
-		var captured = _game.PlayCard(bestHandIndex, bestRow, bestCol);
-		if (captured == null) return;
-
-		_cells[bestRow, bestCol].PlaceCard(aiCard);
-		foreach (var (cr, cc) in captured) _cells[cr, cc].RefreshCard();
-		RefreshAllCells();
-
-		UpdateScores();
-		GD.Print($"AI played {aiCardName} at ({bestRow},{bestCol}) capturing {captured.Count}.");
-		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
-
-		if (_game.StandoffTriggered)
-		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
-		if (_game.GameOver) EndMatchAndTransition();
-	}
-
-	private int SimulateCaptures(CardInstance card, int row, int col)
-	{
-		int captures = 0;
-		foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
-		{
-			var (nRow, nCol) = _game.Board.GetNeighbor(row, col, dir);
-			if (!_game.Board.IsInBounds(nRow, nCol)) continue;
-			var neighbor = _game.Board.GetCard(nRow, nCol);
-			if (neighbor == null || neighbor.OwnerId == 2) continue;
-			if (card.GetValue(dir) > neighbor.GetValue(card.Data.Opposite(dir))) captures++;
-		}
-		return captures;
-	}
-
-	public void SelectCardFromHand(int handIndex, CardNode cardNode)
-	{
-		_selectedHandIndex = handIndex; _selectedCard = cardNode;
+		GD.Print($"PreMatch: starting match in '{_selectedDistrictId}'.");
+		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
 	}
 }

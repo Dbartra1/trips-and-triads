@@ -7,9 +7,13 @@ namespace TripsAndTriads.Core
 {
 	public class GameManager
 	{
-		public BoardState Board           { get; } = new BoardState();
-		public int        CurrentPlayerId { get; private set; } = 1;
-		public bool       GameOver        { get; private set; } = false;
+		public BoardState  Board           { get; } = new BoardState();
+		public int         CurrentPlayerId { get; private set; } = 1;
+		public bool        GameOver        { get; private set; } = false;
+		public MatchConfig Config          { get; private set; }
+
+		// When Standoff triggers, this is set so GameBoard can start the rematch.
+		public bool        StandoffTriggered { get; private set; } = false;
 
 		private Dictionary<int, List<CardInstance>> _hands = new()
 		{
@@ -17,23 +21,63 @@ namespace TripsAndTriads.Core
 			{ 2, new List<CardInstance>() }
 		};
 
-		private CaptureResolver _resolver = new CaptureResolver();
+		private CaptureResolver _resolver;
+
+		public GameManager(MatchConfig config = null)
+		{
+			Config    = config ?? new MatchConfig();
+			_resolver = new CaptureResolver(Config);
+		}
 
 		public void DealHands(List<CardData> player1Cards, List<CardData> player2Cards)
 		{
-			foreach (var card in player1Cards)
+			if (Config.Conscription)
 			{
-				var instance = new CardInstance(card, ownerId: 1);
-				instance.Ability = CreateAbility(card);
-				_hands[1].Add(instance);
+				// Conscription — hands dealt randomly from the full roster
+				var all = CardDatabase.Instance.GetAllCards();
+				var rng = new System.Random();
+
+				var p1Pool = new List<CardData>(all);
+				for (int i = 0; i < 5 && p1Pool.Count > 0; i++)
+				{
+					int idx = rng.Next(p1Pool.Count);
+					var instance = new CardInstance(p1Pool[idx], ownerId: 1);
+					instance.Ability = CreateAbility(p1Pool[idx]);
+					_hands[1].Add(instance);
+					p1Pool.RemoveAt(idx);
+				}
+
+				var p2Pool = new List<CardData>(all);
+				for (int i = 0; i < 5 && p2Pool.Count > 0; i++)
+				{
+					int idx = rng.Next(p2Pool.Count);
+					var instance = new CardInstance(p2Pool[idx], ownerId: 2);
+					instance.Ability = CreateAbility(p2Pool[idx]);
+					_hands[2].Add(instance);
+					p2Pool.RemoveAt(idx);
+				}
+
+				GD.Print("Conscription active — hands dealt randomly from full roster.");
+			}
+			else
+			{
+				foreach (var card in player1Cards)
+				{
+					var instance = new CardInstance(card, ownerId: 1);
+					instance.Ability = CreateAbility(card);
+					_hands[1].Add(instance);
+				}
+
+				foreach (var card in player2Cards)
+				{
+					var instance = new CardInstance(card, ownerId: 2);
+					instance.Ability = CreateAbility(card);
+					_hands[2].Add(instance);
+				}
 			}
 
-			foreach (var card in player2Cards)
-			{
-				var instance = new CardInstance(card, ownerId: 2);
-				instance.Ability = CreateAbility(card);
-				_hands[2].Add(instance);
-			}
+			if (Config.Intercept)
+				GD.Print("Intercept active — both hands are open.");
 
 			GD.Print($"Hands dealt. P1: {_hands[1].Count} cards, P2: {_hands[2].Count} cards.");
 		}
@@ -74,12 +118,9 @@ namespace TripsAndTriads.Core
 			hand.RemoveAt(handIndex);
 			Board.PlaceCard(card, row, col);
 
-			// Placement ability (Lethe copies here)
 			card.Ability?.OnPlaced(Board, card, row, col);
 
-			// Contamination is a one-time permanent effect applied on placement —
-			// run BondResolver once immediately after placement so adjacent cards
-			// take the −1 lowest edge before capture is resolved.
+			// Contamination fires immediately on placement
 			BondResolver.Apply(Board);
 
 			// Compute domain and bond bonuses before capture
@@ -91,14 +132,11 @@ namespace TripsAndTriads.Core
 			GD.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
 			         $"Captured: {captured.Count}.");
 
-			// Turn-end abilities (Vesna decays, Sumi compounds + Ledger + Inheritance)
 			ApplyTurnEndAbilities();
 
-			// Refresh domain and bond bonuses after abilities changed stats
 			DomainResolver.Apply(Board);
 			BondResolver.Apply(Board);
 
-			// Re-check captures for any card whose stats changed due to abilities
 			var decayCaptured = ResolveDecayCaptures();
 			captured.AddRange(decayCaptured);
 
@@ -126,7 +164,6 @@ namespace TripsAndTriads.Core
 			var captured = new List<(int row, int col)>();
 
 			for (int r = 0; r < BoardState.Size; r++)
-			{
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
@@ -155,17 +192,26 @@ namespace TripsAndTriads.Core
 						}
 					}
 				}
-			}
 
 			return captured;
 		}
 
 		private void EndGame()
 		{
-			GameOver = true;
 			int p1Score = Board.GetScore(1);
 			int p2Score = Board.GetScore(2);
 
+			// Standoff — draws trigger an immediate rematch with board-state hands
+			if (Config.Standoff && p1Score == p2Score)
+			{
+				GD.Print("Standoff — draw! Rematch with board-state hands.");
+				StandoffTriggered = true;
+				// Don't set GameOver — GameBoard will rebuild hands from board state
+				// and restart the match. Board is NOT cleared.
+				return;
+			}
+
+			GameOver = true;
 			GD.Print($"Game Over! P1: {p1Score} | P2: {p2Score}");
 
 			if (p1Score > p2Score)      GD.Print("Player 1 wins!");

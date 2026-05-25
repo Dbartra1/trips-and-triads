@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using TripsAndTriads.Core;
+using TripsAndTriads.Rules;
 using TripsAndTriads.UI;
 
 public partial class GameBoard : Node2D
@@ -29,13 +30,24 @@ public partial class GameBoard : Node2D
 	private PackedScene _cardScene;
 	private PackedScene _cellScene;
 
+	// Change this to test different district rules:
+	// MatchConfig.BaseRules()   — no protocols
+	// MatchConfig.GlassSpire()  — Intercept + Wall Signature + Handshake
+	// MatchConfig.Killfloor()   — Conscription + Standoff
+	// MatchConfig.DeadChannel() — Intercept + Cascade
+	// MatchConfig.SprawlMarket()— Conscription
+	// MatchConfig.PowderRoom()  — The Tally + Handshake
+	// MatchConfig.TheHush()     — Cascade + Wall Signature + Handshake
+	// MatchConfig.TheVault()    — all protocols
+	private MatchConfig _matchConfig = MatchConfig.BaseRules();
+
 	public override void _Ready()
 	{
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
 		CardDatabase.Instance.Load();
-		_game = new GameManager();
+		_game = new GameManager(_matchConfig);
 
 		var p1Cards = BuildHand(
 			"asc_hero_seraph_yune",
@@ -53,7 +65,7 @@ public partial class GameBoard : Node2D
 			"lac_hero_madame_sumi"
 		);
 
-		if (p1Cards.Count < 5 || p2Cards.Count < 5)
+		if (!_matchConfig.Conscription && (p1Cards.Count < 5 || p2Cards.Count < 5))
 		{
 			GD.PrintErr("GameBoard: could not build full hands — check cards.json IDs.");
 			return;
@@ -64,6 +76,7 @@ public partial class GameBoard : Node2D
 		GD.Print($"PlayerHand is null: {PlayerHand == null}");
 		GD.Print($"BoardContainer is null: {BoardContainer == null}");
 		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
+		GD.Print($"Active protocols: {string.Join(", ", _matchConfig.Protocols.ConvertAll(p => p.Name))}");
 
 		SpawnGrid();
 		RefreshHand();
@@ -95,7 +108,6 @@ public partial class GameBoard : Node2D
 	private void SpawnGrid()
 	{
 		for (int row = 0; row < BoardState.Size; row++)
-		{
 			for (int col = 0; col < BoardState.Size; col++)
 			{
 				var cell = _cellScene.Instantiate<CellNode>();
@@ -106,7 +118,6 @@ public partial class GameBoard : Node2D
 				cell.CellClicked += OnCellClicked;
 				_cells[row, col] = cell;
 			}
-		}
 	}
 
 	private void RefreshHand()
@@ -121,8 +132,6 @@ public partial class GameBoard : Node2D
 		if (ScoreP2 != null) ScoreP2.Text = $"{_game.Board.GetScore(2)}  P2";
 	}
 
-	// Refreshes every occupied cell — keeps edge numbers in sync after
-	// Vesna decays or Sumi compounds at turn-end.
 	private void RefreshAllCells()
 	{
 		for (int r = 0; r < BoardState.Size; r++)
@@ -225,7 +234,6 @@ public partial class GameBoard : Node2D
 		foreach (var (r, c) in captured)
 			_cells[r, c].RefreshCard();
 
-		// Sync all cells — abilities may have changed edge values this turn
 		RefreshAllCells();
 
 		_selectedCard         = null;
@@ -234,6 +242,13 @@ public partial class GameBoard : Node2D
 
 		UpdateScores();
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
+
+		if (_game.StandoffTriggered)
+		{
+			GD.Print("Standoff — restarting with board-state hands.");
+			GetTree().ReloadCurrentScene();
+			return;
+		}
 
 		if (_game.GameOver)
 		{
@@ -255,15 +270,11 @@ public partial class GameBoard : Node2D
 		int bestCol       = -1;
 
 		for (int handIndex = 0; handIndex < hand.Count; handIndex++)
-		{
 			for (int r = 0; r < BoardState.Size; r++)
-			{
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					if (!_game.Board.IsEmpty(r, c)) continue;
-
 					int captures = SimulateCaptures(hand[handIndex], r, c);
-
 					if (captures > bestScore)
 					{
 						bestScore     = captures;
@@ -272,8 +283,6 @@ public partial class GameBoard : Node2D
 						bestCol       = c;
 					}
 				}
-			}
-		}
 
 		var aiCard = _cardScene.Instantiate<CardNode>();
 		aiCard.Initialize(hand[bestHandIndex]);
@@ -286,18 +295,23 @@ public partial class GameBoard : Node2D
 		foreach (var (cr, cc) in captured)
 			_cells[cr, cc].RefreshCard();
 
-		// Sync all cells — abilities may have changed edge values this turn
 		RefreshAllCells();
 
 		UpdateScores();
 		GD.Print($"AI played {hand[bestHandIndex].Data.Name} at ({bestRow},{bestCol}) capturing {captured.Count}.");
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
+		if (_game.StandoffTriggered)
+		{
+			GD.Print("Standoff — restarting with board-state hands.");
+			GetTree().ReloadCurrentScene();
+			return;
+		}
+
 		if (_game.GameOver)
 			ShowGameOver();
 	}
 
-	// Uses CardInstance.GetValue() so overrides (Vesna, Sumi) are respected.
 	private int SimulateCaptures(CardInstance card, int row, int col)
 	{
 		int captures = 0;
@@ -305,12 +319,10 @@ public partial class GameBoard : Node2D
 		foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 		{
 			var (nRow, nCol) = _game.Board.GetNeighbor(row, col, dir);
-
 			if (!_game.Board.IsInBounds(nRow, nCol)) continue;
 
 			var neighbor = _game.Board.GetCard(nRow, nCol);
-			if (neighbor == null) continue;
-			if (neighbor.OwnerId == 2) continue;
+			if (neighbor == null || neighbor.OwnerId == 2) continue;
 
 			int attackVal = card.GetValue(dir);
 			int defendVal = neighbor.GetValue(card.Data.Opposite(dir));

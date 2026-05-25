@@ -6,33 +6,63 @@ namespace TripsAndTriads.Rules
 {
 	public class CaptureResolver
 	{
+		private MatchConfig _config;
+
+		public CaptureResolver(MatchConfig config = null)
+		{
+			_config = config ?? new MatchConfig();
+		}
+
 		public List<(int row, int col)> Resolve(BoardState board, int row, int col)
 		{
 			var allCaptured = new List<(int row, int col)>();
 			var visited     = new HashSet<(int, int)>();
-
 			visited.Add((row, col));
 
 			var placed = board.GetCard(row, col);
 			if (placed == null) return allCaptured;
 
 			// ── The Rivalry ───────────────────────────────────────────────────────
-			// If this card has RivalryActive and the rival is adjacent, resolve
-			// capture between just those two cards first before normal capture.
 			if (placed.RivalryActive)
 				ResolveRivalry(board, placed, row, col, allCaptured, visited);
 
-			// ── Normal capture pass ───────────────────────────────────────────────
-			var initial = ResolveSingle(board, row, col, placed);
-			allCaptured.AddRange(initial);
+			// ── Base capture ──────────────────────────────────────────────────────
+			var baseCaptured = ResolveSingle(board, row, col, placed, visited);
+			allCaptured.AddRange(baseCaptured);
+			foreach (var pos in baseCaptured) visited.Add(pos);
+
+			// ── Protocol captures ─────────────────────────────────────────────────
+			var protocolCaptured = new List<(int row, int col)>();
+			foreach (var protocol in _config.Protocols)
+			{
+				var result = protocol.Resolve(board, placed, row, col, visited);
+				foreach (var pos in result)
+				{
+					if (visited.Contains(pos)) continue;
+					protocolCaptured.Add(pos);
+					visited.Add(pos);
+				}
+			}
+
+			// ── Cascade ───────────────────────────────────────────────────────────
+			// Protocol captures chain under base capture rules when Cascade is active.
+			if (_config.Cascade && protocolCaptured.Count > 0)
+			{
+				foreach (var (cr, cc) in protocolCaptured)
+				{
+					GD.Print($"Cascade triggered from protocol capture at ({cr},{cc}).");
+					ResolveChain(board, cr, cc, allCaptured, visited);
+				}
+			}
+
+			allCaptured.AddRange(protocolCaptured);
 
 			// ── The Breach ────────────────────────────────────────────────────────
-			// If placed adjacent to a friendly Vesna, initial captures chain.
-			bool breachActive = IsAdjacentToVesna(board, row, col, placed.OwnerId);
-			if (breachActive)
-				foreach (var (cr, cc) in initial)
+			// Base captures chain when placed card is adjacent to friendly Vesna.
+			if (IsAdjacentToVesna(board, row, col, placed.OwnerId))
+				foreach (var (cr, cc) in baseCaptured)
 				{
-					visited.Add((cr, cc));
+					if (!visited.Contains((cr, cc))) visited.Add((cr, cc));
 					ResolveChain(board, cr, cc, allCaptured, visited);
 				}
 
@@ -40,8 +70,6 @@ namespace TripsAndTriads.Rules
 		}
 
 		// ── The Rivalry ───────────────────────────────────────────────────────────
-		// Yune and Grin resolve capture against each other first when adjacent.
-		// Whichever wins flips the other; then normal capture continues.
 		private void ResolveRivalry(
 			BoardState board, CardInstance placed, int row, int col,
 			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
@@ -76,11 +104,11 @@ namespace TripsAndTriads.Rules
 				{
 					GD.Print($"The Rivalry — {neighbor.Data.Name} holds.");
 				}
-				break; // only one rival can be adjacent
+				break;
 			}
 		}
 
-		// ── Chain resolver (The Breach) ───────────────────────────────────────────
+		// ── Chain resolver (The Breach / Cascade) ─────────────────────────────────
 		private void ResolveChain(
 			BoardState board, int row, int col,
 			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
@@ -88,23 +116,22 @@ namespace TripsAndTriads.Rules
 			var card = board.GetCard(row, col);
 			if (card == null) return;
 
-			var newCaptures = ResolveSingle(board, row, col, card);
+			var newCaptures = ResolveSingle(board, row, col, card, visited);
 
 			foreach (var (nr, nc) in newCaptures)
 			{
 				if (visited.Contains((nr, nc))) continue;
-
 				allCaptured.Add((nr, nc));
 				visited.Add((nr, nc));
-				GD.Print($"The Breach chains: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
+				GD.Print($"Chain: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
 				ResolveChain(board, nr, nc, allCaptured, visited);
 			}
 		}
 
 		// ── Single capture pass ───────────────────────────────────────────────────
-		// Respects BlockChoir (The Listener) — Riven will not capture Choir cards.
 		private List<(int row, int col)> ResolveSingle(
-			BoardState board, int row, int col, CardInstance attacker)
+			BoardState board, int row, int col,
+			CardInstance attacker, HashSet<(int, int)> visited)
 		{
 			var captured = new List<(int row, int col)>();
 
@@ -116,6 +143,7 @@ namespace TripsAndTriads.Rules
 				var neighbor = board.GetCard(nRow, nCol);
 				if (neighbor == null) continue;
 				if (neighbor.OwnerId == attacker.OwnerId) continue;
+				if (visited.Contains((nRow, nCol))) continue;
 
 				// The Listener — Riven refuses to capture Choir cards
 				if (attacker.BlockChoir && neighbor.Data.Faction == Faction.HollowChoir)

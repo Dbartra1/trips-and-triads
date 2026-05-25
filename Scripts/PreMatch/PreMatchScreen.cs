@@ -106,6 +106,10 @@ public partial class PreMatchScreen : Control
 	{
 		if (RosterGrid == null || GameSession.Instance == null) return;
 
+		// Always reset to the standard column layout before populating.
+		// CheckRunOver sets Columns=1 for its message; RefreshRoster must undo that.
+		RosterGrid.Columns = 4;
+
 		foreach (var child in RosterGrid.GetChildren())
 			child.QueueFree();
 
@@ -337,9 +341,15 @@ public partial class PreMatchScreen : Control
 
 		GD.Print($"PreMatch: Step Up — {promoted.Name} is the new hero.");
 
-		// Remove and rebuild the Hunt panel; rebuild roster so new hero shows tier
+		// Remove the Hunt panel now that the Hunt is resolved.
 		if (_huntPanel != null) { _huntPanel.QueueFree(); _huntPanel = null; }
-		RefreshRoster();
+
+		// Re-evaluate run-over now that the Hunt is cleared.
+		// If the roster is still too small, CheckRunOver takes over and shows the
+		// "Run Over" message; otherwise RefreshRoster shows the playable roster.
+		if (!CheckRunOver())
+			RefreshRoster();
+
 		RefreshDeckDisplay();
 	}
 
@@ -350,6 +360,11 @@ public partial class PreMatchScreen : Control
 	{
 		var session = GameSession.Instance;
 		if (session == null) return false;
+
+		// While a Hunt is active the hero is captured but still yours — don't
+		// declare the run over until the player has resolved the Hunt (Step Up
+		// or Reclaim). After Step Up, OnStepUpPressed calls CheckRunOver again.
+		if (session.IsHeadless) return false;
 
 		if (session.Roster.Count >= MaxDeckSize) return false;
 

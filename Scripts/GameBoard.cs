@@ -197,15 +197,24 @@ public partial class GameBoard : Node2D
 	private CardData GetFirstBoardCard(int originalOwnerId)
 	{
 		// Use OriginalOwnerId — current OwnerId may have flipped during captures.
-		// For stake: we want the card that originally belonged to that player.
+		// Prefer non-hero cards first — heroes require the Hunt system (Phase 7)
+		// to recover. Taking a hero under basic stake resolution is currently
+		// unrecoverable, so we skip them until the Hunt is implemented.
+		CardData fallback = null;
+
 		for (int r = 0; r < BoardState.Size; r++)
 			for (int c = 0; c < BoardState.Size; c++)
 			{
 				var card = _game.Board.GetCard(r, c);
-				if (card != null && card.OriginalOwnerId == originalOwnerId)
-					return card.Data;
+				if (card == null || card.OriginalOwnerId != originalOwnerId) continue;
+
+				if (card.Data.Tier != Tier.Hero)
+					return card.Data; // take the first non-hero card found
+
+				fallback ??= card.Data; // remember hero as last resort
 			}
-		return null;
+
+		return fallback; // only take hero if no non-hero cards exist on board
 	}
 
 	private string GetPlayerHeroFaction()
@@ -295,6 +304,10 @@ public partial class GameBoard : Node2D
 				}
 
 		if (bestRow < 0 || bestHandIndex >= hand.Count) return; // no valid move found
+		// Capture name BEFORE PlayCard — PlayCard removes the card from hand,
+		// making hand[bestHandIndex] stale after the call.
+		string aiCardName = hand[bestHandIndex].Data.Name;
+
 		var aiCard = _cardScene.Instantiate<CardNode>();
 		aiCard.Initialize(hand[bestHandIndex]);
 
@@ -306,7 +319,7 @@ public partial class GameBoard : Node2D
 		RefreshAllCells();
 
 		UpdateScores();
-		GD.Print($"AI played {hand[bestHandIndex].Data.Name} at ({bestRow},{bestCol}) capturing {captured.Count}.");
+		GD.Print($"AI played {aiCardName} at ({bestRow},{bestCol}) capturing {captured.Count}.");
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
 		if (_game.StandoffTriggered)

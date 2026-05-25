@@ -11,7 +11,8 @@ public partial class GameBoard : Node2D
 	[Export] public Label    ScoreP1        { get; set; }
 	[Export] public Label    ScoreP2        { get; set; }
 	[Export] public Label    DistrictLabel  { get; set; }
-	[Export] public Panel    EndPanel       { get; set; } // shown at match end before PostMatch
+	// End-of-match review overlay — reuses the existing GameOverPanel nodes
+	[Export] public Panel    EndPanel       { get; set; }
 	[Export] public Label    EndResultLabel { get; set; }
 	[Export] public Label    EndScoreLabel  { get; set; }
 	[Export] public Button   EndContinueBtn { get; set; }

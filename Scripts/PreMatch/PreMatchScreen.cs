@@ -215,10 +215,10 @@ public partial class PreMatchScreen : Control
 
 		if (StartButton != null)
 		{
-			StartButton.Disabled = true;
 			StartButton.Text     = "Run Over — New Run";
 			StartButton.Pressed -= OnStartPressed;
 			StartButton.Pressed += OnNewRun;
+			StartButton.Disabled = false; // re-enable after rewiring to OnNewRun
 		}
 
 		if (DeckCountLabel != null)

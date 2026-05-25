@@ -69,14 +69,15 @@ public partial class GameBoard : Node2D
 		foreach (var c in p1Cards)
 			GD.Print($"  {c.Name} ({c.Tier})");
 
-		// ── P2 — fixed AI hand ────────────────────────────────────────────────
-		var p2Cards = BuildHand(
-			"hch_hero_vesna",
-			"eff_top_verity",
-			"rzk_hero_sister_grin",
-			"free_pro_merc_sniper",
-			"lac_hero_madame_sumi"
-		);
+		// ── P2 — AI hand: fixed Vesna + Verity + 3 generated Streets ───────────
+		// Vesna stays fixed — she's the AI's consistent learnable threat.
+		// Verity stays fixed — reliable high-value support.
+		// Streets vary each game so the supporting cast feels fresh.
+		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
+
+		GD.Print("=== AI Hand ===");
+		foreach (var c in p2Cards)
+			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left}");
 
 		if (p1Cards.Count < 5 || (!_matchConfig.Conscription && p2Cards.Count < 5))
 		{

@@ -15,16 +15,16 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "ScoreP1", "ScoreP2", "GameOverPanel", "GameOverLabel", "GameOverScores", "RestartButton")]
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "ScoreP1", "ScoreP2", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
 script = ExtResource("1_luxp4")
 BoardContainer = NodePath("CanvasLayer/BoardContainer")
 PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
 ScoreP1 = NodePath("CanvasLayer/ScoreBar/LabelP1")
 ScoreP2 = NodePath("CanvasLayer/ScoreBar/LabelP2")
-GameOverPanel = NodePath("CanvasLayer/GameOverPanel")
-GameOverLabel = NodePath("CanvasLayer/GameOverPanel/LabelResult")
-GameOverScores = NodePath("CanvasLayer/GameOverPanel/LabelScores")
-RestartButton = NodePath("CanvasLayer/GameOverPanel/ButtonRestart")
+EndPanel = NodePath("CanvasLayer/GameOverPanel")
+EndResultLabel = NodePath("CanvasLayer/GameOverPanel/LabelResult")
+EndScoreLabel = NodePath("CanvasLayer/GameOverPanel/LabelScores")
+EndContinueBtn = NodePath("CanvasLayer/GameOverPanel/ButtonRestart")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1780249952]
 
@@ -118,4 +118,4 @@ offset_left = 125.0
 offset_top = 148.0
 offset_right = 275.0
 offset_bottom = 192.0
-text = "Play Again"
+text = "Continue →"

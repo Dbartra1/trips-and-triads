@@ -11,9 +11,12 @@ namespace TripsAndTriads.Core
 		public static CardDatabase Instance => _instance ??= new CardDatabase();
 
 		private Dictionary<string, CardData> _cards = new();
+		private bool _loaded = false;
 
 		public void Load()
 		{
+			if (_loaded) return; // guard against double-load
+
 			var file = FileAccess.Open("res://Data/Cards/cards.json", FileAccess.ModeFlags.Read);
 			if (file == null)
 			{
@@ -27,11 +30,10 @@ namespace TripsAndTriads.Core
 			var options = new JsonSerializerOptions
 			{
 				PropertyNameCaseInsensitive = true,
-				Converters = { new JsonStringEnumConverter() }  // deserialize "Ascendant" → Faction.Ascendant
+				Converters = { new JsonStringEnumConverter() }
 			};
 
 			var cards = JsonSerializer.Deserialize<List<CardData>>(json, options);
-
 			if (cards == null)
 			{
 				GD.PrintErr("CardDatabase: deserialization returned null.");
@@ -41,6 +43,7 @@ namespace TripsAndTriads.Core
 			foreach (var card in cards)
 				_cards[card.Id] = card;
 
+			_loaded = true;
 			GD.Print($"CardDatabase: loaded {_cards.Count} cards.");
 		}
 

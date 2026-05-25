@@ -157,11 +157,7 @@ public partial class GameBoard : Node2D
 			ResolveStake(session, playerWon);
 		}
 
-		// Navigate to PostMatchScreen if it exists, otherwise reload board
-		if (ResourceLoader.Exists("res://Scenes/PostMatch/PostMatchScreen.tscn"))
-			GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
-		else
-			GetTree().ReloadCurrentScene();
+		GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
 	}
 
 	private void ResolveStake(GameSession session, bool playerWon)
@@ -289,6 +285,7 @@ public partial class GameBoard : Node2D
 					{ bestScore = captures; bestHandIndex = handIndex; bestRow = r; bestCol = c; }
 				}
 
+		if (bestRow < 0 || bestHandIndex >= hand.Count) return; // no valid move found
 		var aiCard = _cardScene.Instantiate<CardNode>();
 		aiCard.Initialize(hand[bestHandIndex]);
 

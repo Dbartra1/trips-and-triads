@@ -4,21 +4,17 @@ using TripsAndTriads.Core;
 using TripsAndTriads.Rules;
 using TripsAndTriads.UI;
 
-/// <summary>
-/// Pre-match screen — district selection, roster display, deck builder.
-/// Player picks a district and their 5-card hand, then starts the match.
-/// </summary>
 public partial class PreMatchScreen : Control
 {
-	[Export] public GridContainer  DistrictGrid    { get; set; }
-	[Export] public GridContainer  RosterGrid      { get; set; }
-	[Export] public GridContainer  DeckGrid        { get; set; }
-	[Export] public Label          DeckCountLabel  { get; set; }
-	[Export] public Button         StartButton     { get; set; }
-	[Export] public Label          DistrictNameLabel    { get; set; }
-	[Export] public Label          DistrictDescLabel    { get; set; }
-	[Export] public Label          DistrictStakeLabel   { get; set; }
-	[Export] public Label          DistrictProtocolLabel{ get; set; }
+	[Export] public GridContainer DistrictGrid         { get; set; }
+	[Export] public GridContainer RosterGrid           { get; set; }
+	[Export] public GridContainer DeckGrid             { get; set; }
+	[Export] public Label         DeckCountLabel       { get; set; }
+	[Export] public Button        StartButton          { get; set; }
+	[Export] public Label         DistrictNameLabel    { get; set; }
+	[Export] public Label         DistrictDescLabel    { get; set; }
+	[Export] public Label         DistrictStakeLabel   { get; set; }
+	[Export] public Label         DistrictProtocolLabel{ get; set; }
 
 	private PackedScene _cardScene;
 	private string _selectedDistrictId = "the_stub";
@@ -29,6 +25,17 @@ public partial class PreMatchScreen : Control
 	{
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 
+		// Resolve node refs by path as fallback
+		DistrictGrid          ??= GetNodeOrNull<GridContainer>("HSplit/Left/DistrictSection/DistrictGrid");
+		RosterGrid            ??= GetNodeOrNull<GridContainer>("HSplit/Right/RosterSection/RosterScroll/RosterGrid");
+		DeckGrid              ??= GetNodeOrNull<GridContainer>("HSplit/Left/DeckSection/DeckGrid");
+		DeckCountLabel        ??= GetNodeOrNull<Label>("HSplit/Left/DeckSection/DeckCountLabel");
+		StartButton           ??= GetNodeOrNull<Button>("HSplit/Left/StartButton");
+		DistrictNameLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictNameLabel");
+		DistrictDescLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictDescLabel");
+		DistrictStakeLabel    ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictStakeLabel");
+		DistrictProtocolLabel ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictProtocolLabel");
+
 		if (StartButton != null)
 			StartButton.Pressed += OnStartPressed;
 
@@ -37,8 +44,7 @@ public partial class PreMatchScreen : Control
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
-		// Pre-populate deck with whatever GameSession has selected
-		if (GameSession.Instance != null)
+		if (GameSession.Instance != null && GameSession.Instance.SelectedDeck.Count > 0)
 			_selectedDeck = new List<CardData>(GameSession.Instance.SelectedDeck);
 	}
 
@@ -55,13 +61,12 @@ public partial class PreMatchScreen : Control
 		foreach (var district in districts)
 		{
 			var btn = new Button();
-			btn.Text         = district.Name;
-			btn.Disabled     = district.IsLocked;
+			btn.Text              = district.Name;
+			btn.Disabled          = district.IsLocked;
 			btn.CustomMinimumSize = new Vector2(160, 40);
 
-			var id = district.Id; // capture for lambda
+			var id = district.Id;
 			btn.Pressed += () => SelectDistrict(id);
-
 			DistrictGrid.AddChild(btn);
 		}
 	}
@@ -72,9 +77,9 @@ public partial class PreMatchScreen : Control
 		var district = DistrictDatabase.Instance.GetDistrict(districtId);
 		if (district == null) return;
 
-		if (DistrictNameLabel    != null) DistrictNameLabel.Text     = district.Name;
-		if (DistrictDescLabel    != null) DistrictDescLabel.Text     = district.Description;
-		if (DistrictStakeLabel   != null) DistrictStakeLabel.Text    = $"Stake: {district.Stake}";
+		if (DistrictNameLabel    != null) DistrictNameLabel.Text  = district.Name;
+		if (DistrictDescLabel    != null) DistrictDescLabel.Text  = district.Description;
+		if (DistrictStakeLabel   != null) DistrictStakeLabel.Text = $"Stake: {district.Stake}";
 
 		var protocols = new List<string>(district.Protocols);
 		if (district.Intercept)    protocols.Add("Intercept");
@@ -101,22 +106,26 @@ public partial class PreMatchScreen : Control
 
 		foreach (var card in GameSession.Instance.Roster)
 		{
+			// Wrap card + button in a VBoxContainer so the button sits below,
+			// fully outside the CardNode — no mouse filter issues.
+			var wrapper = new VBoxContainer();
+			wrapper.CustomMinimumSize = new Vector2(120, 0);
+			RosterGrid.AddChild(wrapper);
+
 			var cardNode = _cardScene.Instantiate<CardNode>();
-			RosterGrid.AddChild(cardNode);
-			var instance = new CardInstance(card, ownerId: 1);
-			cardNode.Initialize(instance);
+			wrapper.AddChild(cardNode);
+			cardNode.Initialize(new CardInstance(card, ownerId: 1));
 			cardNode.CustomMinimumSize = new Vector2(120, 160);
 
-			// Clicking a roster card adds it to the deck
 			var captured = card;
 			var btn = new Button();
-			btn.Text         = "+";
-			btn.AnchorLeft   = 1; btn.AnchorRight  = 1;
-			btn.AnchorTop    = 0; btn.AnchorBottom = 0;
-			btn.OffsetLeft   = -28; btn.OffsetRight = 0;
-			btn.OffsetTop    = 0;   btn.OffsetBottom = 20;
-			btn.Pressed += () => AddToDeck(captured);
-			cardNode.AddChild(btn);
+			btn.Text = $"+ {card.Name}";
+			btn.Pressed += () =>
+			{
+				AddToDeck(captured);
+				RefreshDeckDisplay();
+			};
+			wrapper.AddChild(btn);
 		}
 	}
 
@@ -129,22 +138,24 @@ public partial class PreMatchScreen : Control
 
 		foreach (var card in _selectedDeck)
 		{
+			var wrapper = new VBoxContainer();
+			wrapper.CustomMinimumSize = new Vector2(100, 0);
+			DeckGrid.AddChild(wrapper);
+
 			var cardNode = _cardScene.Instantiate<CardNode>();
-			DeckGrid.AddChild(cardNode);
-			var instance = new CardInstance(card, ownerId: 1);
-			cardNode.Initialize(instance);
+			wrapper.AddChild(cardNode);
+			cardNode.Initialize(new CardInstance(card, ownerId: 1));
 			cardNode.CustomMinimumSize = new Vector2(100, 133);
 
-			// Clicking a deck card removes it
 			var captured = card;
 			var btn = new Button();
-			btn.Text         = "✕";
-			btn.AnchorLeft   = 1; btn.AnchorRight  = 1;
-			btn.AnchorTop    = 0; btn.AnchorBottom = 0;
-			btn.OffsetLeft   = -28; btn.OffsetRight = 0;
-			btn.OffsetTop    = 0;   btn.OffsetBottom = 20;
-			btn.Pressed += () => RemoveFromDeck(captured);
-			cardNode.AddChild(btn);
+			btn.Text = $"✕ Remove";
+			btn.Pressed += () =>
+			{
+				RemoveFromDeck(captured);
+				RefreshDeckDisplay();
+			};
+			wrapper.AddChild(btn);
 		}
 
 		if (DeckCountLabel != null)
@@ -156,23 +167,24 @@ public partial class PreMatchScreen : Control
 
 	private void AddToDeck(CardData card)
 	{
-		if (_selectedDeck.Count >= MaxDeckSize) return;
-
-		// At most one hero
+		if (_selectedDeck.Count >= MaxDeckSize)
+		{
+			GD.Print("PreMatch: deck is full (5 cards).");
+			return;
+		}
 		if (card.Tier == Tier.Hero && _selectedDeck.Exists(c => c.Tier == Tier.Hero))
 		{
 			GD.Print("PreMatch: deck already has a hero.");
 			return;
 		}
-
 		_selectedDeck.Add(card);
-		RefreshDeckDisplay();
+		GD.Print($"PreMatch: added {card.Name} to deck ({_selectedDeck.Count}/5).");
 	}
 
 	private void RemoveFromDeck(CardData card)
 	{
 		_selectedDeck.Remove(card);
-		RefreshDeckDisplay();
+		GD.Print($"PreMatch: removed {card.Name} from deck ({_selectedDeck.Count}/5).");
 	}
 
 	// ── Start match ───────────────────────────────────────────────────────────
@@ -187,12 +199,12 @@ public partial class PreMatchScreen : Control
 
 		if (GameSession.Instance != null)
 		{
-			GameSession.Instance.SelectedDeck      = new List<CardData>(_selectedDeck);
+			GameSession.Instance.SelectedDeck       = new List<CardData>(_selectedDeck);
 			GameSession.Instance.SelectedDistrictId = _selectedDistrictId;
 			GameSession.Instance.ClearMatchResult();
 		}
 
-		GD.Print($"PreMatch: starting match in '{_selectedDistrictId}' with {_selectedDeck.Count} cards.");
+		GD.Print($"PreMatch: starting match in '{_selectedDistrictId}'.");
 		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
 	}
 }

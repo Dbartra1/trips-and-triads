@@ -189,7 +189,10 @@ namespace TripsAndTriads.Core
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
-					if (card == null || !card.IsModified) continue;
+					// Only check cards with Decay ability — Compound/Copy heroes grow
+					// their overrides too, but they should never be flipped by this pass.
+					if (card == null) continue;
+					if (card.Data.AbilityType != AbilityType.Decay) continue;
 
 					foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 					{

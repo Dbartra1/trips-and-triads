@@ -82,11 +82,11 @@ namespace TripsAndTriads.Core
 			GD.Print($"Hands dealt. P1: {_hands[1].Count} cards, P2: {_hands[2].Count} cards.");
 		}
 
-		private static ICardAbility CreateAbility(CardData data) => data.Id switch
+		private static ICardAbility CreateAbility(CardData data) => data.AbilityType switch
 		{
-			"hch_hero_vesna"       => new VesnaAbility(),
-			"lac_hero_madame_sumi" => new SumiAbility(),
-			"eff_hero_lethe"       => new LetheAbility(),
+			AbilityType.Decay    => new VesnaAbility(),
+			AbilityType.Compound => new SumiAbility(),
+			AbilityType.Copy     => new LetheAbility(),
 			_                      => null
 		};
 

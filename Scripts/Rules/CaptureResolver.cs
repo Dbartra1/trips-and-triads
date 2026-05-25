@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 using TripsAndTriads.Core;
+using static TripsAndTriads.Core.AbilityType;
 
 namespace TripsAndTriads.Rules
 {
@@ -176,7 +177,7 @@ namespace TripsAndTriads.Rules
 				var neighbor = board.GetCard(nRow, nCol);
 				if (neighbor == null) continue;
 				if (neighbor.OwnerId != ownerId) continue;
-				if (neighbor.Data.Id == "hch_hero_vesna") return true;
+				if (neighbor.Data.AbilityType == AbilityType.Decay) return true;
 			}
 			return false;
 		}

@@ -14,13 +14,13 @@ public partial class GameBoard : Node2D
 	[Export] public Label    GameOverLabel  { get; set; }
 	[Export] public Label    GameOverScores { get; set; }
 	[Export] public Button   RestartButton  { get; set; }
-	[Export] public Label    DistrictLabel  { get; set; } // optional — shows active district name
+	[Export] public Label    DistrictLabel  { get; set; }
 
 	private const int CardWidth   = 120;
 	private const int CardHeight  = 160;
 	private const int CellPadding = 16;
-	private const int CellWidth   = CardWidth  + CellPadding * 2; // 152
-	private const int CellHeight  = CardHeight + CellPadding * 2; // 192
+	private const int CellWidth   = CardWidth  + CellPadding * 2;
+	private const int CellHeight  = CardHeight + CellPadding * 2;
 
 	private GameManager  _game;
 	private CellNode[,]  _cells                = new CellNode[BoardState.Size, BoardState.Size];
@@ -37,21 +37,13 @@ public partial class GameBoard : Node2D
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
-		// Load databases
 		CardDatabase.Instance.Load();
 		DistrictDatabase.Instance.Load();
 		DistrictManager.Instance.Initialize();
 
-		// Select starting district — "the_stub" for base rules.
-		// Change this string to test different districts:
-		// "the_stub"          — base rules
-		// "glass_spire"       — Intercept + Wall Signature + Handshake
-		// "the_killfloor"     — Conscription + Standoff
-		// "dead_channel"      — Intercept + Cascade
-		// "the_sprawl_market" — Conscription
-		// "the_powder_room"   — Tally + Handshake
-		// "the_hush"          — Cascade + Wall Signature + Handshake
-		// "the_vault"         — all protocols (locked by default)
+		// Change district string to test different rule sets:
+		// "the_stub" / "glass_spire" / "the_killfloor" / "dead_channel"
+		// "the_sprawl_market" / "the_powder_room" / "the_hush" / "the_vault"
 		DistrictManager.Instance.SelectDistrict("the_stub");
 
 		_matchConfig = DistrictManager.Instance.BuildMatchConfig();
@@ -64,14 +56,20 @@ public partial class GameBoard : Node2D
 		if (DistrictLabel != null)
 			DistrictLabel.Text = district?.Name ?? "";
 
-		var p1Cards = BuildHand(
-			"asc_hero_seraph_yune",
-			"rzk_top_gristle",
-			"gwi_top_echo",
-			"com_hero_mara_kane",
-			"lac_top_aoi"
-		);
+		// ── P1 — procedural crew, rerolled every game ─────────────────────────
+		var crew     = CrewGenerator.Generate();
+		var p1Cards  = CrewGenerator.SelectBestFive(crew);
 
+		// Log the generated crew so the player can see what they got
+		GD.Print("=== Generated Crew ===");
+		foreach (var c in crew)
+			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} " +
+			         $"| {c.Faction} | Domain:{c.DomainType} Ability:{c.AbilityType}");
+		GD.Print($"=== Playing best 5 ===");
+		foreach (var c in p1Cards)
+			GD.Print($"  {c.Name} ({c.Tier})");
+
+		// ── P2 — fixed AI hand ────────────────────────────────────────────────
 		var p2Cards = BuildHand(
 			"hch_hero_vesna",
 			"eff_top_verity",
@@ -80,14 +78,13 @@ public partial class GameBoard : Node2D
 			"lac_hero_madame_sumi"
 		);
 
-		if (!_matchConfig.Conscription && (p1Cards.Count < 5 || p2Cards.Count < 5))
+		if (p1Cards.Count < 5 || (!_matchConfig.Conscription && p2Cards.Count < 5))
 		{
-			GD.PrintErr("GameBoard: could not build full hands — check cards.json IDs.");
+			GD.PrintErr("GameBoard: could not build full hands.");
 			return;
 		}
 
 		_game.DealHands(p1Cards, p2Cards);
-
 		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
 
 		SpawnGrid();
@@ -109,10 +106,8 @@ public partial class GameBoard : Node2D
 		foreach (var id in ids)
 		{
 			var card = CardDatabase.Instance.GetCard(id);
-			if (card == null)
-				GD.PrintErr($"GameBoard: card not found — '{id}'");
-			else
-				result.Add(card);
+			if (card == null) GD.PrintErr($"GameBoard: card not found — '{id}'");
+			else result.Add(card);
 		}
 		return result;
 	}
@@ -157,41 +152,27 @@ public partial class GameBoard : Node2D
 
 		int p1Score = _game.Board.GetScore(1);
 		int p2Score = _game.Board.GetScore(2);
-
 		bool playerWon = p1Score > p2Score;
 
-		// Apply Spreading Rule — use the hero P1 fielded (first hero in hand if any)
 		string heroFaction = GetPlayerHeroFaction();
 		DistrictManager.Instance.ApplySpreading(
-			DistrictManager.Instance.ActiveDistrictId,
-			heroFaction,
-			playerWon);
+			DistrictManager.Instance.ActiveDistrictId, heroFaction, playerWon);
 
 		string resultText;
 		Color  resultColor;
 
 		if (p1Score > p2Score)
-		{
-			resultText  = "Player 1 Wins!";
-			resultColor = new Color("4a90d9");
-		}
+		{ resultText = "Player 1 Wins!"; resultColor = new Color("4a90d9"); }
 		else if (p2Score > p1Score)
-		{
-			resultText  = "Player 2 Wins!";
-			resultColor = new Color("d94a4a");
-		}
+		{ resultText = "Player 2 Wins!"; resultColor = new Color("d94a4a"); }
 		else
-		{
-			resultText  = "Draw";
-			resultColor = new Color("cccccc");
-		}
+		{ resultText = "Draw"; resultColor = new Color("cccccc"); }
 
 		if (GameOverLabel != null)
 		{
 			GameOverLabel.Text = resultText;
 			GameOverLabel.AddThemeColorOverride("font_color", resultColor);
 		}
-
 		if (GameOverScores != null)
 			GameOverScores.Text = $"P1: {p1Score}   |   P2: {p2Score}";
 
@@ -200,7 +181,6 @@ public partial class GameBoard : Node2D
 
 	private string GetPlayerHeroFaction()
 	{
-		// Find P1's hero on the board (used for Spreading Rule)
 		for (int r = 0; r < BoardState.Size; r++)
 			for (int c = 0; c < BoardState.Size; c++)
 			{
@@ -216,32 +196,23 @@ public partial class GameBoard : Node2D
 		if (_selectedCard == cardNode)
 		{
 			_selectedCard.SetSelected(false);
-			_selectedCard         = null;
-			_selectedCardInstance = null;
+			_selectedCard = null; _selectedCardInstance = null;
 			return;
 		}
-
 		_selectedCard?.SetSelected(false);
 		_selectedCard         = cardNode;
 		_selectedCardInstance = cardNode.GetCardInstance();
 		_selectedCard.SetSelected(true);
-
 		GD.Print($"Card selected: {_selectedCardInstance.Data.Name}");
 	}
 
 	private void OnCellClicked(int row, int col)
 	{
 		if (_selectedCard == null || _selectedCardInstance == null)
-		{
-			GD.Print("No card selected from hand yet.");
-			return;
-		}
+		{ GD.Print("No card selected from hand yet."); return; }
 
 		if (_game.CurrentPlayerId != 1)
-		{
-			GD.Print("Not Player 1's turn.");
-			return;
-		}
+		{ GD.Print("Not Player 1's turn."); return; }
 
 		var hand         = _game.GetHand(1);
 		int currentIndex = hand.IndexOf(_selectedCardInstance);
@@ -250,8 +221,7 @@ public partial class GameBoard : Node2D
 		{
 			GD.PrintErr("Selected card not found in hand.");
 			_selectedCard?.SetSelected(false);
-			_selectedCard         = null;
-			_selectedCardInstance = null;
+			_selectedCard = null; _selectedCardInstance = null;
 			return;
 		}
 
@@ -259,36 +229,21 @@ public partial class GameBoard : Node2D
 		if (captured == null) return;
 
 		_selectedCard.SetSelected(false);
-
 		int visualIndex = PlayerHand.GetCardNodeIndex(_selectedCard);
 		PlayerHand.RemoveCard(visualIndex);
-
 		_cells[row, col].PlaceCard(_selectedCard);
 
-		foreach (var (r, c) in captured)
-			_cells[r, c].RefreshCard();
-
+		foreach (var (r, c) in captured) _cells[r, c].RefreshCard();
 		RefreshAllCells();
 
-		_selectedCard         = null;
-		_selectedCardInstance = null;
-		_selectedHandIndex    = -1;
+		_selectedCard = null; _selectedCardInstance = null; _selectedHandIndex = -1;
 
 		UpdateScores();
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
 		if (_game.StandoffTriggered)
-		{
-			GD.Print("Standoff — restarting with board-state hands.");
-			GetTree().ReloadCurrentScene();
-			return;
-		}
-
-		if (_game.GameOver)
-		{
-			ShowGameOver();
-			return;
-		}
+		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
+		if (_game.GameOver) { ShowGameOver(); return; }
 
 		RunAI();
 	}
@@ -298,10 +253,7 @@ public partial class GameBoard : Node2D
 		var hand = _game.GetHand(2);
 		if (hand.Count == 0) return;
 
-		int bestScore     = -1;
-		int bestHandIndex = 0;
-		int bestRow       = -1;
-		int bestCol       = -1;
+		int bestScore = -1, bestHandIndex = 0, bestRow = -1, bestCol = -1;
 
 		for (int handIndex = 0; handIndex < hand.Count; handIndex++)
 			for (int r = 0; r < BoardState.Size; r++)
@@ -310,12 +262,7 @@ public partial class GameBoard : Node2D
 					if (!_game.Board.IsEmpty(r, c)) continue;
 					int captures = SimulateCaptures(hand[handIndex], r, c);
 					if (captures > bestScore)
-					{
-						bestScore     = captures;
-						bestHandIndex = handIndex;
-						bestRow       = r;
-						bestCol       = c;
-					}
+					{ bestScore = captures; bestHandIndex = handIndex; bestRow = r; bestCol = c; }
 				}
 
 		var aiCard = _cardScene.Instantiate<CardNode>();
@@ -325,10 +272,7 @@ public partial class GameBoard : Node2D
 		if (captured == null) return;
 
 		_cells[bestRow, bestCol].PlaceCard(aiCard);
-
-		foreach (var (cr, cc) in captured)
-			_cells[cr, cc].RefreshCard();
-
+		foreach (var (cr, cc) in captured) _cells[cr, cc].RefreshCard();
 		RefreshAllCells();
 
 		UpdateScores();
@@ -336,42 +280,27 @@ public partial class GameBoard : Node2D
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
 		if (_game.StandoffTriggered)
-		{
-			GD.Print("Standoff — restarting with board-state hands.");
-			GetTree().ReloadCurrentScene();
-			return;
-		}
-
-		if (_game.GameOver)
-			ShowGameOver();
+		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
+		if (_game.GameOver) ShowGameOver();
 	}
 
 	private int SimulateCaptures(CardInstance card, int row, int col)
 	{
 		int captures = 0;
-
 		foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 		{
 			var (nRow, nCol) = _game.Board.GetNeighbor(row, col, dir);
 			if (!_game.Board.IsInBounds(nRow, nCol)) continue;
-
 			var neighbor = _game.Board.GetCard(nRow, nCol);
 			if (neighbor == null || neighbor.OwnerId == 2) continue;
-
-			int attackVal = card.GetValue(dir);
-			int defendVal = neighbor.GetValue(card.Data.Opposite(dir));
-
-			if (attackVal > defendVal)
-				captures++;
+			if (card.GetValue(dir) > neighbor.GetValue(card.Data.Opposite(dir))) captures++;
 		}
-
 		return captures;
 	}
 
 	public void SelectCardFromHand(int handIndex, CardNode cardNode)
 	{
-		_selectedHandIndex = handIndex;
-		_selectedCard      = cardNode;
+		_selectedHandIndex = handIndex; _selectedCard = cardNode;
 		GD.Print($"Selected card at hand index {handIndex}");
 	}
 }

@@ -1,0 +1,78 @@
+[gd_scene format=3 uid="uid://prematch0001"]
+
+[ext_resource type="Script" path="res://Scripts/PreMatch/PreMatchScreen.cs" id="1_prematch"]
+
+[node name="PreMatchScreen" type="Control" node_paths=PackedStringArray("DistrictGrid", "RosterGrid", "DeckGrid", "DeckCountLabel", "StartButton", "DistrictNameLabel", "DistrictDescLabel", "DistrictStakeLabel", "DistrictProtocolLabel")]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_prematch")
+DistrictGrid         = NodePath("HSplit/Left/DistrictSection/DistrictGrid")
+RosterGrid           = NodePath("HSplit/Right/RosterSection/RosterScroll/RosterGrid")
+DeckGrid             = NodePath("HSplit/Left/DeckSection/DeckGrid")
+DeckCountLabel       = NodePath("HSplit/Left/DeckSection/DeckCountLabel")
+StartButton          = NodePath("HSplit/Left/StartButton")
+DistrictNameLabel    = NodePath("HSplit/Left/DistrictSection/DistrictNameLabel")
+DistrictDescLabel    = NodePath("HSplit/Left/DistrictSection/DistrictDescLabel")
+DistrictStakeLabel   = NodePath("HSplit/Left/DistrictSection/DistrictStakeLabel")
+DistrictProtocolLabel= NodePath("HSplit/Left/DistrictSection/DistrictProtocolLabel")
+
+[node name="HSplit" type="HSplitContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Left" type="VBoxContainer" parent="HSplit"]
+custom_minimum_size = Vector2(420, 0)
+
+[node name="DistrictSection" type="VBoxContainer" parent="HSplit/Left"]
+
+[node name="SectionTitle" type="Label" parent="HSplit/Left/DistrictSection"]
+text = "— Select District —"
+theme_override_font_sizes/font_size = 16
+
+[node name="DistrictGrid" type="GridContainer" parent="HSplit/Left/DistrictSection"]
+columns = 2
+
+[node name="DistrictNameLabel" type="Label" parent="HSplit/Left/DistrictSection"]
+text = ""
+theme_override_font_sizes/font_size = 14
+
+[node name="DistrictDescLabel" type="Label" parent="HSplit/Left/DistrictSection"]
+text = ""
+autowrap_mode = 2
+
+[node name="DistrictStakeLabel" type="Label" parent="HSplit/Left/DistrictSection"]
+text = ""
+
+[node name="DistrictProtocolLabel" type="Label" parent="HSplit/Left/DistrictSection"]
+text = ""
+
+[node name="DeckSection" type="VBoxContainer" parent="HSplit/Left"]
+
+[node name="DeckTitle" type="Label" parent="HSplit/Left/DeckSection"]
+text = "— Your Deck (pick 5) —"
+theme_override_font_sizes/font_size = 16
+
+[node name="DeckGrid" type="GridContainer" parent="HSplit/Left/DeckSection"]
+columns = 5
+
+[node name="DeckCountLabel" type="Label" parent="HSplit/Left/DeckSection"]
+text = "0 / 5"
+
+[node name="StartButton" type="Button" parent="HSplit/Left"]
+text = "Start Match"
+custom_minimum_size = Vector2(200, 50)
+disabled = true
+
+[node name="Right" type="VBoxContainer" parent="HSplit"]
+
+[node name="RosterSection" type="VBoxContainer" parent="HSplit/Right"]
+
+[node name="RosterTitle" type="Label" parent="HSplit/Right/RosterSection"]
+text = "— Your Roster —"
+theme_override_font_sizes/font_size = 16
+
+[node name="RosterScroll" type="ScrollContainer" parent="HSplit/Right/RosterSection"]
+custom_minimum_size = Vector2(0, 400)
+
+[node name="RosterGrid" type="GridContainer" parent="HSplit/Right/RosterSection/RosterScroll"]
+columns = 4

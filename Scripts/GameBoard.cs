@@ -10,10 +10,6 @@ public partial class GameBoard : Node2D
 	[Export] public HandNode PlayerHand     { get; set; }
 	[Export] public Label    ScoreP1        { get; set; }
 	[Export] public Label    ScoreP2        { get; set; }
-	[Export] public Panel    GameOverPanel  { get; set; }
-	[Export] public Label    GameOverLabel  { get; set; }
-	[Export] public Label    GameOverScores { get; set; }
-	[Export] public Button   RestartButton  { get; set; }
 	[Export] public Label    DistrictLabel  { get; set; }
 
 	private const int CardWidth   = 120;
@@ -37,15 +33,37 @@ public partial class GameBoard : Node2D
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
+		// Databases may already be loaded by GameSession autoload — safe to call again
 		CardDatabase.Instance.Load();
 		DistrictDatabase.Instance.Load();
 		DistrictManager.Instance.Initialize();
 
-		// Change district string to test different rule sets:
-		// "the_stub" / "glass_spire" / "the_killfloor" / "dead_channel"
-		// "the_sprawl_market" / "the_powder_room" / "the_hush" / "the_vault"
-		DistrictManager.Instance.SelectDistrict("the_stub");
+		// ── Read district and deck from GameSession if available ──────────────
+		string districtId = "the_stub";
+		List<CardData> p1Cards;
 
+		var session = GameSession.Instance;
+		if (session != null && session.SelectedDeck.Count == 5)
+		{
+			districtId = session.SelectedDistrictId;
+			p1Cards    = new List<CardData>(session.SelectedDeck);
+			GD.Print($"GameBoard: loaded deck from GameSession ({p1Cards.Count} cards).");
+		}
+		else
+		{
+			// Fallback — generate a crew directly (used when running GameBoard scene standalone)
+			GD.Print("GameBoard: no GameSession deck found — generating crew directly.");
+			var crew = CrewGenerator.Generate();
+			p1Cards  = CrewGenerator.SelectBestFive(crew);
+			GD.Print("=== Generated Crew (standalone) ===");
+			foreach (var c in crew)
+				GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} | Domain:{c.DomainType} Ability:{c.AbilityType}");
+			GD.Print("=== Playing best 5 ===");
+			foreach (var c in p1Cards)
+				GD.Print($"  {c.Name} ({c.Tier})");
+		}
+
+		DistrictManager.Instance.SelectDistrict(districtId);
 		_matchConfig = DistrictManager.Instance.BuildMatchConfig();
 		_game = new GameManager(_matchConfig);
 
@@ -56,25 +74,8 @@ public partial class GameBoard : Node2D
 		if (DistrictLabel != null)
 			DistrictLabel.Text = district?.Name ?? "";
 
-		// ── P1 — procedural crew, rerolled every game ─────────────────────────
-		var crew     = CrewGenerator.Generate();
-		var p1Cards  = CrewGenerator.SelectBestFive(crew);
-
-		// Log the generated crew so the player can see what they got
-		GD.Print("=== Generated Crew ===");
-		foreach (var c in crew)
-			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} " +
-			         $"| {c.Faction} | Domain:{c.DomainType} Ability:{c.AbilityType}");
-		GD.Print($"=== Playing best 5 ===");
-		foreach (var c in p1Cards)
-			GD.Print($"  {c.Name} ({c.Tier})");
-
-		// ── P2 — AI hand: fixed Vesna + Verity + 3 generated Streets ───────────
-		// Vesna stays fixed — she's the AI's consistent learnable threat.
-		// Verity stays fixed — reliable high-value support.
-		// Streets vary each game so the supporting cast feels fresh.
+		// ── AI hand ───────────────────────────────────────────────────────────
 		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
-
 		GD.Print("=== AI Hand ===");
 		foreach (var c in p2Cards)
 			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left}");
@@ -95,22 +96,7 @@ public partial class GameBoard : Node2D
 		if (PlayerHand != null)
 			PlayerHand.CardSelected += OnCardSelected;
 
-		if (RestartButton != null)
-			RestartButton.Pressed += () => GetTree().ReloadCurrentScene();
-
 		GD.Print("Board ready. Player 1's turn.");
-	}
-
-	private List<CardData> BuildHand(params string[] ids)
-	{
-		var result = new List<CardData>();
-		foreach (var id in ids)
-		{
-			var card = CardDatabase.Instance.GetCard(id);
-			if (card == null) GD.PrintErr($"GameBoard: card not found — '{id}'");
-			else result.Add(card);
-		}
-		return result;
 	}
 
 	private void SpawnGrid()
@@ -147,37 +133,74 @@ public partial class GameBoard : Node2D
 				_cells[r, c].RefreshCard();
 	}
 
-	private void ShowGameOver()
+	private void EndMatchAndTransition()
 	{
-		if (GameOverPanel == null) return;
-
-		int p1Score = _game.Board.GetScore(1);
-		int p2Score = _game.Board.GetScore(2);
+		int p1Score   = _game.Board.GetScore(1);
+		int p2Score   = _game.Board.GetScore(2);
 		bool playerWon = p1Score > p2Score;
 
 		string heroFaction = GetPlayerHeroFaction();
 		DistrictManager.Instance.ApplySpreading(
 			DistrictManager.Instance.ActiveDistrictId, heroFaction, playerWon);
 
-		string resultText;
-		Color  resultColor;
-
-		if (p1Score > p2Score)
-		{ resultText = "Player 1 Wins!"; resultColor = new Color("4a90d9"); }
-		else if (p2Score > p1Score)
-		{ resultText = "Player 2 Wins!"; resultColor = new Color("d94a4a"); }
-		else
-		{ resultText = "Draw"; resultColor = new Color("cccccc"); }
-
-		if (GameOverLabel != null)
+		// Write result to GameSession for PostMatchScreen to read
+		var session = GameSession.Instance;
+		if (session != null)
 		{
-			GameOverLabel.Text = resultText;
-			GameOverLabel.AddThemeColorOverride("font_color", resultColor);
-		}
-		if (GameOverScores != null)
-			GameOverScores.Text = $"P1: {p1Score}   |   P2: {p2Score}";
+			session.P1FinalScore = p1Score;
+			session.P2FinalScore = p2Score;
+			session.PlayerWon    = playerWon;
+			session.WinnerText   = playerWon ? "Player 1 Wins!"
+				: p2Score > p1Score ? "Player 2 Wins!" : "Draw";
 
-		GameOverPanel.Visible = true;
+			// Stake resolution — OneJob: winner takes one card
+			ResolveStake(session, playerWon);
+		}
+
+		// Navigate to PostMatchScreen if it exists, otherwise reload board
+		if (ResourceLoader.Exists("res://Scenes/PostMatch/PostMatchScreen.tscn"))
+			GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
+		else
+			GetTree().ReloadCurrentScene();
+	}
+
+	private void ResolveStake(GameSession session, bool playerWon)
+	{
+		var district = DistrictManager.Instance.ActiveDistrict;
+		string stake = district?.Stake ?? "OneJob";
+
+		session.CardsWon.Clear();
+		session.CardsLost.Clear();
+
+		if (stake == "OneJob")
+		{
+			// Winner takes one card from the loser's on-board cards
+			if (playerWon)
+			{
+				// P1 wins — take the first P2 card on the board
+				var won = GetFirstBoardCard(ownerId: 2);
+				if (won != null) session.CardsWon.Add(won);
+			}
+			else
+			{
+				// P2 wins — player loses one of their on-board cards
+				var lost = GetFirstBoardCard(ownerId: 1);
+				if (lost != null) session.CardsLost.Add(lost);
+			}
+		}
+		// Additional stakes (TheSpread, AsFlipped, Everything) handled in Phase 7
+	}
+
+	private CardData GetFirstBoardCard(int ownerId)
+	{
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+			{
+				var card = _game.Board.GetCard(r, c);
+				if (card != null && card.OwnerId == ownerId)
+					return card.Data;
+			}
+		return null;
 	}
 
 	private string GetPlayerHeroFaction()
@@ -244,7 +267,7 @@ public partial class GameBoard : Node2D
 
 		if (_game.StandoffTriggered)
 		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
-		if (_game.GameOver) { ShowGameOver(); return; }
+		if (_game.GameOver) { EndMatchAndTransition(); return; }
 
 		RunAI();
 	}
@@ -282,7 +305,7 @@ public partial class GameBoard : Node2D
 
 		if (_game.StandoffTriggered)
 		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
-		if (_game.GameOver) ShowGameOver();
+		if (_game.GameOver) EndMatchAndTransition();
 	}
 
 	private int SimulateCaptures(CardInstance card, int row, int col)
@@ -302,6 +325,5 @@ public partial class GameBoard : Node2D
 	public void SelectCardFromHand(int handIndex, CardNode cardNode)
 	{
 		_selectedHandIndex = handIndex; _selectedCard = cardNode;
-		GD.Print($"Selected card at hand index {handIndex}");
 	}
 }

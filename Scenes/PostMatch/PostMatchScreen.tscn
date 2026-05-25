@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://postmatch001"]
+
+[ext_resource type="Script" path="res://Scripts/PostMatch/PostMatchScreen.cs" id="1_postmatch"]
+
+[node name="PostMatchScreen" type="Control" node_paths=PackedStringArray("ResultLabel", "ScoreLabel", "StakeLabel", "CardsWonGrid", "CardsLostGrid", "CardsWonLabel", "CardsLostLabel", "ContinueButton")]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_postmatch")
+ResultLabel    = NodePath("Center/VBox/ResultLabel")
+ScoreLabel     = NodePath("Center/VBox/ScoreLabel")
+StakeLabel     = NodePath("Center/VBox/StakeLabel")
+CardsWonLabel  = NodePath("Center/VBox/WonSection/CardsWonLabel")
+CardsWonGrid   = NodePath("Center/VBox/WonSection/CardsWonGrid")
+CardsLostLabel = NodePath("Center/VBox/LostSection/CardsLostLabel")
+CardsLostGrid  = NodePath("Center/VBox/LostSection/CardsLostGrid")
+ContinueButton = NodePath("Center/VBox/ContinueButton")
+
+[node name="Center" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(700, 0)
+theme_override_constants/separation = 16
+
+[node name="ResultLabel" type="Label" parent="Center/VBox"]
+text = "Match Result"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 36
+
+[node name="ScoreLabel" type="Label" parent="Center/VBox"]
+text = "P1: 0   |   P2: 0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+
+[node name="StakeLabel" type="Label" parent="Center/VBox"]
+text = "Stake: OneJob"
+horizontal_alignment = 1
+
+[node name="WonSection" type="VBoxContainer" parent="Center/VBox"]
+
+[node name="CardsWonLabel" type="Label" parent="Center/VBox/WonSection"]
+text = "No cards won."
+theme_override_colors/font_color = Color(0.29, 0.565, 0.851, 1)
+
+[node name="CardsWonGrid" type="GridContainer" parent="Center/VBox/WonSection"]
+columns = 5
+
+[node name="LostSection" type="VBoxContainer" parent="Center/VBox"]
+
+[node name="CardsLostLabel" type="Label" parent="Center/VBox/LostSection"]
+text = "No cards lost."
+theme_override_colors/font_color = Color(0.851, 0.29, 0.29, 1)
+
+[node name="CardsLostGrid" type="GridContainer" parent="Center/VBox/LostSection"]
+columns = 5
+
+[node name="ContinueButton" type="Button" parent="Center/VBox"]
+text = "Continue"
+custom_minimum_size = Vector2(200, 50)

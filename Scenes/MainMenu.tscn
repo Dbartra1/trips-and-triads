@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://mainmenu001"]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Center" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Title" type="Label" parent="Center/VBox"]
+text = "Antecedent"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 48
+
+[node name="Subtitle" type="Label" parent="Center/VBox"]
+text = "A cyberpunk card game"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="NewRunButton" type="Button" parent="Center/VBox"]
+text = "New Run"
+custom_minimum_size = Vector2(200, 50)
+
+[node name="QuitButton" type="Button" parent="Center/VBox"]
+text = "Quit"
+custom_minimum_size = Vector2(200, 50)

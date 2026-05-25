@@ -6,47 +6,84 @@ namespace TripsAndTriads.Rules
 {
 	public class CaptureResolver
 	{
-		// Returns list of (row, col) positions that were captured.
-		// If the placed card is adjacent to a friendly Vesna, any capture chains:
-		// the captured card re-attacks its own neighbors under its new owner.
 		public List<(int row, int col)> Resolve(BoardState board, int row, int col)
 		{
 			var allCaptured = new List<(int row, int col)>();
 			var visited     = new HashSet<(int, int)>();
 
-			// Mark the originally placed cell as visited so chains never loop back to it
 			visited.Add((row, col));
 
-			// Perform the initial capture pass
 			var placed = board.GetCard(row, col);
 			if (placed == null) return allCaptured;
 
+			// ── The Rivalry ───────────────────────────────────────────────────────
+			// If this card has RivalryActive and the rival is adjacent, resolve
+			// capture between just those two cards first before normal capture.
+			if (placed.RivalryActive)
+				ResolveRivalry(board, placed, row, col, allCaptured, visited);
+
+			// ── Normal capture pass ───────────────────────────────────────────────
 			var initial = ResolveSingle(board, row, col, placed);
 			allCaptured.AddRange(initial);
 
-			// Check if this placement is adjacent to a friendly Vesna
+			// ── The Breach ────────────────────────────────────────────────────────
+			// If placed adjacent to a friendly Vesna, initial captures chain.
 			bool breachActive = IsAdjacentToVesna(board, row, col, placed.OwnerId);
-
 			if (breachActive)
-			{
-				// For each initially captured card, chain-resolve outward
 				foreach (var (cr, cc) in initial)
 				{
 					visited.Add((cr, cc));
 					ResolveChain(board, cr, cc, allCaptured, visited);
 				}
-			}
 
 			return allCaptured;
 		}
 
-		// Recursive chain resolver — the captured card re-attacks its neighbors.
-		// Stops when no new captures occur or all reachable cards are visited.
+		// ── The Rivalry ───────────────────────────────────────────────────────────
+		// Yune and Grin resolve capture against each other first when adjacent.
+		// Whichever wins flips the other; then normal capture continues.
+		private void ResolveRivalry(
+			BoardState board, CardInstance placed, int row, int col,
+			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
+		{
+			string rivalId = placed.Data.Id == "asc_hero_seraph_yune"
+				? "rzk_hero_sister_grin"
+				: "asc_hero_seraph_yune";
+
+			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
+			{
+				var (nRow, nCol) = board.GetNeighbor(row, col, dir);
+				if (!board.IsInBounds(nRow, nCol)) continue;
+
+				var neighbor = board.GetCard(nRow, nCol);
+				if (neighbor == null || neighbor.Data.Id != rivalId) continue;
+				if (neighbor.OwnerId == placed.OwnerId) continue;
+
+				int attackVal = placed.GetValue(dir);
+				int defendVal = neighbor.GetValue(placed.Data.Opposite(dir));
+
+				GD.Print($"The Rivalry — {placed.Data.Name}({attackVal}) vs " +
+				         $"{neighbor.Data.Name}({defendVal}).");
+
+				if (attackVal > defendVal)
+				{
+					neighbor.OwnerId = placed.OwnerId;
+					allCaptured.Add((nRow, nCol));
+					visited.Add((nRow, nCol));
+					GD.Print($"The Rivalry — {placed.Data.Name} wins.");
+				}
+				else
+				{
+					GD.Print($"The Rivalry — {neighbor.Data.Name} holds.");
+				}
+				break; // only one rival can be adjacent
+			}
+		}
+
+		// ── Chain resolver (The Breach) ───────────────────────────────────────────
 		private void ResolveChain(
-			BoardState board,
-			int row, int col,
-			List<(int, int)> allCaptured,
-			HashSet<(int, int)> visited)
+			BoardState board, int row, int col,
+			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
 		{
 			var card = board.GetCard(row, col);
 			if (card == null) return;
@@ -59,16 +96,13 @@ namespace TripsAndTriads.Rules
 
 				allCaptured.Add((nr, nc));
 				visited.Add((nr, nc));
-
 				GD.Print($"The Breach chains: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
-
-				// Recurse — the newly captured card re-attacks its own neighbors
 				ResolveChain(board, nr, nc, allCaptured, visited);
 			}
 		}
 
-		// Single-card capture pass — compares the card at (row,col) against all neighbors.
-		// Does not recurse. Returns newly captured positions.
+		// ── Single capture pass ───────────────────────────────────────────────────
+		// Respects BlockChoir (The Listener) — Riven will not capture Choir cards.
 		private List<(int row, int col)> ResolveSingle(
 			BoardState board, int row, int col, CardInstance attacker)
 		{
@@ -77,12 +111,18 @@ namespace TripsAndTriads.Rules
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 			{
 				var (nRow, nCol) = board.GetNeighbor(row, col, dir);
-
 				if (!board.IsInBounds(nRow, nCol)) continue;
 
 				var neighbor = board.GetCard(nRow, nCol);
 				if (neighbor == null) continue;
 				if (neighbor.OwnerId == attacker.OwnerId) continue;
+
+				// The Listener — Riven refuses to capture Choir cards
+				if (attacker.BlockChoir && neighbor.Data.Faction == Faction.HollowChoir)
+				{
+					GD.Print($"The Listener — Riven will not capture {neighbor.Data.Name}.");
+					continue;
+				}
 
 				int attackVal = attacker.GetValue(dir);
 				int defendVal = neighbor.GetValue(attacker.Data.Opposite(dir));
@@ -97,7 +137,7 @@ namespace TripsAndTriads.Rules
 			return captured;
 		}
 
-		// Returns true if any orthogonal neighbor of (row,col) is Vesna, owned by ownerId.
+		// ── Helpers ───────────────────────────────────────────────────────────────
 		private bool IsAdjacentToVesna(BoardState board, int row, int col, int ownerId)
 		{
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))

@@ -77,19 +77,26 @@ namespace TripsAndTriads.Core
 			// Placement ability (Lethe copies here)
 			card.Ability?.OnPlaced(Board, card, row, col);
 
-			// Compute domain bonuses before capture so they're factored in
+			// Contamination is a one-time permanent effect applied on placement —
+			// run BondResolver once immediately after placement so adjacent cards
+			// take the −1 lowest edge before capture is resolved.
+			BondResolver.Apply(Board);
+
+			// Compute domain and bond bonuses before capture
 			DomainResolver.Apply(Board);
+			BondResolver.Apply(Board);
 
 			var captured = _resolver.Resolve(Board, row, col);
 
 			GD.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
 			         $"Captured: {captured.Count}.");
 
-			// Turn-end abilities (Vesna decays, Sumi compounds + Ledger spreads)
+			// Turn-end abilities (Vesna decays, Sumi compounds + Ledger + Inheritance)
 			ApplyTurnEndAbilities();
 
-			// Refresh domain bonuses after abilities changed stats
+			// Refresh domain and bond bonuses after abilities changed stats
 			DomainResolver.Apply(Board);
+			BondResolver.Apply(Board);
 
 			// Re-check captures for any card whose stats changed due to abilities
 			var decayCaptured = ResolveDecayCaptures();

@@ -46,8 +46,15 @@ public partial class GameBoard : Node2D
 		if (session != null && session.SelectedDeck.Count == 5)
 		{
 			districtId = session.SelectedDistrictId;
-			p1Cards    = new List<CardData>(session.SelectedDeck);
-			GD.Print($"GameBoard: loaded deck from GameSession ({p1Cards.Count} cards).");
+			// Under Conscription, pass the full roster so the random draw has the whole pool.
+			// Otherwise pass the selected 5-card deck.
+			bool isConscription = DistrictDatabase.Instance
+				.GetDistrict(districtId)?.Conscription ?? false;
+			p1Cards = isConscription
+				? new List<CardData>(session.Roster)
+				: new List<CardData>(session.SelectedDeck);
+			GD.Print($"GameBoard: loaded {(isConscription ? "roster" : "deck")} " +
+			         $"from GameSession ({p1Cards.Count} cards).");
 		}
 		else
 		{

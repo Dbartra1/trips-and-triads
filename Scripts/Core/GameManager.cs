@@ -41,11 +41,12 @@ namespace TripsAndTriads.Core
 		{
 			if (Config.Conscription)
 			{
-				// Conscription — hands dealt randomly from the full roster
-				var all = CardDatabase.Instance.GetAllCards();
+				// Conscription — hands dealt randomly from the player's own passed-in cards.
+				// player1Cards is the player's full roster (passed from GameBoard).
+				// player2Cards is the AI's normal hand — AI Conscription uses its own pool.
 				var rng = new System.Random();
 
-				var p1Pool = new List<CardData>(all);
+				var p1Pool = new List<CardData>(player1Cards);
 				for (int i = 0; i < 5 && p1Pool.Count > 0; i++)
 				{
 					int idx = rng.Next(p1Pool.Count);
@@ -55,17 +56,15 @@ namespace TripsAndTriads.Core
 					p1Pool.RemoveAt(idx);
 				}
 
-				var p2Pool = new List<CardData>(all);
-				for (int i = 0; i < 5 && p2Pool.Count > 0; i++)
+				// AI uses its normal hand under Conscription — it has no roster to draw from.
+				foreach (var card in player2Cards)
 				{
-					int idx = rng.Next(p2Pool.Count);
-					var instance = new CardInstance(p2Pool[idx], ownerId: 2);
-					instance.Ability = CreateAbility(p2Pool[idx]);
+					var instance = new CardInstance(card, ownerId: 2);
+					instance.Ability = CreateAbility(card);
 					_hands[2].Add(instance);
-					p2Pool.RemoveAt(idx);
 				}
 
-				GD.Print("Conscription active — hands dealt randomly from full roster.");
+				GD.Print("Conscription active — P1 hand drawn randomly from roster.");
 			}
 			else
 			{

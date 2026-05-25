@@ -14,10 +14,11 @@ namespace TripsAndTriads.Core
 		private const int StreetMin = 10, StreetMax = 14; // raised floor; min edge now 2
 		private const int ProMin    = 16, ProMax    = 22;
 
+		// Decay is Vesna's curse — thematically wrong on a player hero who
+		// is supposed to be building toward something. Removed from the pool.
 		private static readonly (AbilityType ability, int weight)[] AbilityWeights =
 		{
-			(AbilityType.None,    60),
-			(AbilityType.Decay,   15),
+			(AbilityType.None,    75),
 			(AbilityType.Compound,15),
 			(AbilityType.Copy,    10),
 		};

@@ -15,6 +15,14 @@ namespace TripsAndTriads.Core
 		// When Standoff triggers, this is set so GameBoard can start the rematch.
 		public bool        StandoffTriggered { get; private set; } = false;
 
+		/// <summary>
+		/// Starting edge cap for AI Decay heroes (Vesna).
+		/// Set by DistrictManager per district — lower in early districts,
+		/// higher (up to 10) in dangerous late-game districts.
+		/// Default 7 gives the player several turns before she's at full threat.
+		/// </summary>
+		public int VesnaStartingCap { get; set; } = 7;
+
 		private Dictionary<int, List<CardInstance>> _hands = new()
 		{
 			{ 1, new List<CardInstance>() },
@@ -72,6 +80,20 @@ namespace TripsAndTriads.Core
 				{
 					var instance = new CardInstance(card, ownerId: 2);
 					instance.Ability = CreateAbility(card);
+
+					// Cap starting edges on AI Decay heroes (Vesna).
+					// Enters at VesnaStartingCap instead of 10/10/10/10.
+					// Higher districts raise this cap — set in DistrictManager.
+					if (card.AbilityType == AbilityType.Decay && card.Tier == Tier.Hero)
+					{
+						int cap = VesnaStartingCap;
+						instance.TopOverride    = System.Math.Min(card.Top,    cap);
+						instance.RightOverride  = System.Math.Min(card.Right,  cap);
+						instance.BottomOverride = System.Math.Min(card.Bottom, cap);
+						instance.LeftOverride   = System.Math.Min(card.Left,   cap);
+						GD.Print($"Vesna enters at {cap}/{cap}/{cap}/{cap} (capped for this district).");
+					}
+
 					_hands[2].Add(instance);
 				}
 			}

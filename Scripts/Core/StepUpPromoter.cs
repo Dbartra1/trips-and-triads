@@ -50,7 +50,45 @@ namespace TripsAndTriads.Core
 			}
 
 			if (best == null) return null;
+			return ApplyPromotion(best);
+		}
 
+		/// <summary>
+		/// Promotes a specific card chosen by the player rather than auto-selecting.
+		/// The card must be a non-hero. Returns the promoted card.
+		/// </summary>
+		public static CardData PromoteSpecific(CardData target)
+		{
+			if (target == null || target.Tier == Tier.Hero) return null;
+			return ApplyPromotion(target);
+		}
+
+		/// <summary>
+		/// Returns the projected stat line after promotion WITHOUT mutating the card.
+		/// Useful for showing the player what they'd be getting before they commit.
+		/// </summary>
+		public static (int Top, int Right, int Bottom, int Left) PreviewPromotion(CardData card)
+		{
+			int[] edges = { card.Top, card.Right, card.Bottom, card.Left };
+
+			int highIdx = 0;
+			for (int i = 1; i < 4; i++)
+				if (edges[i] > edges[highIdx]) highIdx = i;
+
+			int lowIdx = 0;
+			for (int i = 1; i < 4; i++)
+				if (edges[i] < edges[lowIdx]) lowIdx = i;
+
+			edges[highIdx] = 10;
+			if (edges[lowIdx] > 3) edges[lowIdx] = 3;
+
+			return (edges[0], edges[1], edges[2], edges[3]);
+		}
+
+		// ── Internal ────────────────────────────────────────────────────────────
+
+		private static CardData ApplyPromotion(CardData best)
+		{
 			int[] edges = { best.Top, best.Right, best.Bottom, best.Left };
 
 			// Find highest edge — this becomes the A (10).
@@ -78,5 +116,5 @@ namespace TripsAndTriads.Core
 
 			return best;
 		}
-	}
+}
 }

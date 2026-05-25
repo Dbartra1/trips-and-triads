@@ -171,24 +171,44 @@ public partial class GameSession : Node
 	}
 
 	/// <summary>
-	/// Promote the best non-hero card from the capture deck to Hero (Step Up).
+	/// Promote a card to Hero (Step Up).
+	/// If <paramref name="specific"/> is provided, promotes that card (player chose it).
+	/// Otherwise auto-picks the highest-stat eligible card from the current roster.
 	/// Closes the Hunt window. Returns the promoted card, or null on failure.
 	/// </summary>
-	public CardData StepUp()
+	public CardData StepUp(CardData specific = null)
 	{
-		// Use the snapshot deck; fall back to current roster if snapshot is empty.
-		var candidates = DeckWhenHeroWasCaptured.Count > 0
-			? DeckWhenHeroWasCaptured
-			: Roster;
+		CardData promoted;
 
-		var promoted = StepUpPromoter.Promote(candidates);
+		if (specific != null)
+		{
+			if (!Roster.Contains(specific) || specific.Tier == Tier.Hero)
+			{
+				GD.PrintErr("GameSession: StepUp — specified card is not valid.");
+				return null;
+			}
+			promoted = StepUpPromoter.PromoteSpecific(specific);
+		}
+		else
+		{
+			// Auto-pick: prefer cards from the snapshot deck that are still in roster,
+			// fall back to full roster. Filter out heroes.
+			var candidates = DeckWhenHeroWasCaptured.Count > 0
+				? DeckWhenHeroWasCaptured.FindAll(c => Roster.Contains(c) && c.Tier != Tier.Hero)
+				: new System.Collections.Generic.List<CardData>();
+
+			if (candidates.Count == 0)
+				candidates = Roster.FindAll(c => c.Tier != Tier.Hero);
+
+			promoted = StepUpPromoter.Promote(candidates);
+		}
+
 		if (promoted == null)
 		{
 			GD.PrintErr("GameSession: StepUp — no eligible card found.");
 			return null;
 		}
 
-		// Ensure promoted card is in roster (it should be already)
 		if (!Roster.Contains(promoted)) Roster.Add(promoted);
 
 		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to Hero " +

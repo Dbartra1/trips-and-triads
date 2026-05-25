@@ -22,6 +22,8 @@ public partial class PreMatchScreen : Control
 	private const int MaxDeckSize = 5;
 	private bool _isRunOver = false;
 	private VBoxContainer _huntPanel = null; // injected when Hunt is active
+	private bool _stepUpMode = false;        // true while player is choosing who to promote
+	private Button _stepUpToggleBtn = null;  // reference so we can relabel it on toggle
 
 	public override void _Ready()
 	{
@@ -127,16 +129,41 @@ public partial class PreMatchScreen : Control
 			cardNode.CustomMinimumSize = new Vector2(120, 160);
 
 			var captured = card;
-			var btn = new Button();
-			btn.Text              = $"+ {card.Name}";
-			btn.ClipText          = true;
-			btn.CustomMinimumSize = new Vector2(120, 30);
-			btn.Pressed += () =>
+			if (_stepUpMode)
 			{
-				AddToDeck(captured);
-				RefreshDeckDisplay();
-			};
-			wrapper.AddChild(btn);
+				// Step-up mode: show projected post-promotion stats and a Promote button.
+				// Heroes already in the roster can't be promoted again.
+				if (card.Tier == Tier.Hero)
+				{
+					var alreadyLbl = new Label();
+					alreadyLbl.Text              = "(current hero)";
+					alreadyLbl.CustomMinimumSize = new Vector2(120, 30);
+					wrapper.AddChild(alreadyLbl);
+				}
+				else
+				{
+					var (pt, pr, pb, pl) = StepUpPromoter.PreviewPromotion(card);
+					var promoteBtn = new Button();
+					promoteBtn.Text              = $"↑ {card.Name}\n→ {pt}/{pr}/{pb}/{pl}";
+					promoteBtn.ClipText          = false;
+					promoteBtn.CustomMinimumSize = new Vector2(120, 46);
+					promoteBtn.Pressed += () => OnPromoteCardSelected(captured);
+					wrapper.AddChild(promoteBtn);
+				}
+			}
+			else
+			{
+				var btn = new Button();
+				btn.Text              = $"+ {card.Name}";
+				btn.ClipText          = true;
+				btn.CustomMinimumSize = new Vector2(120, 30);
+				btn.Pressed += () =>
+				{
+					AddToDeck(captured);
+					RefreshDeckDisplay();
+				};
+				wrapper.AddChild(btn);
+			}
 		}
 	}
 
@@ -282,14 +309,14 @@ public partial class PreMatchScreen : Control
 			btnRow.AddChild(noSellLbl);
 		}
 
-		// Step Up — always available; closes the Hunt window
-		var stepUpBtn = new Button();
-		stepUpBtn.Text              = "↑  Step Up";
-		stepUpBtn.CustomMinimumSize = new Vector2(140, 40);
-		stepUpBtn.TooltipText       =
-			"Promote your best surviving card to Hero. The old hero is gone for good.";
-		stepUpBtn.Pressed += OnStepUpPressed;
-		btnRow.AddChild(stepUpBtn);
+		// Step Up — enters card selection mode; label toggles to Cancel if already in mode
+		_stepUpToggleBtn = new Button();
+		_stepUpToggleBtn.Text              = _stepUpMode ? "✕  Cancel Step Up" : "↑  Step Up";
+		_stepUpToggleBtn.CustomMinimumSize = new Vector2(160, 40);
+		_stepUpToggleBtn.TooltipText       =
+			"Choose a card from your roster to promote to Hero.";
+		_stepUpToggleBtn.Pressed += OnStepUpTogglePressed;
+		btnRow.AddChild(_stepUpToggleBtn);
 
 		_huntPanel.AddChild(btnRow);
 
@@ -327,26 +354,32 @@ public partial class PreMatchScreen : Control
 		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
 	}
 
-	private void OnStepUpPressed()
+	private void OnStepUpTogglePressed()
+	{
+		_stepUpMode = !_stepUpMode;
+		if (_stepUpToggleBtn != null)
+			_stepUpToggleBtn.Text = _stepUpMode ? "✕  Cancel Step Up" : "↑  Step Up";
+		RefreshRoster();
+	}
+
+	private void OnPromoteCardSelected(CardData card)
 	{
 		var session = GameSession.Instance;
 		if (session == null) return;
 
-		var promoted = session.StepUp();
+		var promoted = session.StepUp(card);
 		if (promoted == null)
 		{
-			GD.PrintErr("PreMatch: Step Up — no eligible card to promote.");
+			GD.PrintErr("PreMatch: Step Up — promotion failed.");
 			return;
 		}
 
 		GD.Print($"PreMatch: Step Up — {promoted.Name} is the new hero.");
 
-		// Remove the Hunt panel now that the Hunt is resolved.
+		_stepUpMode      = false;
+		_stepUpToggleBtn = null;
 		if (_huntPanel != null) { _huntPanel.QueueFree(); _huntPanel = null; }
 
-		// Re-evaluate run-over now that the Hunt is cleared.
-		// If the roster is still too small, CheckRunOver takes over and shows the
-		// "Run Over" message; otherwise RefreshRoster shows the playable roster.
 		if (!CheckRunOver())
 			RefreshRoster();
 

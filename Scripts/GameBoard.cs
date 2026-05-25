@@ -11,6 +11,10 @@ public partial class GameBoard : Node2D
 	[Export] public Label    ScoreP1        { get; set; }
 	[Export] public Label    ScoreP2        { get; set; }
 	[Export] public Label    DistrictLabel  { get; set; }
+	[Export] public Panel    EndPanel       { get; set; } // shown at match end before PostMatch
+	[Export] public Label    EndResultLabel { get; set; }
+	[Export] public Label    EndScoreLabel  { get; set; }
+	[Export] public Button   EndContinueBtn { get; set; }
 
 	private const int CardWidth   = 120;
 	private const int CardHeight  = 160;
@@ -56,13 +60,25 @@ public partial class GameBoard : Node2D
 			GD.Print($"GameBoard: loaded {(isConscription ? "roster" : "deck")} " +
 			         $"from GameSession ({p1Cards.Count} cards).");
 		}
+		else if (session != null && session.Roster.Count >= 5)
+		{
+			// Session exists but no deck picked — auto-select best 5 from roster.
+			// This ensures board cards are always from the Roster so stake removal works.
+			districtId = session.SelectedDistrictId;
+			p1Cards    = CrewGenerator.SelectBestFive(new System.Collections.Generic.List<CardData>(session.Roster));
+			session.SelectedDeck = new System.Collections.Generic.List<CardData>(p1Cards);
+			GD.Print($"GameBoard: auto-selected best 5 from roster ({p1Cards.Count} cards).");
+			foreach (var c in p1Cards)
+				GD.Print($"  {c.Name} ({c.Tier})");
+		}
 		else
 		{
-			// Fallback — generate a crew directly (used when running GameBoard scene standalone)
-			GD.Print("GameBoard: no GameSession deck found — generating crew directly.");
+			// True standalone fallback (editor only) — generate a crew directly.
+			// Note: stake resolution won't affect GameSession roster in this mode.
+			GD.Print("GameBoard: no GameSession — generating crew directly (editor mode).");
 			var crew = CrewGenerator.Generate();
 			p1Cards  = CrewGenerator.SelectBestFive(crew);
-			GD.Print("=== Generated Crew (standalone) ===");
+			GD.Print("=== Generated Crew (editor standalone) ===");
 			foreach (var c in crew)
 				GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} | Domain:{c.DomainType} Ability:{c.AbilityType}");
 			GD.Print("=== Playing best 5 ===");
@@ -164,7 +180,32 @@ public partial class GameBoard : Node2D
 			ResolveStake(session, playerWon);
 		}
 
-		GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
+		// Show end-of-match overlay so player can review the board before continuing.
+		// If no EndPanel is wired in the scene, fall straight through to PostMatchScreen.
+		if (EndPanel != null)
+		{
+			EndPanel.Visible = true;
+
+			if (EndResultLabel != null)
+			{
+				EndResultLabel.Text = session?.WinnerText ?? "";
+				var col = (session?.PlayerWon ?? false) ? new Color("4a90d9") : new Color("d94a4a");
+				EndResultLabel.AddThemeColorOverride("font_color", col);
+			}
+
+			if (EndScoreLabel != null)
+				EndScoreLabel.Text = $"P1: {p1Score}   |   P2: {p2Score}";
+
+			if (EndContinueBtn != null)
+			{
+				EndContinueBtn.Pressed += () =>
+					GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
+			}
+		}
+		else
+		{
+			GetTree().ChangeSceneToFile("res://Scenes/PostMatch/PostMatchScreen.tscn");
+		}
 	}
 
 	private void ResolveStake(GameSession session, bool playerWon)

@@ -41,7 +41,10 @@ public partial class PreMatchScreen : Control
 			StartButton.Pressed += OnStartPressed;
 
 		BuildDistrictButtons();
-		RefreshRoster();
+		// Check run-over BEFORE building roster — avoids rendering + buttons
+		// that would need to be torn down immediately after.
+		if (!CheckRunOver())
+			RefreshRoster();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -198,12 +201,13 @@ public partial class PreMatchScreen : Control
 
 	// ── Run over check ──────────────────────────────────────────────────────────
 
-	private void CheckRunOver()
+	// Returns true if the run is over (roster too small to field a deck).
+	private bool CheckRunOver()
 	{
 		var session = GameSession.Instance;
-		if (session == null) return;
+		if (session == null) return false;
 
-		if (session.Roster.Count >= MaxDeckSize) return;
+		if (session.Roster.Count >= MaxDeckSize) return false;
 
 		// Not enough cards to field a full deck — run is over
 		_isRunOver = true;
@@ -224,12 +228,13 @@ public partial class PreMatchScreen : Control
 		if (RosterGrid != null)
 		{
 			foreach (var child in RosterGrid.GetChildren())
-				child.QueueFree();
+				child.Free(); // Free immediately, not QueueFree, so + buttons can't fire
 			var msg = new Label();
 			msg.Text = $"Crew lost. {session.Roster.Count} card(s) remain — not enough to field a team.";
 			msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			RosterGrid.AddChild(msg);
 		}
+		return true;
 	}
 
 	private void OnNewRun()

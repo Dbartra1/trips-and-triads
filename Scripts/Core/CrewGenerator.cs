@@ -90,20 +90,40 @@ namespace TripsAndTriads.Core
 
 			var hand = new List<CardData>();
 
-			// Fixed hero — Vesna is the AI's anchor threat
+			// Fixed hero — Vesna is the AI's anchor threat.
+			// Clone the database card so any in-game mutation (e.g. StepUpPromoter)
+			// on a player-won copy never corrupts the database original.
 			var vesna = db.GetCard("hch_hero_vesna");
-			if (vesna != null) hand.Add(vesna);
+			if (vesna != null) hand.Add(CloneCard(vesna));
 
-			// Fixed Pro — Verity gives the AI a reliable high-value support card
+			// Fixed TopTier — Verity gives the AI a reliable high-value support card.
 			var verity = db.GetCard("eff_top_verity");
-			if (verity != null) hand.Add(verity);
+			if (verity != null) hand.Add(CloneCard(verity));
 
-			// 3 generated Street cards — vary each game
+			// 3 generated Street cards — vary each game (already unique instances)
 			for (int i = 0; i < 3; i++)
 				hand.Add(GenerateStreet(rng, usedFirstNames));
 
 			return hand;
 		}
+
+		/// <summary>Shallow clone of a CardData — all fields copied, new reference.</summary>
+		private static CardData CloneCard(CardData src) => new CardData
+		{
+			Id          = src.Id,
+			Name        = src.Name,
+			Top         = src.Top,
+			Right       = src.Right,
+			Bottom      = src.Bottom,
+			Left        = src.Left,
+			Level       = src.Level,
+			Element     = src.Element,
+			ArtPath     = src.ArtPath,
+			Faction     = src.Faction,
+			Tier        = src.Tier,
+			DomainType  = src.DomainType,
+			AbilityType = src.AbilityType,
+		};
 
 		// ── Hero generation ───────────────────────────────────────────────────────
 

@@ -324,21 +324,24 @@ public partial class GameBoard : Node2D
 
 	/// <summary>
 	/// Lose a card: add to CardsLost, and if it's the player's hero trigger the Hunt.
+	/// Only opens a new Hunt if one is not already active — losing a second hero
+	/// while Headless doesn't chain Hunts; the card is simply lost.
 	/// </summary>
 	private void TryLoseCard(GameSession session, CardData card)
 	{
 		session.CardsLost.Add(card);
 
-		if (card.Tier == Tier.Hero && session != null)
+		if (card.Tier == Tier.Hero && session != null && !session.IsHeadless)
 		{
-			// Find the faction of whoever controlled this card for the AI —
-			// use the AI's fixed Vesna card faction as a fallback.
 			var capturingFaction = GetAIHeroFaction();
 			GD.Print($"GameBoard: player hero {card.Name} captured — Hunt opens " +
 			         $"(captor faction: {capturingFaction}).");
 			session.SetCapturedHero(card, capturingFaction);
-			// Remove from CardsLost: SetCapturedHero already removes it from roster.
-			// We keep it in CardsLost for PostMatchScreen to show, but mark source.
+		}
+		else if (card.Tier == Tier.Hero && session != null && session.IsHeadless)
+		{
+			GD.Print($"GameBoard: hero {card.Name} lost while already Headless — " +
+			         $"no second Hunt opened; card removed from roster.");
 		}
 	}
 

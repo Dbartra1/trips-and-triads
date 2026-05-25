@@ -173,7 +173,7 @@ public partial class PreMatchScreen : Control
 		if (DeckCountLabel != null)
 			DeckCountLabel.Text = $"{_selectedDeck.Count} / {MaxDeckSize}";
 
-		if (StartButton != null)
+		if (StartButton != null && !_isRunOver)
 			StartButton.Disabled = _selectedDeck.Count != MaxDeckSize;
 	}
 

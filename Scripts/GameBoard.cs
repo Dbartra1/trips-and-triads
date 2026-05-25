@@ -100,6 +100,17 @@ public partial class GameBoard : Node2D
 
 		// ── AI hand ───────────────────────────────────────────────────────────
 		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
+
+		// Hunt match — splice the captured hero into the AI hand so the player
+		// is literally fighting the person who currently holds their operative.
+		// Replace the last card (a generated Street) to keep the count at 5.
+		if (session?.IsHuntMatch == true && session.CapturedHero != null)
+		{
+			GD.Print($"GameBoard: Hunt match — inserting {session.CapturedHero.Name} into AI hand.");
+			if (p2Cards.Count >= 5) p2Cards[p2Cards.Count - 1] = session.CapturedHero;
+			else p2Cards.Add(session.CapturedHero);
+		}
+
 		GD.Print("=== AI Hand ===");
 		foreach (var c in p2Cards)
 			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left}");
@@ -159,8 +170,8 @@ public partial class GameBoard : Node2D
 
 	private void EndMatchAndTransition()
 	{
-		int p1Score   = _game.Board.GetScore(1);
-		int p2Score   = _game.Board.GetScore(2);
+		int  p1Score  = _game.Board.GetScore(1);
+		int  p2Score  = _game.Board.GetScore(2);
 		bool playerWon = p1Score > p2Score;
 
 		string heroFaction = GetPlayerHeroFaction();
@@ -177,12 +188,32 @@ public partial class GameBoard : Node2D
 			session.WinnerText   = playerWon ? "Player 1 Wins!"
 				: p2Score > p1Score ? "Player 2 Wins!" : "Draw";
 
-			// Stake resolution — OneJob: winner takes one card
-			ResolveStake(session, playerWon);
+			// ── Hunt match resolution (systems.md §7.3) ───────────────────────
+			// Capture the flag now; ReclaimHero() calls ClearHunt() which clears it.
+			bool wasHuntMatch = session.IsHuntMatch;
+
+			if (wasHuntMatch)
+			{
+				if (playerWon)
+				{
+					// Win the Hunt → hero returns; still apply AsFlipped for other cards
+					GD.Print("GameBoard: Hunt won — hero reclaimed.");
+					session.ReclaimHero();
+				}
+				else
+				{
+					// Loss → consume an attempt; window closes at 0
+					int remaining = session.ConsumeReclaimAttempt();
+					GD.Print($"GameBoard: Hunt lost. {remaining} attempt(s) left.");
+					session.IsHuntMatch = false;
+				}
+			}
+
+			// Stake resolution — wasHuntMatch drives AsFlipped path in ResolveStake
+			ResolveStake(session, playerWon, wasHuntMatch);
 		}
 
 		// Show end-of-match overlay so player can review the board before continuing.
-		// If no EndPanel is wired in the scene, fall straight through to PostMatchScreen.
 		if (EndPanel != null)
 		{
 			EndPanel.Visible = true;
@@ -209,54 +240,143 @@ public partial class GameBoard : Node2D
 		}
 	}
 
-	private void ResolveStake(GameSession session, bool playerWon)
+	private void ResolveStake(GameSession session, bool playerWon, bool wasHuntMatch = false)
 	{
-		var district = DistrictManager.Instance.ActiveDistrict;
-		string stake = district?.Stake ?? "OneJob";
+		var    district = DistrictManager.Instance.ActiveDistrict;
+		string stake    = district?.Stake ?? "OneJob";
+
+		// Hunt matches always resolve as AsFlipped for normal card exchange;
+		// hero reclaim is handled separately in EndMatchAndTransition.
+		if (wasHuntMatch || stake == "AsFlipped")
+		{
+			// Player keeps every AI-original card they now control.
+			// Player loses every player-original card the AI now controls.
+			session.CardsWon.Clear();
+			session.CardsLost.Clear();
+			for (int r = 0; r < BoardState.Size; r++)
+				for (int c = 0; c < BoardState.Size; c++)
+				{
+					var card = _game.Board.GetCard(r, c);
+					if (card == null) continue;
+					if (card.OriginalOwnerId == 2 && card.OwnerId == 1)
+						session.CardsWon.Add(card.Data);
+					else if (card.OriginalOwnerId == 1 && card.OwnerId == 2)
+						TryLoseCard(session, card.Data);
+				}
+			return;
+		}
 
 		session.CardsWon.Clear();
 		session.CardsLost.Clear();
 
-		if (stake == "OneJob")
+		switch (stake)
 		{
-			// Winner takes one card from the loser's on-board cards
-			if (playerWon)
-			{
-				// P1 wins — take the first P2 card on the board
-				var won = GetFirstBoardCard(originalOwnerId: 2);
-				if (won != null) session.CardsWon.Add(won);
-			}
-			else
-			{
-				// P2 wins — player loses one of their on-board cards
-				var lost = GetFirstBoardCard(originalOwnerId: 1);
-				if (lost != null) session.CardsLost.Add(lost);
-			}
+			case "OneJob":
+				// Winner's choice: one card from the loser's on-board cards.
+				// Prefers non-hero, but heroes are now fully capturable.
+				if (playerWon)
+				{
+					var won = GetFirstBoardCard(originalOwnerId: 2);
+					if (won != null) session.CardsWon.Add(won);
+				}
+				else
+				{
+					var lost = GetFirstBoardCard(originalOwnerId: 1);
+					if (lost != null) TryLoseCard(session, lost);
+				}
+				break;
+
+			case "TheSpread":
+				// Winner takes N cards equal to the margin (winner score − loser score).
+				int margin = System.Math.Abs(session.P1FinalScore - session.P2FinalScore);
+				if (playerWon)
+				{
+					var aiCards = GetAllBoardCards(originalOwnerId: 2);
+					for (int i = 0; i < margin && i < aiCards.Count; i++)
+						session.CardsWon.Add(aiCards[i]);
+				}
+				else
+				{
+					var p1Cards = GetAllBoardCards(originalOwnerId: 1);
+					for (int i = 0; i < margin && i < p1Cards.Count; i++)
+						TryLoseCard(session, p1Cards[i]);
+				}
+				break;
+
+			case "Everything":
+				// Winner takes the loser's entire played hand.
+				if (playerWon)
+				{
+					session.CardsWon.AddRange(GetAllBoardCards(originalOwnerId: 2));
+				}
+				else
+				{
+					foreach (var c in GetAllBoardCards(originalOwnerId: 1))
+						TryLoseCard(session, c);
+				}
+				break;
+
+			default:
+				GD.PrintErr($"ResolveStake: unknown stake '{stake}' — defaulting to OneJob.");
+				goto case "OneJob";
 		}
-		// Additional stakes (TheSpread, AsFlipped, Everything) handled in Phase 7
 	}
 
+	/// <summary>
+	/// Lose a card: add to CardsLost, and if it's the player's hero trigger the Hunt.
+	/// </summary>
+	private void TryLoseCard(GameSession session, CardData card)
+	{
+		session.CardsLost.Add(card);
+
+		if (card.Tier == Tier.Hero && session != null)
+		{
+			// Find the faction of whoever controlled this card for the AI —
+			// use the AI's fixed Vesna card faction as a fallback.
+			var capturingFaction = GetAIHeroFaction();
+			GD.Print($"GameBoard: player hero {card.Name} captured — Hunt opens " +
+			         $"(captor faction: {capturingFaction}).");
+			session.SetCapturedHero(card, capturingFaction);
+			// Remove from CardsLost: SetCapturedHero already removes it from roster.
+			// We keep it in CardsLost for PostMatchScreen to show, but mark source.
+		}
+	}
+
+	/// <summary>
+	/// Returns the first board card that was originally owned by <paramref name="originalOwnerId"/>.
+	/// Heroes are no longer protected — they can be taken like any other card.
+	/// </summary>
 	private CardData GetFirstBoardCard(int originalOwnerId)
 	{
-		// Use OriginalOwnerId — current OwnerId may have flipped during captures.
-		// Prefer non-hero cards first — heroes require the Hunt system (Phase 7)
-		// to recover. Taking a hero under basic stake resolution is currently
-		// unrecoverable, so we skip them until the Hunt is implemented.
-		CardData fallback = null;
-
 		for (int r = 0; r < BoardState.Size; r++)
 			for (int c = 0; c < BoardState.Size; c++)
 			{
 				var card = _game.Board.GetCard(r, c);
-				if (card == null || card.OriginalOwnerId != originalOwnerId) continue;
-
-				if (card.Data.Tier != Tier.Hero)
-					return card.Data; // take the first non-hero card found
-
-				fallback ??= card.Data; // remember hero as last resort
+				if (card != null && card.OriginalOwnerId == originalOwnerId)
+					return card.Data;
 			}
+		return null;
+	}
 
-		return fallback; // only take hero if no non-hero cards exist on board
+	/// <summary>Returns all board cards originally owned by <paramref name="originalOwnerId"/>, sorted best-first.</summary>
+	private List<CardData> GetAllBoardCards(int originalOwnerId)
+	{
+		var result = new List<CardData>();
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+			{
+				var card = _game.Board.GetCard(r, c);
+				if (card != null && card.OriginalOwnerId == originalOwnerId)
+					result.Add(card.Data);
+			}
+		// Sort hero-last so regular cards are taken before heroes when margin < total.
+		result.Sort((a, b) =>
+		{
+			if (a.Tier == Tier.Hero && b.Tier != Tier.Hero) return 1;
+			if (a.Tier != Tier.Hero && b.Tier == Tier.Hero) return -1;
+			return 0;
+		});
+		return result;
 	}
 
 	private string GetPlayerHeroFaction()
@@ -269,6 +389,19 @@ public partial class GameBoard : Node2D
 					return card.Data.Faction.ToString();
 			}
 		return "None";
+	}
+
+	/// <summary>Returns the faction of the first hero found in the AI's original hand.</summary>
+	private Faction GetAIHeroFaction()
+	{
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+			{
+				var card = _game.Board.GetCard(r, c);
+				if (card != null && card.OriginalOwnerId == 2 && card.Data.Tier == Tier.Hero)
+					return card.Data.Faction;
+			}
+		return Faction.None;
 	}
 
 	private void OnCardSelected(int handIndex, CardNode cardNode)

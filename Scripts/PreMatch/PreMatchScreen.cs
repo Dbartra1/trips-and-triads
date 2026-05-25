@@ -21,6 +21,7 @@ public partial class PreMatchScreen : Control
 	private List<CardData> _selectedDeck = new();
 	private const int MaxDeckSize = 5;
 	private bool _isRunOver = false;
+	private VBoxContainer _huntPanel = null; // injected when Hunt is active
 
 	public override void _Ready()
 	{
@@ -45,6 +46,7 @@ public partial class PreMatchScreen : Control
 		// that would need to be torn down immediately after.
 		if (!CheckRunOver())
 			RefreshRoster();
+		BuildHuntPanel();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -199,6 +201,148 @@ public partial class PreMatchScreen : Control
 		GD.Print($"PreMatch: removed {card.Name} from deck ({_selectedDeck.Count}/5).");
 	}
 
+	// ── Hunt panel ───────────────────────────────────────────────────────────
+	// Shown when the player's hero has been captured (systems.md §7).
+	// Injected as the first child of HSplit/Right so it sits above the roster.
+
+	private void BuildHuntPanel()
+	{
+		var session = GameSession.Instance;
+		if (session == null || !session.IsHeadless) return;
+
+		var hero    = session.CapturedHero;
+		var right   = GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		if (right == null) return;
+
+		_huntPanel = new VBoxContainer();
+		_huntPanel.CustomMinimumSize = new Vector2(0, 0);
+
+		// ── Warning banner ────────────────────────────────────────────────────
+		var banner = new PanelContainer();
+		var bannerVBox = new VBoxContainer();
+		banner.AddChild(bannerVBox);
+
+		var titleLbl = new Label();
+		titleLbl.Text = $"⚠  HEADLESS  —  {hero.Name} CAPTURED";
+		titleLbl.AddThemeColorOverride("font_color", new Color("d94a4a"));
+		bannerVBox.AddChild(titleLbl);
+
+		var capturorLbl = new Label();
+		capturorLbl.Text = $"Captor faction: {session.CapturingFaction}";
+		bannerVBox.AddChild(capturorLbl);
+
+		var attemptsLbl = new Label();
+		attemptsLbl.Text = $"Reclaim window: {session.ReclamationAttemptsLeft} attempt(s) remaining";
+		bannerVBox.AddChild(attemptsLbl);
+
+		if (session.ReclamationAttemptsLeft == 0)
+		{
+			var closedLbl = new Label();
+			closedLbl.Text = "Window closed — you must Step Up or start a New Run.";
+			closedLbl.AddThemeColorOverride("font_color", new Color("ff8844"));
+			bannerVBox.AddChild(closedLbl);
+		}
+
+		_huntPanel.AddChild(banner);
+
+		// ── Action buttons ────────────────────────────────────────────────────
+		var btnRow = new HBoxContainer();
+		btnRow.AddThemeConstantOverride("separation", 8);
+
+		// Reclaim button — only while attempts remain
+		if (session.ReclamationAttemptsLeft > 0)
+		{
+			var reclaimBtn = new Button();
+			reclaimBtn.Text              = $"⚔  Reclaim {hero.Name}";
+			reclaimBtn.CustomMinimumSize = new Vector2(200, 40);
+			reclaimBtn.TooltipText       = "Fight the rival crew to win your hero back (AsFlipped rules).";
+			reclaimBtn.Pressed += OnHuntReclaimPressed;
+			btnRow.AddChild(reclaimBtn);
+		}
+
+		// Buyout — disabled until scrip economy (Phase 9)
+		if (session.CapturingFaction != Faction.HollowChoir)
+		{
+			var buyoutBtn = new Button();
+			buyoutBtn.Text              = "💳  Buyout  (Phase 9)";
+			buyoutBtn.CustomMinimumSize = new Vector2(180, 40);
+			buyoutBtn.Disabled          = true;
+			buyoutBtn.TooltipText       = "Pay scrip to ransom your hero — available in Phase 9.";
+			btnRow.AddChild(buyoutBtn);
+		}
+		else
+		{
+			var noSellLbl = new Label();
+			noSellLbl.Text = "The Choir do not sell.";
+			noSellLbl.AddThemeColorOverride("font_color", new Color("8888cc"));
+			btnRow.AddChild(noSellLbl);
+		}
+
+		// Step Up — always available; closes the Hunt window
+		var stepUpBtn = new Button();
+		stepUpBtn.Text              = "↑  Step Up";
+		stepUpBtn.CustomMinimumSize = new Vector2(140, 40);
+		stepUpBtn.TooltipText       =
+			"Promote your best surviving card to Hero. The old hero is gone for good.";
+		stepUpBtn.Pressed += OnStepUpPressed;
+		btnRow.AddChild(stepUpBtn);
+
+		_huntPanel.AddChild(btnRow);
+
+		// Separator
+		var sep = new HSeparator();
+		sep.CustomMinimumSize = new Vector2(0, 8);
+		_huntPanel.AddChild(sep);
+
+		// Insert at top of right column, before the roster section.
+		// AddChild appends; then MoveChild repositions to index 0.
+		right.AddChild(_huntPanel);
+		right.MoveChild(_huntPanel, 0);
+	}
+
+	private void OnHuntReclaimPressed()
+	{
+		if (_selectedDeck.Count != MaxDeckSize)
+		{
+			GD.Print("PreMatch: Hunt — must select a full 5-card deck first.");
+			return;
+		}
+
+		var session = GameSession.Instance;
+		if (session == null || !session.IsHeadless) return;
+
+		session.SelectedDeck       = new List<CardData>(_selectedDeck);
+		session.SelectedDistrictId = _selectedDistrictId;
+		session.IsHuntMatch        = true;
+		session.ClearMatchResult();
+
+		GD.Print($"PreMatch: launching Hunt match vs {session.CapturingFaction} " +
+		         $"for {session.CapturedHero.Name}. Attempts left after this: " +
+		         $"{session.ReclamationAttemptsLeft - 1}.");
+
+		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
+	}
+
+	private void OnStepUpPressed()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		var promoted = session.StepUp();
+		if (promoted == null)
+		{
+			GD.PrintErr("PreMatch: Step Up — no eligible card to promote.");
+			return;
+		}
+
+		GD.Print($"PreMatch: Step Up — {promoted.Name} is the new hero.");
+
+		// Remove and rebuild the Hunt panel; rebuild roster so new hero shows tier
+		if (_huntPanel != null) { _huntPanel.QueueFree(); _huntPanel = null; }
+		RefreshRoster();
+		RefreshDeckDisplay();
+	}
+
 	// ── Run over check ──────────────────────────────────────────────────────────
 
 	// Returns true if the run is over (roster too small to field a deck).
@@ -229,9 +373,11 @@ public partial class PreMatchScreen : Control
 		{
 			foreach (var child in RosterGrid.GetChildren())
 				child.Free(); // Free immediately, not QueueFree, so + buttons can't fire
+			RosterGrid.Columns = 1;
 			var msg = new Label();
 			msg.Text = $"Crew lost. {session.Roster.Count} card(s) remain — not enough to field a team.";
 			msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			msg.CustomMinimumSize = new Vector2(380, 0);
 			RosterGrid.AddChild(msg);
 		}
 		return true;

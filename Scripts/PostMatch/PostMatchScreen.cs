@@ -39,7 +39,20 @@ public partial class PostMatchScreen : Control
 		// Result header
 		if (ResultLabel != null)
 		{
-			ResultLabel.Text = session.WinnerText;
+			string resultText = session.WinnerText;
+
+			// Annotate with Hunt outcome if this was a Hunt match
+			if (session.HeroReclaimed)
+				resultText += "\n✓  Hero reclaimed!";
+			else if (session.IsHeadless && !session.HeroReclaimed)
+			{
+				int left = session.ReclamationAttemptsLeft;
+				resultText += left > 0
+					? $"\n✕  Hero still captured  —  {left} attempt(s) remaining"
+					: "\n✕  Reclaim window closed  —  Step Up on the next screen";
+			}
+
+			ResultLabel.Text = resultText;
 			var color = session.PlayerWon ? new Color("4a90d9") : new Color("d94a4a");
 			ResultLabel.AddThemeColorOverride("font_color", color);
 		}

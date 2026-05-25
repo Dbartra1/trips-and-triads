@@ -5,6 +5,12 @@ namespace TripsAndTriads.Rules
 {
 	public static class BondResolver
 	{
+		/// <summary>
+		/// Contamination is a late-campaign mechanic — only fires in Choir-controlled
+		/// districts during a full run. Disabled during early development.
+		/// Set to true when the campaign layer is live.
+		/// </summary>
+		public static bool ContaminationEnabled { get; set; } = false;
 		public static void Apply(BoardState board)
 		{
 			// Reset transient bond bonuses and behavioral flags
@@ -91,6 +97,7 @@ namespace TripsAndTriads.Rules
 		// against re-application across multiple BondResolver.Apply calls.
 		private static void ApplyVesnaBonds(BoardState board, CardInstance vesna, int vr, int vc)
 		{
+			if (!ContaminationEnabled) return;
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 			{
 				var (nRow, nCol) = board.GetNeighbor(vr, vc, dir);

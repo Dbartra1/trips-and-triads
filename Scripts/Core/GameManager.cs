@@ -154,7 +154,7 @@ namespace TripsAndTriads.Core
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
-					if (card == null || card.OwnerId != CurrentPlayerId) continue;
+					if (card == null || card.OriginalOwnerId != CurrentPlayerId) continue;
 					card.Ability?.OnTurnEnd(Board, card, r, c);
 				}
 		}

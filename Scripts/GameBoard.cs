@@ -101,14 +101,21 @@ public partial class GameBoard : Node2D
 		// ── AI hand ───────────────────────────────────────────────────────────
 		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
 
-		// Hunt match — splice the captured hero into the AI hand so the player
-		// is literally fighting the person who currently holds their operative.
-		// Replace the last card (a generated Street) to keep the count at 5.
+		// Hunt match — the captured hero is the centrepiece; Vesna is replaced with
+		// a generated Pro. Lore: apex faction leaders don't run errands — this is
+		// foot-soldier work. Verity stays (face-level operative, plausible for the job).
 		if (session?.IsHuntMatch == true && session.CapturedHero != null)
 		{
+			// Swap Vesna (index 0) for a generated Pro-tier card
+			var rng       = new System.Random();
+			var usedNames = new System.Collections.Generic.HashSet<string>(
+				p2Cards.ConvertAll(c => c.Name));
+			var proCard   = CrewGenerator.GeneratePro(rng, usedNames);
+			p2Cards[0]    = proCard;
+
+			// Replace the last Street with the captured hero
 			GD.Print($"GameBoard: Hunt match — inserting {session.CapturedHero.Name} into AI hand.");
-			if (p2Cards.Count >= 5) p2Cards[p2Cards.Count - 1] = session.CapturedHero;
-			else p2Cards.Add(session.CapturedHero);
+			p2Cards[p2Cards.Count - 1] = session.CapturedHero;
 		}
 
 		GD.Print("=== AI Hand ===");

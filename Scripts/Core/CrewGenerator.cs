@@ -211,7 +211,7 @@ namespace TripsAndTriads.Core
 
 		// ── Pro generation ────────────────────────────────────────────────────────
 
-		private static CardData GeneratePro(Random rng, HashSet<string> usedFirstNames)
+		public static CardData GeneratePro(Random rng, HashSet<string> usedFirstNames)
 		{
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(ProMin, ProMax + 1);

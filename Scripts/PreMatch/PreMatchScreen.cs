@@ -412,7 +412,10 @@ public partial class PreMatchScreen : Control
 		// While a Hunt is active the hero is captured but still yours — don't
 		// declare the run over until the player has resolved the Hunt (Step Up
 		// or Reclaim). After Step Up, OnPromoteCardSelected calls CheckRunOver again.
-		if (session.IsHeadless) return false;
+		// Exception: if there are fewer than 4 non-hero cards, even a successful
+		// Reclaim can't produce a valid deck (need 1 hero + 4 non-heroes = 5).
+		if (session.IsHeadless && nonHeroes >= MaxDeckSize - 1) return false;
+		// If Headless and nonHeroes < 4, fall through to run-over.
 
 		// A valid deck needs 5 cards with at most 1 hero.
 		// Selectable slots = non-heroes + min(heroes, 1).

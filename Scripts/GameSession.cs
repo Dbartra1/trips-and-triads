@@ -64,6 +64,16 @@ public partial class GameSession : Node
 	/// <summary>True once a Step Up has been performed for the current Hunt.</summary>
 	public bool HasInterim => InterimHero != null;
 
+	/// <summary>Original stats of the interim card, saved so we can restore them if the player changes their choice.</summary>
+	private class SavedStats
+	{
+		public int Top, Right, Bottom, Left, Level;
+		public Tier Tier;
+		public DomainType Domain;
+		public AbilityType Ability;
+	}
+	private SavedStats _interimSavedStats = null;
+
 	/// <summary>Written by GameBoard after a Hunt match; read by PostMatchScreen.</summary>
 	public bool HeroReclaimed { get; set; } = false;
 
@@ -184,41 +194,74 @@ public partial class GameSession : Node
 	/// </summary>
 	public CardData StepUp(CardData specific = null)
 	{
-		CardData promoted;
+		// If the player is changing their interim choice, restore the previous card first.
+		if (InterimHero != null && _interimSavedStats != null && specific != InterimHero)
+		{
+			GD.Print($"GameSession: restoring previous interim {InterimHero.Name} before re-selecting.");
+			InterimHero.Top         = _interimSavedStats.Top;
+			InterimHero.Right       = _interimSavedStats.Right;
+			InterimHero.Bottom      = _interimSavedStats.Bottom;
+			InterimHero.Left        = _interimSavedStats.Left;
+			InterimHero.Level       = _interimSavedStats.Level;
+			InterimHero.Tier        = _interimSavedStats.Tier;
+			InterimHero.DomainType  = _interimSavedStats.Domain;
+			InterimHero.AbilityType = _interimSavedStats.Ability;
+			InterimHero      = null;
+			_interimSavedStats = null;
+		}
 
+		// If the same card is re-selected (no-op), just return it.
+		if (InterimHero != null && specific == InterimHero)
+			return InterimHero;
+
+		// Resolve the target card.
+		CardData target;
 		if (specific != null)
 		{
-			if (!Roster.Contains(specific) || specific.Tier == Tier.Hero)
-			{
-				GD.PrintErr("GameSession: StepUp — specified card is not valid.");
-				return null;
-			}
-			promoted = StepUpPromoter.PromoteSpecific(specific);
+			target = specific;
 		}
 		else
 		{
-			// Auto-pick: prefer cards from the snapshot deck that are still in roster,
-			// fall back to full roster. Filter out heroes.
+			// Auto-pick from snapshot deck (filtered to current roster), fall back to full roster.
 			var candidates = DeckWhenHeroWasCaptured.Count > 0
 				? DeckWhenHeroWasCaptured.FindAll(c => Roster.Contains(c) && c.Tier != Tier.Hero)
 				: new System.Collections.Generic.List<CardData>();
-
 			if (candidates.Count == 0)
 				candidates = Roster.FindAll(c => c.Tier != Tier.Hero);
-
-			promoted = StepUpPromoter.Promote(candidates);
+			target = candidates.Count > 0
+				? candidates.OrderByDescending(c => c.Top + c.Right + c.Bottom + c.Left).First()
+				: null;
 		}
+		if (target == null) { GD.PrintErr("GameSession: StepUp — no candidate found."); return null; }
+
+		_interimSavedStats = new SavedStats
+		{
+			Top     = target.Top,   Right   = target.Right,
+			Bottom  = target.Bottom, Left   = target.Left,
+			Level   = target.Level,  Tier   = target.Tier,
+			Domain  = target.DomainType,
+			Ability = target.AbilityType,
+		};
+
+		if (target.Tier == Tier.Hero)
+		{
+			GD.PrintErr("GameSession: StepUp — target is already a hero.");
+			_interimSavedStats = null;
+			return null;
+		}
+
+		var promoted = StepUpPromoter.PromoteSpecific(target);
 
 		if (promoted == null)
 		{
-			GD.PrintErr("GameSession: StepUp — no eligible card found.");
+			GD.PrintErr("GameSession: StepUp — promotion failed.");
+			_interimSavedStats = null;
 			return null;
 		}
 
 		if (!Roster.Contains(promoted)) Roster.Add(promoted);
 
 		// Record as interim — the Hunt stays open so the player can still Reclaim.
-		// ClearHunt is called only when the Hunt is actually resolved (win or window close).
 		InterimHero = promoted;
 
 		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to interim Hero " +
@@ -238,5 +281,6 @@ public partial class GameSession : Node
 		IsHuntMatch             = false;
 		HeroReclaimed           = false;
 		InterimHero             = null;
+		_interimSavedStats      = null;
 	}
 }

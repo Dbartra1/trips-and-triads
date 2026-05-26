@@ -409,6 +409,12 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		if (session == null) return false;
 
+		// A valid deck needs 5 cards with at most 1 hero.
+		// Selectable slots = non-heroes + min(heroes, 1).
+		int heroes     = session.Roster.FindAll(c => c.Tier == Tier.Hero).Count;
+		int nonHeroes  = session.Roster.Count - heroes;
+		int selectable = nonHeroes + System.Math.Min(heroes, 1);
+
 		// While a Hunt is active the hero is captured but still yours — don't
 		// declare the run over until the player has resolved the Hunt (Step Up
 		// or Reclaim). After Step Up, OnPromoteCardSelected calls CheckRunOver again.
@@ -416,13 +422,6 @@ public partial class PreMatchScreen : Control
 		// Reclaim can't produce a valid deck (need 1 hero + 4 non-heroes = 5).
 		if (session.IsHeadless && nonHeroes >= MaxDeckSize - 1) return false;
 		// If Headless and nonHeroes < 4, fall through to run-over.
-
-		// A valid deck needs 5 cards with at most 1 hero.
-		// Selectable slots = non-heroes + min(heroes, 1).
-		// If that's < 5, no valid deck can be built regardless of total count.
-		int heroes    = session.Roster.FindAll(c => c.Tier == Tier.Hero).Count;
-		int nonHeroes = session.Roster.Count - heroes;
-		int selectable = nonHeroes + System.Math.Min(heroes, 1);
 
 		if (selectable >= MaxDeckSize) return false;
 

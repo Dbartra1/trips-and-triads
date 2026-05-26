@@ -16,9 +16,21 @@ namespace TripsAndTriads.UI
 
         private CardInstance _cardInstance;
 
+        // Set to true by PreMatchScreen for the interim hero so border shows orange.
+        public bool IsInterim { get; set; } = false;
+
         private static readonly Color P1Color      = new Color("4a90d9");
         private static readonly Color P2Color      = new Color("d94a4a");
         private static readonly Color SelectedTint = new Color(1.25f, 1.25f, 1.25f);
+
+        // ── Tier border colors — cyberpunk loot rarity ─────────────────────────
+        private static Color TierBorderColor(Tier tier, bool isInterim) => tier switch
+        {
+            Tier.Hero    => isInterim ? new Color("ff6d00") : new Color("ea00ff"),
+            Tier.TopTier => new Color("ffd600"),
+            Tier.Pro     => new Color("00e5ff"),
+            _            => new Color("78909c"),   // Street
+        };
 
         private static Color FactionColor(Faction faction) => faction switch
         {
@@ -121,7 +133,51 @@ namespace TripsAndTriads.UI
                 LabelName.AddThemeColorOverride("font_color", new Color(1, 1, 1, 0.55f));
             }
 
+            ApplyTierBorder(instance.Data.Tier);
             Refresh();
+        }
+
+        private void ApplyTierBorder(Tier tier)
+        {
+            var borderColor = TierBorderColor(tier, IsInterim);
+            var glowColor   = new Color(borderColor.R, borderColor.G, borderColor.B, 0.35f);
+
+            // Outer glow layer — slightly larger, translucent
+            var glowStyle = new StyleBoxFlat();
+            glowStyle.BgColor           = new Color(0, 0, 0, 0);
+            glowStyle.BorderWidthLeft   = 3;
+            glowStyle.BorderWidthTop    = 3;
+            glowStyle.BorderWidthRight  = 3;
+            glowStyle.BorderWidthBottom = 3;
+            glowStyle.BorderColor       = glowColor;
+            glowStyle.SetCornerRadiusAll(4);
+            glowStyle.ShadowColor  = glowColor;
+            glowStyle.ShadowSize   = 6;
+            glowStyle.ShadowOffset = Vector2.Zero;
+
+            var glowPanel = new Panel();
+            glowPanel.MouseFilter = MouseFilterEnum.Ignore;
+            glowPanel.SetAnchorsPreset(LayoutPreset.FullRect);
+            glowPanel.AddThemeStyleboxOverride("panel", glowStyle);
+            AddChild(glowPanel);
+            MoveChild(glowPanel, 1); // Just above Background, behind everything else
+
+            // Inner crisp border layer
+            var borderStyle = new StyleBoxFlat();
+            borderStyle.BgColor           = new Color(0, 0, 0, 0);
+            borderStyle.BorderWidthLeft   = 2;
+            borderStyle.BorderWidthTop    = 2;
+            borderStyle.BorderWidthRight  = 2;
+            borderStyle.BorderWidthBottom = 2;
+            borderStyle.BorderColor       = borderColor;
+            borderStyle.SetCornerRadiusAll(3);
+
+            var borderPanel = new Panel();
+            borderPanel.MouseFilter = MouseFilterEnum.Ignore;
+            borderPanel.SetAnchorsPreset(LayoutPreset.FullRect);
+            borderPanel.AddThemeStyleboxOverride("panel", borderStyle);
+            AddChild(borderPanel);
+            MoveChild(borderPanel, 2); // Above glow, below labels
         }
 
         public void Refresh()

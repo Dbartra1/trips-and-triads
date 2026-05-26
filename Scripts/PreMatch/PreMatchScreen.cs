@@ -444,7 +444,7 @@ public partial class PreMatchScreen : Control
 		if (RosterGrid != null)
 		{
 			foreach (var child in RosterGrid.GetChildren())
-				child.Free();
+				child.QueueFree();
 			RosterGrid.Columns = 1;
 			var msg = new Label();
 			msg.Text = (session.Roster.Count >= MaxDeckSize && selectable < MaxDeckSize)

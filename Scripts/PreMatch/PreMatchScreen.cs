@@ -396,35 +396,44 @@ public partial class PreMatchScreen : Control
 
 		// While a Hunt is active the hero is captured but still yours — don't
 		// declare the run over until the player has resolved the Hunt (Step Up
-		// or Reclaim). After Step Up, OnStepUpPressed calls CheckRunOver again.
+		// or Reclaim). After Step Up, OnPromoteCardSelected calls CheckRunOver again.
 		if (session.IsHeadless) return false;
 
-		if (session.Roster.Count >= MaxDeckSize) return false;
+		// A valid deck needs 5 cards with at most 1 hero.
+		// Selectable slots = non-heroes + min(heroes, 1).
+		// If that's < 5, no valid deck can be built regardless of total count.
+		int heroes    = session.Roster.FindAll(c => c.Tier == Tier.Hero).Count;
+		int nonHeroes = session.Roster.Count - heroes;
+		int selectable = nonHeroes + System.Math.Min(heroes, 1);
+
+		if (selectable >= MaxDeckSize) return false;
 
 		// Not enough cards to field a full deck — run is over
 		_isRunOver = true;
-		GD.Print($"PreMatch: roster has {session.Roster.Count} cards — run over.");
+		GD.Print($"PreMatch: roster has {session.Roster.Count} cards ({selectable} selectable) — run over.");
 
 		if (StartButton != null)
 		{
 			StartButton.Text     = "Run Over — New Run";
 			StartButton.Pressed -= OnStartPressed;
 			StartButton.Pressed += OnNewRun;
-			StartButton.Disabled = false; // re-enable after rewiring to OnNewRun
+			StartButton.Disabled = false;
 		}
 
 		if (DeckCountLabel != null)
-			DeckCountLabel.Text = $"Only {session.Roster.Count} cards remain — crew is gone.";
+			DeckCountLabel.Text = $"Only {selectable} selectable card(s) remain — crew is gone.";
 
 		// Replace roster with a message — no + buttons in run-over state
 		if (RosterGrid != null)
 		{
 			foreach (var child in RosterGrid.GetChildren())
-				child.Free(); // Free immediately, not QueueFree, so + buttons can't fire
+				child.Free();
 			RosterGrid.Columns = 1;
 			var msg = new Label();
-			msg.Text = $"Crew lost. {session.Roster.Count} card(s) remain — not enough to field a team.";
-			msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			msg.Text = (session.Roster.Count >= MaxDeckSize && selectable < MaxDeckSize)
+				? $"Too many heroes, not enough crew — only {nonHeroes} non-hero card(s) left. Can't field a full team."
+				: $"Crew lost. {session.Roster.Count} card(s) remain — not enough to field a team.";
+			msg.AutowrapMode      = TextServer.AutowrapMode.WordSmart;
 			msg.CustomMinimumSize = new Vector2(380, 0);
 			RosterGrid.AddChild(msg);
 		}

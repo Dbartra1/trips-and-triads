@@ -58,6 +58,12 @@ public partial class GameSession : Node
 	/// <summary>Set by PreMatchScreen before launching a Hunt match so GameBoard knows the rules.</summary>
 	public bool IsHuntMatch { get; set; } = false;
 
+	/// <summary>Interim hero promoted to lead the Reclaim attempt. Non-null after Step Up.</summary>
+	public CardData InterimHero { get; private set; } = null;
+
+	/// <summary>True once a Step Up has been performed for the current Hunt.</summary>
+	public bool HasInterim => InterimHero != null;
+
 	/// <summary>Written by GameBoard after a Hunt match; read by PostMatchScreen.</summary>
 	public bool HeroReclaimed { get; set; } = false;
 
@@ -211,15 +217,18 @@ public partial class GameSession : Node
 
 		if (!Roster.Contains(promoted)) Roster.Add(promoted);
 
-		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to Hero " +
+		// Record as interim — the Hunt stays open so the player can still Reclaim.
+		// ClearHunt is called only when the Hunt is actually resolved (win or window close).
+		InterimHero = promoted;
+
+		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to interim Hero " +
 		         $"| {promoted.Top}/{promoted.Right}/{promoted.Bottom}/{promoted.Left} " +
 		         $"| Domain:{promoted.DomainType}");
 
-		ClearHunt();
 		return promoted;
 	}
 
-	/// <summary>Clear all Hunt state (used by Reclaim, StepUp, and new runs).</summary>
+	/// <summary>Clear all Hunt state (used by Reclaim, window-close, and new runs).</summary>
 	public void ClearHunt()
 	{
 		CapturedHero            = null;
@@ -228,5 +237,6 @@ public partial class GameSession : Node
 		DeckWhenHeroWasCaptured = new List<CardData>();
 		IsHuntMatch             = false;
 		HeroReclaimed           = false;
+		InterimHero             = null;
 	}
 }

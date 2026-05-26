@@ -24,6 +24,7 @@ public partial class PreMatchScreen : Control
 	private VBoxContainer _huntPanel = null; // injected when Hunt is active
 	private bool _stepUpMode = false;        // true while player is choosing who to promote
 	private Button _stepUpToggleBtn = null;  // reference so we can relabel it on toggle
+	private Button _reclaimBtn = null;       // reference so deck changes can enable/disable it
 
 	public override void _Ready()
 	{
@@ -202,6 +203,10 @@ public partial class PreMatchScreen : Control
 
 		if (StartButton != null && !_isRunOver)
 			StartButton.Disabled = _selectedDeck.Count != MaxDeckSize;
+
+		// Keep Reclaim enabled only when a full deck is selected
+		if (_reclaimBtn != null)
+			_reclaimBtn.Disabled = (_selectedDeck.Count != MaxDeckSize);
 	}
 
 	private void AddToDeck(CardData card)
@@ -241,64 +246,73 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		if (session == null || !session.IsHeadless) return;
 
-		var hero    = session.CapturedHero;
-		var right   = GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		var hero  = session.CapturedHero;
+		var right = GetNodeOrNull<VBoxContainer>("HSplit/Right");
 		if (right == null) return;
 
 		_huntPanel = new VBoxContainer();
-		_huntPanel.CustomMinimumSize = new Vector2(0, 0);
 
-		// ── Warning banner ────────────────────────────────────────────────────
-		var banner = new PanelContainer();
-		var bannerVBox = new VBoxContainer();
-		banner.AddChild(bannerVBox);
+		// ── Warning banner ─────────────────────────────────────────────────────
+		var banner    = new PanelContainer();
+		var bannerBox = new VBoxContainer();
+		banner.AddChild(bannerBox);
 
 		var titleLbl = new Label();
 		titleLbl.Text = $"⚠  HEADLESS  —  {hero.Name} CAPTURED";
 		titleLbl.AddThemeColorOverride("font_color", new Color("d94a4a"));
-		bannerVBox.AddChild(titleLbl);
+		bannerBox.AddChild(titleLbl);
 
-		var capturorLbl = new Label();
-		capturorLbl.Text = $"Captor faction: {session.CapturingFaction}";
-		bannerVBox.AddChild(capturorLbl);
+		var captorLbl = new Label();
+		captorLbl.Text = $"Captor faction: {session.CapturingFaction}";
+		bannerBox.AddChild(captorLbl);
 
 		var attemptsLbl = new Label();
-		attemptsLbl.Text = $"Reclaim window: {session.ReclamationAttemptsLeft} attempt(s) remaining";
-		bannerVBox.AddChild(attemptsLbl);
+		attemptsLbl.Text = session.ReclamationAttemptsLeft > 0
+			? $"Reclaim window: {session.ReclamationAttemptsLeft} attempt(s) remaining"
+			: "Reclaim window closed.";
+		bannerBox.AddChild(attemptsLbl);
 
-		if (session.ReclamationAttemptsLeft == 0)
+		// Interim status line
+		if (session.HasInterim)
 		{
-			var closedLbl = new Label();
-			closedLbl.Text = "Window closed — you must Step Up or start a New Run.";
-			closedLbl.AddThemeColorOverride("font_color", new Color("ff8844"));
-			bannerVBox.AddChild(closedLbl);
+			var interimLbl = new Label();
+			interimLbl.Text = $"Interim hero: {session.InterimHero.Name}  —  build a deck and hit Reclaim.";
+			interimLbl.AddThemeColorOverride("font_color", new Color("4a90d9"));
+			bannerBox.AddChild(interimLbl);
+		}
+		else
+		{
+			var needsStepUp = new Label();
+			needsStepUp.Text = "Step Up an interim hero before you can launch Reclaim.";
+			needsStepUp.AddThemeColorOverride("font_color", new Color("ff8844"));
+			bannerBox.AddChild(needsStepUp);
 		}
 
 		_huntPanel.AddChild(banner);
 
-		// ── Action buttons ────────────────────────────────────────────────────
+		// ── Action buttons ─────────────────────────────────────────────────────
 		var btnRow = new HBoxContainer();
 		btnRow.AddThemeConstantOverride("separation", 8);
 
-		// Reclaim button — only while attempts remain
-		if (session.ReclamationAttemptsLeft > 0)
+		// Reclaim — only shown after interim is assigned AND attempts remain
+		if (session.HasInterim && session.ReclamationAttemptsLeft > 0)
 		{
-			var reclaimBtn = new Button();
-			reclaimBtn.Text              = $"⚔  Reclaim {hero.Name}";
-			reclaimBtn.CustomMinimumSize = new Vector2(200, 40);
-			reclaimBtn.TooltipText       = "Fight the rival crew to win your hero back (AsFlipped rules).";
-			reclaimBtn.Pressed += OnHuntReclaimPressed;
-			btnRow.AddChild(reclaimBtn);
+			_reclaimBtn                  = new Button();
+			_reclaimBtn.Text             = $"⚔  Reclaim {hero.Name}";
+			_reclaimBtn.CustomMinimumSize = new Vector2(200, 40);
+			_reclaimBtn.TooltipText      = "Field your interim hero and fight to win back your captured hero.";
+			_reclaimBtn.Disabled         = (_selectedDeck.Count != MaxDeckSize);
+			_reclaimBtn.Pressed         += OnHuntReclaimPressed;
+			btnRow.AddChild(_reclaimBtn);
 		}
 
-		// Buyout — disabled until scrip economy (Phase 9)
+		// Buyout — Phase 9; Choir never sells
 		if (session.CapturingFaction != Faction.HollowChoir)
 		{
 			var buyoutBtn = new Button();
 			buyoutBtn.Text              = "💳  Buyout  (Phase 9)";
 			buyoutBtn.CustomMinimumSize = new Vector2(180, 40);
 			buyoutBtn.Disabled          = true;
-			buyoutBtn.TooltipText       = "Pay scrip to ransom your hero — available in Phase 9.";
 			btnRow.AddChild(buyoutBtn);
 		}
 		else
@@ -309,24 +323,21 @@ public partial class PreMatchScreen : Control
 			btnRow.AddChild(noSellLbl);
 		}
 
-		// Step Up — enters card selection mode; label toggles to Cancel if already in mode
+		// Step Up toggle — always available so player can pick or change interim
 		_stepUpToggleBtn = new Button();
-		_stepUpToggleBtn.Text              = _stepUpMode ? "✕  Cancel Step Up" : "↑  Step Up";
+		_stepUpToggleBtn.Text = _stepUpMode ? "✕  Cancel"
+			: (session.HasInterim ? "↑  Change Interim" : "↑  Step Up");
 		_stepUpToggleBtn.CustomMinimumSize = new Vector2(160, 40);
-		_stepUpToggleBtn.TooltipText       =
-			"Choose a card from your roster to promote to Hero.";
-		_stepUpToggleBtn.Pressed += OnStepUpTogglePressed;
+		_stepUpToggleBtn.TooltipText       = "Choose a roster card to serve as interim hero.";
+		_stepUpToggleBtn.Pressed          += OnStepUpTogglePressed;
 		btnRow.AddChild(_stepUpToggleBtn);
 
 		_huntPanel.AddChild(btnRow);
 
-		// Separator
 		var sep = new HSeparator();
 		sep.CustomMinimumSize = new Vector2(0, 8);
 		_huntPanel.AddChild(sep);
 
-		// Insert at top of right column, before the roster section.
-		// AddChild appends; then MoveChild repositions to index 0.
 		right.AddChild(_huntPanel);
 		right.MoveChild(_huntPanel, 0);
 	}
@@ -374,11 +385,15 @@ public partial class PreMatchScreen : Control
 			return;
 		}
 
-		GD.Print($"PreMatch: Step Up — {promoted.Name} is the new hero.");
+		GD.Print($"PreMatch: Step Up — {promoted.Name} is the interim hero. Hunt still open.");
 
 		_stepUpMode      = false;
 		_stepUpToggleBtn = null;
+		_reclaimBtn      = null;
+
+		// Rebuild Hunt panel — Hunt is still open, Reclaim button should now appear
 		if (_huntPanel != null) { _huntPanel.QueueFree(); _huntPanel = null; }
+		BuildHuntPanel();
 
 		if (!CheckRunOver())
 			RefreshRoster();

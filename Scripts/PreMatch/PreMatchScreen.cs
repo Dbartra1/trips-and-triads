@@ -50,6 +50,7 @@ public partial class PreMatchScreen : Control
 		if (!CheckRunOver())
 			RefreshRoster();
 		BuildHuntPanel();
+		BuildReunionBanner();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -235,6 +236,79 @@ public partial class PreMatchScreen : Control
 	{
 		_selectedDeck.Remove(card);
 		GD.Print($"PreMatch: removed {card.Name} from deck ({_selectedDeck.Count}/5).");
+	}
+
+	private VBoxContainer _reunionPanel = null; // shown after a successful Reclaim
+
+	// ── Reunion banner ────────────────────────────────────────────────────────
+	// Shown when both original and interim hero are in the roster simultaneously.
+
+	private void BuildReunionBanner()
+	{
+		var session = GameSession.Instance;
+		if (session == null || !session.ReunionPending) return;
+
+		var right = GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		if (right == null) return;
+
+		_reunionPanel = new VBoxContainer();
+
+		var banner    = new PanelContainer();
+		var bannerBox = new VBoxContainer();
+		banner.AddChild(bannerBox);
+
+		var titleLbl = new Label();
+		titleLbl.Text = $"🎖  REUNION  —  {session.ReunionOriginal.Name} has returned.";
+		titleLbl.AddThemeColorOverride("font_color", new Color("3ecdef"));
+		bannerBox.AddChild(titleLbl);
+
+		var subLbl = new Label();
+		subLbl.Text = "Who leads from here?";
+		bannerBox.AddChild(subLbl);
+
+		_reunionPanel.AddChild(banner);
+
+		var btnRow = new HBoxContainer();
+		btnRow.AddThemeConstantOverride("separation", 8);
+
+		var orig    = session.ReunionOriginal;
+		var interim = session.ReunionInterim;
+
+		var keepOrigBtn = new Button();
+		keepOrigBtn.Text              = $"★  {orig.Name} leads\n(interim gets +2 recognition)";
+		keepOrigBtn.ClipText          = false;
+		keepOrigBtn.CustomMinimumSize = new Vector2(220, 48);
+		keepOrigBtn.Pressed += () => OnReunionChoice(keepOriginal: true);
+		btnRow.AddChild(keepOrigBtn);
+
+		var keepInterimBtn = new Button();
+		keepInterimBtn.Text              = $"★  {interim.Name} leads\n(original gets +2 recognition)";
+		keepInterimBtn.ClipText          = false;
+		keepInterimBtn.CustomMinimumSize = new Vector2(220, 48);
+		keepInterimBtn.Pressed += () => OnReunionChoice(keepOriginal: false);
+		btnRow.AddChild(keepInterimBtn);
+
+		_reunionPanel.AddChild(btnRow);
+
+		var sep = new HSeparator();
+		sep.CustomMinimumSize = new Vector2(0, 8);
+		_reunionPanel.AddChild(sep);
+
+		right.AddChild(_reunionPanel);
+		right.MoveChild(_reunionPanel, 0);
+	}
+
+	private void OnReunionChoice(bool keepOriginal)
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		session.ResolveReunion(keepOriginal);
+		GD.Print($"PreMatch: Reunion resolved — keepOriginal={keepOriginal}.");
+
+		if (_reunionPanel != null) { _reunionPanel.QueueFree(); _reunionPanel = null; }
+		RefreshRoster();
+		RefreshDeckDisplay();
 	}
 
 	// ── Hunt panel ───────────────────────────────────────────────────────────

@@ -28,7 +28,9 @@ namespace TripsAndTriads.Rules
 				if (!board.IsInBounds(nRow, nCol)) continue;
 
 				var adj = board.GetCard(nRow, nCol);
-				if (adj == null || adj.OriginalOwnerId != card.OriginalOwnerId) continue;
+				// OwnerId = current controller — only buff cards on Sumi's current team,
+				// not cards that originally belonged to her side but have been captured.
+				if (adj == null || adj.OwnerId != card.OwnerId) continue;
 
 				adj.AdjustAllEdges(+1);
 				GD.Print($"Ledger: {adj.Data.Name} compounds +1 via Sumi's Ledger.");
@@ -41,7 +43,7 @@ namespace TripsAndTriads.Rules
 					var heir = board.GetCard(r, c);
 					if (heir == null) continue;
 					if (heir.Data.Id != "lac_top_the_heir") continue;
-					if (heir.OriginalOwnerId != card.OriginalOwnerId) continue;
+					if (heir.OwnerId != card.OwnerId) continue;
 
 					heir.AdjustAllEdges(+1);
 					GD.Print($"The Inheritance — The Heir compounds +1 alongside Sumi.");

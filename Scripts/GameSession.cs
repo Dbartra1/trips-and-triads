@@ -78,6 +78,14 @@ public partial class GameSession : Node
 	/// <summary>Written by GameBoard after a Hunt match; read by PostMatchScreen.</summary>
 	public bool HeroReclaimed { get; set; } = false;
 
+	// ── Reunion state (set after a successful Reclaim) ────────────────────────
+	/// <summary>True when both original and interim heroes are in the roster awaiting a "Who leads?" decision.</summary>
+	public bool ReunionPending { get; private set; } = false;
+	/// <summary>The hero who was captured and just returned.</summary>
+	public CardData ReunionOriginal { get; private set; } = null;
+	/// <summary>The interim hero who led the Reclaim.</summary>
+	public CardData ReunionInterim { get; private set; } = null;
+
 	// ── Session state ─────────────────────────────────────────────────────────
 	public bool IsInitialized { get; private set; } = false;
 
@@ -184,7 +192,25 @@ public partial class GameSession : Node
 		if (!Roster.Contains(CapturedHero))
 			Roster.Add(CapturedHero);
 		HeroReclaimed = true;
-		ClearHunt();
+
+		// If there's an interim, hold both heroes for the Reunion decision.
+		// ClearHunt is called after the player resolves Who Leads.
+		if (InterimHero != null)
+		{
+			ReunionPending  = true;
+			ReunionOriginal = CapturedHero;
+			ReunionInterim  = InterimHero;
+			// Partial clear — Hunt window closes, but Reunion stays open
+			CapturedHero            = null;
+			CapturingFaction        = Faction.None;
+			ReclamationAttemptsLeft = 0;
+			DeckWhenHeroWasCaptured = new List<CardData>();
+			IsHuntMatch             = false;
+		}
+		else
+		{
+			ClearHunt();
+		}
 	}
 
 	/// <summary>
@@ -272,7 +298,70 @@ public partial class GameSession : Node
 		return promoted;
 	}
 
-	/// <summary>Clear all Hunt state (used by Reclaim, window-close, and new runs).</summary>
+	/// <summary>
+	/// Resolve the post-Reclaim "Who leads?" decision.
+	/// keepOriginal=true: original hero leads, interim steps down with a stat boost.
+	/// keepOriginal=false: interim hero leads, original steps down with a stat boost.
+	/// </summary>
+	public void ResolveReunion(bool keepOriginal)
+	{
+		if (!ReunionPending) return;
+
+		var leader   = keepOriginal ? ReunionOriginal : ReunionInterim;
+		var stepDown = keepOriginal ? ReunionInterim  : ReunionOriginal;
+
+		GD.Print($"GameSession: Reunion resolved — {leader.Name} leads. " +
+		         $"{stepDown.Name} steps down.");
+
+		// Step-down card: restore interim's saved stats if stepping down is the interim,
+		// or just demote tier. Either way give +2 on the highest non-A edge as recognition.
+		if (keepOriginal && _interimSavedStats != null)
+		{
+			// Restore interim to its pre-promotion stats first
+			stepDown.Top         = _interimSavedStats.Top;
+			stepDown.Right       = _interimSavedStats.Right;
+			stepDown.Bottom      = _interimSavedStats.Bottom;
+			stepDown.Left        = _interimSavedStats.Left;
+			stepDown.Level       = _interimSavedStats.Level;
+			stepDown.Tier        = _interimSavedStats.Tier;
+			stepDown.DomainType  = _interimSavedStats.Domain;
+			stepDown.AbilityType = _interimSavedStats.Ability;
+		}
+		else
+		{
+			// Original steps down — demote to TopTier
+			stepDown.Tier       = Tier.TopTier;
+			stepDown.DomainType = DomainType.None;
+		}
+
+		// Recognition boost: +2 on highest non-A edge of the stepping-down card
+		ApplyRecognitionBoost(stepDown);
+
+		GD.Print($"GameSession: {stepDown.Name} steps down → " +
+		         $"{stepDown.Top}/{stepDown.Right}/{stepDown.Bottom}/{stepDown.Left} [{stepDown.Tier}]");
+
+		ReunionPending  = false;
+		ReunionOriginal = null;
+		ReunionInterim  = null;
+		_interimSavedStats = null;
+		InterimHero     = null;
+	}
+
+	private static void ApplyRecognitionBoost(CardData card)
+	{
+		// Find highest edge that isn't already 10, boost it by 2 (capped at 9)
+		int[] edges = { card.Top, card.Right, card.Bottom, card.Left };
+		int bestIdx = -1;
+		int bestVal = -1;
+		for (int i = 0; i < 4; i++)
+		{
+			if (edges[i] < 10 && edges[i] > bestVal) { bestVal = edges[i]; bestIdx = i; }
+		}
+		if (bestIdx < 0) return;
+		edges[bestIdx] = System.Math.Min(edges[bestIdx] + 2, 9);
+		card.Top = edges[0]; card.Right = edges[1];
+		card.Bottom = edges[2]; card.Left = edges[3];
+	}
 	public void ClearHunt()
 	{
 		CapturedHero            = null;
@@ -283,5 +372,8 @@ public partial class GameSession : Node
 		HeroReclaimed           = false;
 		InterimHero             = null;
 		_interimSavedStats      = null;
+		ReunionPending          = false;
+		ReunionOriginal         = null;
+		ReunionInterim          = null;
 	}
 }

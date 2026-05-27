@@ -6,7 +6,7 @@ namespace TripsAndTriads.UI
 {
     public partial class HandNode : Control
     {
-        [Export] public HBoxContainer CardSlots { get; set; }
+        [Export] public VBoxContainer CardSlots { get; set; }
 
         [Signal] public delegate void CardSelectedEventHandler(int handIndex, CardNode cardNode);
 
@@ -37,8 +37,8 @@ namespace TripsAndTriads.UI
             {
                 var cardNode = cardScene.Instantiate<CardNode>();
 
-                // Prevent HBoxContainer from stretching the card vertically
-                cardNode.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+                // Prevent VBoxContainer from stretching the card horizontally
+                cardNode.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
 
                 CardSlots.AddChild(cardNode);
                 cardNode.Initialize(hand[i]);

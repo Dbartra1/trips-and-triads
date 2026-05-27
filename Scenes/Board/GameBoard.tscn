@@ -32,10 +32,10 @@ EndContinueBtn = NodePath("CanvasLayer/GameOverPanel/ButtonRestart")
 [node name="ScoreBar" type="Control" parent="CanvasLayer" unique_id=111111001]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 416.0
-offset_top = 112.0
-offset_right = 872.0
-offset_bottom = 154.0
+offset_left = 424.0
+offset_top = 104.0
+offset_right = 880.0
+offset_bottom = 146.0
 
 [node name="LabelP1" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111002]
 layout_mode = 1
@@ -66,27 +66,24 @@ vertical_alignment = 1
 [node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 416.0
-offset_top = 199.0
-offset_right = 872.0
-offset_bottom = 775.0
+offset_left = 424.0
+offset_top = 168.0
+offset_right = 880.0
+offset_bottom = 744.0
 mouse_filter = 1
 
 [node name="AIHandContainer" type="Control" parent="CanvasLayer" unique_id=40941502]
 custom_minimum_size = Vector2(760, 192)
 layout_mode = 3
 anchors_preset = 0
-offset_left = 260.0
-offset_right = 1020.0
-offset_bottom = 192.0
+offset_left = -184.0
+offset_top = 390.0
+offset_right = 576.0
+offset_bottom = 582.0
+rotation = -6.2831855
 
 [node name="AIHandNode" parent="CanvasLayer/AIHandContainer" unique_id=1094449165 instance=ExtResource("2_l414y")]
 layout_mode = 1
-offset_left = 68.00001
-offset_top = 112.0
-offset_right = 74.0
-offset_bottom = 122.0
-rotation = 1.5707964
 
 [node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
 custom_minimum_size = Vector2(760, 192)
@@ -99,11 +96,10 @@ offset_bottom = 872.0
 
 [node name="HandNode" parent="CanvasLayer/HandContainer" unique_id=1094449164 instance=ExtResource("2_l414y")]
 layout_mode = 1
-offset_left = 924.0
-offset_top = -568.0
-offset_right = 924.0
-offset_bottom = -568.0
-rotation = 1.5710198
+offset_left = 452.0
+offset_top = -296.0
+offset_right = 452.0
+offset_bottom = -296.0
 
 [node name="GameOverPanel" type="Panel" parent="CanvasLayer" unique_id=333333001]
 visible = false

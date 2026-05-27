@@ -42,22 +42,23 @@ public static class SaveManager
         // SelectedDeck and IsHuntMatch are NOT persisted — transient match state.
         // PreMatchScreen always rebuilds the deck fresh each session.
 
-        // Hunt state
-        sess["capturedHeroId"]          = session.CapturedHero?.Id ?? "";
-        sess["capturedHeroFull"]        = session.CapturedHero != null && string.IsNullOrEmpty(session.CapturedHero.Id)
+        // Hunt state — captured hero is NOT in the roster so always save in full.
+        // Interim and reunion cards ARE in the roster; save by Name for procedural cards
+        // (procedural cards have no Id, so Name is the reliable unique key within a run).
+        sess["capturedHeroFull"]        = session.CapturedHero != null
                                           ? SerializeCard(session.CapturedHero) : null;
         sess["capturingFaction"]        = (int)session.CapturingFaction;
         sess["reclamationAttemptsLeft"] = session.ReclamationAttemptsLeft;
         // isHuntMatch and heroReclaimed are transient — not saved
-        sess["interimHeroId"]           = session.InterimHero?.Id ?? "";
-        sess["interimHeroFull"]         = session.InterimHero != null && string.IsNullOrEmpty(session.InterimHero.Id)
+        sess["interimHeroKey"]          = CardKey(session.InterimHero);
+        sess["interimHeroFull"]         = session.InterimHero != null
                                           ? SerializeCard(session.InterimHero) : null;
-        sess["deckWhenHeroWasCaptured"] = SerializeCardRefList(session.DeckWhenHeroWasCaptured);
+        sess["deckWhenHeroWasCaptured"] = SerializeCardKeyList(session.DeckWhenHeroWasCaptured);
 
         // Reunion state
         sess["reunionPending"]      = session.ReunionPending;
-        sess["reunionOriginalId"]   = session.ReunionOriginal?.Id ?? "";
-        sess["reunionInterimId"]    = session.ReunionInterim?.Id ?? "";
+        sess["reunionOriginalKey"]  = CardKey(session.ReunionOriginal);
+        sess["reunionInterimKey"]   = CardKey(session.ReunionInterim);
 
         root["session"] = sess;
 
@@ -107,34 +108,28 @@ public static class SaveManager
         // SelectedDeck is not restored — PreMatchScreen rebuilds it each session.
 
         // Hunt state
-        var capturedId = sess["capturedHeroId"]?.ToString();
-        if (!string.IsNullOrEmpty(capturedId))
+        // Captured hero is always deserialized from full data (not in roster).
+        var captured = DeserializeSingleCard(sess["capturedHeroFull"]);
+        if (captured != null)
         {
-            var captured = FindCardInRoster(session.Roster, capturedId)
-                           ?? DeserializeSingleCard(sess["capturedHeroFull"]);
-            if (captured != null)
-            {
-                var faction = (Faction)(int)(sess["capturingFaction"] ?? 0);
-                int attempts = (int)(sess["reclamationAttemptsLeft"] ?? 2);
-                session.LoadHuntState(captured, faction, attempts);
-            }
+            var faction  = (Faction)(int)(sess["capturingFaction"] ?? 0);
+            int attempts = (int)(sess["reclamationAttemptsLeft"] ?? 2);
+            session.LoadHuntState(captured, faction, attempts);
         }
 
-        var interimId = sess["interimHeroId"]?.ToString();
-        if (!string.IsNullOrEmpty(interimId))
-        {
-            var interim = FindCardInRoster(session.Roster, interimId)
-                          ?? DeserializeSingleCard(sess["interimHeroFull"]);
-            if (interim != null) session.LoadInterimHero(interim);
-        }
+        // Interim is in the roster — find by Name (key) then fall back to full data.
+        var interimKey = sess["interimHeroKey"]?.ToString();
+        var interim    = FindByKey(session.Roster, interimKey)
+                         ?? DeserializeSingleCard(sess["interimHeroFull"]);
+        if (interim != null) session.LoadInterimHero(interim);
 
         var deckSnap = sess["deckWhenHeroWasCaptured"]?.AsArray();
         if (deckSnap != null)
         {
             var snap = new List<CardData>();
-            foreach (var idNode in deckSnap)
+            foreach (var keyNode in deckSnap)
             {
-                var card = FindCardInRoster(session.Roster, idNode?.ToString());
+                var card = FindByKey(session.Roster, keyNode?.ToString());
                 if (card != null) snap.Add(card);
             }
             session.LoadDeckSnapshot(snap);
@@ -146,10 +141,8 @@ public static class SaveManager
         bool reunionPending = (bool)(sess["reunionPending"] ?? false);
         if (reunionPending)
         {
-            var origId   = sess["reunionOriginalId"]?.ToString();
-            var interId  = sess["reunionInterimId"]?.ToString();
-            var origCard = FindCardInRoster(session.Roster, origId);
-            var interCard = FindCardInRoster(session.Roster, interId);
+            var origCard  = FindByKey(session.Roster, sess["reunionOriginalKey"]?.ToString());
+            var interCard = FindByKey(session.Roster, sess["reunionInterimKey"]?.ToString());
             if (origCard != null && interCard != null)
                 session.LoadReunionState(origCard, interCard);
         }
@@ -182,6 +175,25 @@ public static class SaveManager
 
     // ── Serialization helpers ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// Returns the best unique key for a card.
+    /// Named cards (in cards.json) use their database Id.
+    /// Procedural cards have no Id — use Name, which is unique within a run.
+    /// </summary>
+    private static string CardKey(CardData card)
+    {
+        if (card == null) return "";
+        return !string.IsNullOrEmpty(card.Id) ? card.Id : card.Name;
+    }
+
+    /// <summary>Find a card in the roster by its CardKey (Id first, then Name).</summary>
+    private static CardData FindByKey(List<CardData> roster, string key)
+    {
+        if (string.IsNullOrEmpty(key)) return null;
+        return roster.Find(c => !string.IsNullOrEmpty(c.Id) && c.Id == key)
+               ?? roster.Find(c => c.Name == key);
+    }
+
     private static JsonArray SerializeCardList(List<CardData> cards)
     {
         var arr = new JsonArray();
@@ -190,12 +202,12 @@ public static class SaveManager
         return arr;
     }
 
-    /// <summary>For deck/snapshot references — save Id only (card is already in roster).</summary>
-    private static JsonArray SerializeCardRefList(List<CardData> cards)
+    /// <summary>For deck/snapshot references — save CardKey so lookup works for both named and procedural cards.</summary>
+    private static JsonArray SerializeCardKeyList(List<CardData> cards)
     {
         var arr = new JsonArray();
         foreach (var card in cards)
-            arr.Add(card.Id ?? "");
+            arr.Add(CardKey(card));
         return arr;
     }
 
@@ -258,13 +270,5 @@ public static class SaveManager
         card.DomainType  = (DomainType)(int)(obj["domainType"]  ?? 0);
         card.AbilityType = (AbilityType)(int)(obj["abilityType"] ?? 0);
         return card;
-    }
-
-    private static CardData FindCardInRoster(List<CardData> roster, string id)
-    {
-        if (string.IsNullOrEmpty(id)) return null;
-        // Match by Id first, then by Name for procedural cards (Id is empty)
-        return roster.Find(c => c.Id == id)
-               ?? roster.Find(c => c.Name == id);
     }
 }

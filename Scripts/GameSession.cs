@@ -261,6 +261,18 @@ public partial class GameSession : Node
 		}
 		if (target == null) { GD.PrintErr("GameSession: StepUp — no candidate found."); return null; }
 
+		// If the target is already a hero (captured from AI, won from previous matches),
+		// just designate them as interim — no stat mutation needed.
+		// _interimSavedStats = null signals "no restoration needed on step-down or Change".
+		if (target.Tier == Tier.Hero)
+		{
+			InterimHero        = target;
+			_interimSavedStats = null;
+			GD.Print($"GameSession: Step Up — {target.Name} designated as interim (already hero) " +
+			         $"| {target.Top}/{target.Right}/{target.Bottom}/{target.Left}");
+			return target;
+		}
+
 		_interimSavedStats = new SavedStats
 		{
 			Top     = target.Top,   Right   = target.Right,
@@ -269,13 +281,6 @@ public partial class GameSession : Node
 			Domain  = target.DomainType,
 			Ability = target.AbilityType,
 		};
-
-		if (target.Tier == Tier.Hero)
-		{
-			GD.PrintErr("GameSession: StepUp — target is already a hero.");
-			_interimSavedStats = null;
-			return null;
-		}
 
 		var promoted = StepUpPromoter.PromoteSpecific(target);
 
@@ -313,23 +318,32 @@ public partial class GameSession : Node
 		GD.Print($"GameSession: Reunion resolved — {leader.Name} leads. " +
 		         $"{stepDown.Name} steps down.");
 
-		// Step-down card: restore interim's saved stats if stepping down is the interim,
-		// or just demote tier. Either way give +2 on the highest non-A edge as recognition.
-		if (keepOriginal && _interimSavedStats != null)
+		// Step-down logic depends on whether the interim was a promoted non-hero
+		// (_interimSavedStats != null) or an existing hero (_interimSavedStats == null).
+		if (keepOriginal)
 		{
-			// Restore interim to its pre-promotion stats first
-			stepDown.Top         = _interimSavedStats.Top;
-			stepDown.Right       = _interimSavedStats.Right;
-			stepDown.Bottom      = _interimSavedStats.Bottom;
-			stepDown.Left        = _interimSavedStats.Left;
-			stepDown.Level       = _interimSavedStats.Level;
-			stepDown.Tier        = _interimSavedStats.Tier;
-			stepDown.DomainType  = _interimSavedStats.Domain;
-			stepDown.AbilityType = _interimSavedStats.Ability;
+			if (_interimSavedStats != null)
+			{
+				// Interim was a promoted non-hero — restore original stats
+				stepDown.Top         = _interimSavedStats.Top;
+				stepDown.Right       = _interimSavedStats.Right;
+				stepDown.Bottom      = _interimSavedStats.Bottom;
+				stepDown.Left        = _interimSavedStats.Left;
+				stepDown.Level       = _interimSavedStats.Level;
+				stepDown.Tier        = _interimSavedStats.Tier;
+				stepDown.DomainType  = _interimSavedStats.Domain;
+				stepDown.AbilityType = _interimSavedStats.Ability;
+			}
+			else
+			{
+				// Interim was already a hero — demote to TopTier
+				stepDown.Tier       = Tier.TopTier;
+				stepDown.DomainType = DomainType.None;
+			}
 		}
 		else
 		{
-			// Original steps down — demote to TopTier
+			// Original steps down — always demote to TopTier
 			stepDown.Tier       = Tier.TopTier;
 			stepDown.DomainType = DomainType.None;
 		}

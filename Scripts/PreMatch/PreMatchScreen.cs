@@ -130,26 +130,39 @@ public partial class PreMatchScreen : Control
 			cardNode.Initialize(new CardInstance(card, ownerId: 1));
 			cardNode.CustomMinimumSize = new Vector2(120, 160);
 
-			var captured = card;
+			var cardRef = card; // closure-safe copy
 			if (_stepUpMode)
 			{
-				// Step-up mode: show projected post-promotion stats and a Promote button.
-				// Heroes already in the roster can't be promoted again.
-				if (card.Tier == Tier.Hero)
+				var session      = GameSession.Instance;
+				var capturedHero = session?.CapturedHero;
+
+				if (card.Tier == Tier.Hero && card == capturedHero)
 				{
-					var alreadyLbl = new Label();
-					alreadyLbl.Text              = "(current hero)";
-					alreadyLbl.CustomMinimumSize = new Vector2(120, 30);
-					wrapper.AddChild(alreadyLbl);
+					// This is the captured hero — can't use it as interim
+					var lbl = new Label();
+					lbl.Text              = "(captured)";
+					lbl.CustomMinimumSize = new Vector2(120, 30);
+					wrapper.AddChild(lbl);
+				}
+				else if (card.Tier == Tier.Hero)
+				{
+					// Existing hero in roster — selectable as interim directly, no stat change
+					var promoteBtn = new Button();
+					promoteBtn.Text              = $"↑ {card.Name}\n(hero)";
+					promoteBtn.ClipText          = false;
+					promoteBtn.CustomMinimumSize = new Vector2(120, 46);
+					promoteBtn.Pressed += () => OnPromoteCardSelected(cardRef);
+					wrapper.AddChild(promoteBtn);
 				}
 				else
 				{
+					// Non-hero — show projected post-promotion stats
 					var (pt, pr, pb, pl) = StepUpPromoter.PreviewPromotion(card);
 					var promoteBtn = new Button();
 					promoteBtn.Text              = $"↑ {card.Name}\n→ {pt}/{pr}/{pb}/{pl}";
 					promoteBtn.ClipText          = false;
 					promoteBtn.CustomMinimumSize = new Vector2(120, 46);
-					promoteBtn.Pressed += () => OnPromoteCardSelected(captured);
+					promoteBtn.Pressed += () => OnPromoteCardSelected(cardRef);
 					wrapper.AddChild(promoteBtn);
 				}
 			}
@@ -161,7 +174,7 @@ public partial class PreMatchScreen : Control
 				btn.CustomMinimumSize = new Vector2(120, 30);
 				btn.Pressed += () =>
 				{
-					AddToDeck(captured);
+					AddToDeck(cardRef);
 					RefreshDeckDisplay();
 				};
 				wrapper.AddChild(btn);

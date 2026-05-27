@@ -551,9 +551,9 @@ public partial class PreMatchScreen : Control
 
 	private void OnNewRun()
 	{
-		GD.Print("PreMatch: starting new run.");
+		GD.Print("PreMatch: starting new run — returning to main menu.");
 		GameSession.Instance?.InitializeNewRun();
-		GetTree().ReloadCurrentScene();
+		GetTree().ChangeSceneToFile("res://Scenes/MainMenu.tscn");
 	}
 
 	// ── Start match ───────────────────────────────────────────────────────────

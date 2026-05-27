@@ -15,10 +15,11 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "ScoreP1", "ScoreP2", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "AIHand", "ScoreP1", "ScoreP2", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
 script = ExtResource("1_luxp4")
 BoardContainer = NodePath("CanvasLayer/BoardContainer")
 PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
+AIHand = NodePath("CanvasLayer/AIHandContainer/AIHandNode")
 ScoreP1 = NodePath("CanvasLayer/ScoreBar/LabelP1")
 ScoreP2 = NodePath("CanvasLayer/ScoreBar/LabelP2")
 EndPanel = NodePath("CanvasLayer/GameOverPanel")
@@ -70,6 +71,18 @@ offset_top = 80.0
 offset_right = 868.0
 offset_bottom = 656.0
 mouse_filter = 1
+
+[node name="AIHandContainer" type="Control" parent="CanvasLayer" unique_id=40941502]
+custom_minimum_size = Vector2(760, 192)
+layout_mode = 3
+anchors_preset = 0
+offset_left = 260.0
+offset_top = -200.0
+offset_right = 1020.0
+offset_bottom = -8.0
+
+[node name="AIHandNode" parent="CanvasLayer/AIHandContainer" unique_id=1094449165 instance=ExtResource("2_l414y")]
+layout_mode = 1
 
 [node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
 custom_minimum_size = Vector2(760, 192)

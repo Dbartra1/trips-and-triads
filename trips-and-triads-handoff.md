@@ -1,6 +1,6 @@
-# Trips & Triads — Dev Handoff (Session 4)
+# Trips & Triads — Dev Handoff (Session 6)
 
-*Last updated end of context window 4. Hand this document back at the start of every new session.*
+*Last updated end of context window 6. Hand this document back at the start of every new session.*
 
 ---
 
@@ -60,7 +60,7 @@ Scripts/
     GameManager.cs        — Turn manager, VesnaStartingCap=7, DealHands, PlayCard,
                             ApplyTurnEndAbilities, ResolveDecayCaptures
     NameGenerator.cs      — Syllable tables, hero titles, usedFirstNames dedup
-    SaveManager.cs        — NEW: Save/load campaign state to user://savegame.json
+    SaveManager.cs        — Save/load campaign state to user://savegame.json
     StepUpPromoter.cs     — promotes highest-stat non-hero card to Hero tier (systems.md §7.5)
   Rules/
     ICardAbility.cs / IProtocol.cs
@@ -114,14 +114,14 @@ Player 7-card crew (Hero + Pro + 5 Street), AI fixed hand (Vesna + Verity + 3 St
   - **TheSpread** — winner takes N cards equal to score margin; heroes sorted last
   - **AsFlipped** — player keeps AI-original cards they control; loses P1-original cards AI controls
   - **Everything** — winner takes loser's entire board hand
-- Run-over condition: roster < 5 → message replaces grid, button rewired to New Run (horizontal label fix confirmed)
+- Run-over condition: roster < 5 → message replaces grid, button rewired to New Run
 
-### Save States (Phase 8a — new this session)
+### Save States (Phase 8a — confirmed working)
 Full implementation of campaign persistence via `Scripts/Core/SaveManager.cs`.
 
-**`CardData.ShallowClone()`** — new method, used by SaveManager to clone database templates before applying saved mutations.
+**`CardData.ShallowClone()`** — used by SaveManager to clone database templates before applying saved mutations.
 
-**`DistrictManager.GetAllMeters()` / `SetMeter()`** — new methods exposing control meter state for save/load.
+**`DistrictManager.GetAllMeters()` / `SetMeter()`** — expose control meter state for save/load.
 
 **`GameSession` load methods** — `LoadRoster`, `LoadHuntState`, `LoadInterimHero`, `LoadDeckSnapshot`, `LoadReunionState` — called exclusively by SaveManager.
 
@@ -130,45 +130,32 @@ Full implementation of campaign persistence via `Scripts/Core/SaveManager.cs`.
 - `InitializeNewRun()` — deletes existing save (fresh start)
 - `_Ready()` — attempts `SaveManager.LoadGame()` on startup; falls back to `InitializeNewRun()` if no save exists
 
-**What is saved:** Roster (full CardData including procedural and mutated stats), Hunt state (captured hero, captor faction, reclaim attempts, interim hero, deck snapshot), Reunion state, district control meters, active district ID.
+**What is saved:** Roster (full CardData including procedural and mutated stats), Hunt state (captured hero stored in full — not a roster reference — captor faction, reclaim attempts, interim hero, deck snapshot), Reunion state, district control meters, active district ID.
 
-**Save format:** JSON at `user://savegame.json`. Named cards (those with an Id in CardDatabase) are saved by Id + mutations. Procedural cards are saved in full.
+**Save format:** JSON at `user://savegame.json`. Named cards use database Id as key. Procedural cards (all player-generated cards) use Name as key — `CardKey()` handles this automatically.
 
-### Sumi ability fix (this session)
-`GameManager.ApplyTurnEndAbilities` — added `card.OwnerId != CurrentPlayerId` guard. A Compound hero that has been captured and flipped to AI control no longer fires its Ledger ability on P1's turn, which was causing the AI's cards to be buffed.
+### MainMenu (Sessions 5–6)
+`Scripts/MainMenu.cs` and `Scenes/MainMenu.tscn` — **Continue** button appears only when a save file exists; goes directly to PreMatchScreen with loaded state. **New Run** calls `InitializeNewRun()` (deletes save, fresh crew), then goes to PreMatchScreen. `project.godot` — `run/main_scene` = `res://Scenes/MainMenu.tscn`.
 
-### StartButton double-wire fix (this session)
-`PreMatchScreen.CheckRunOver` — added early return `if (_isRunOver) return true` to prevent double disconnect/reconnect of StartButton signal when called a second time via `OnPromoteCardSelected`.
-Full implementation of `systems.md §7`.
+### AI Hand Always Visible (Session 6)
+`GameBoard.tscn` — added `AIHandContainer` + `AIHandNode` (second HandNode instance) positioned above the board (offset_top = -200 to -8, symmetrically opposite the player hand at 680–872). `[Export] public HandNode AIHand` wired to `CanvasLayer/AIHandContainer/AIHandNode`.
 
-**`Scripts/Core/StepUpPromoter.cs` (new)**
-- `Promote(deckCards)`: finds highest-stat non-hero, sets A (10) on its highest edge, caps lowest edge to ≤3, assigns faction DomainType, promotes Tier to Hero
+`GameBoard.cs` — `RefreshAIHand()` called after `DealHands`: populates AI hand via `AIHand.PopulateHand(_game.GetHand(2))` then calls `AIHand.SetInteractive(false)`. In `RunAI()`, `AIHand?.RemoveCard(bestHandIndex)` is called before `PlayCard` so the display stays in sync as the AI plays out.
 
-**`GameSession` Hunt state**
-- `CapturedHero`, `CapturingFaction`, `ReclamationAttemptsLeft` (starts at 2), `DeckWhenHeroWasCaptured`
-- `IsHeadless` (computed: CapturedHero != null), `IsHuntMatch`, `HeroReclaimed`
-- `SetCapturedHero(hero, faction)` — opens window, removes hero from roster, snapshots deck
-- `ConsumeReclaimAttempt()` — burns one attempt
-- `ReclaimHero()` — returns hero to roster, sets HeroReclaimed, calls ClearHunt
-- `StepUp()` — delegates to StepUpPromoter, clears Hunt
-- `ClearHunt()` — resets all Hunt state; also called by InitializeNewRun
+`HandNode.cs` — `SetInteractive(bool)` strips the invisible click-button overlay from every card node in the hand. When `false`, removes the Button child from each CardNode so cards are visible but unclickable.
 
-**`GameBoard` Hunt logic**
-- AI hand: if IsHuntMatch, splices CapturedHero into AI hand (replaces last Street)
-- `wasHuntMatch` captured before state mutation; win → ReclaimHero(); loss → ConsumeReclaimAttempt()
-- `TryLoseCard(session, card)`: adds to CardsLost; if card is a Hero, calls SetCapturedHero
-- `GetAllBoardCards(ownerId)`: new helper, heroes sorted last for margin-capped stakes
-- `GetAIHeroFaction()`: new helper for captor faction detection
+### Lethe Base-Value Fix (Session 6)
+`LetheAbility.cs` — `OnPlaced` now uses `GetBaseValue()` instead of `GetValue()` for both the total-comparison loop and the override assignment. Per `lore.md §7`: "copies the four numbers only — not Domains or bonds." `GetValue()` was including transient domain/bond bonuses (e.g., a Yune under Aegis Protocol would give Lethe buffed values); `GetBaseValue()` is correct.
 
-**`PreMatchScreen` Hunt panel**
-- `BuildHuntPanel()` injected at top of HSplit/Right when IsHeadless
-- Banner: hero name, captor faction, attempts remaining (or "Window closed" when 0)
-- **Reclaim** button (visible while attempts > 0): requires full deck, sets IsHuntMatch=true, launches GameBoard
-- **Buyout** button: disabled, labelled "Phase 9" — HollowChoir shows "The Choir do not sell." instead
-- **Step Up** button: promotes best surviving card, clears Hunt, rebuilds roster display
+### New Run → MainMenu routing (Session 6)
+`PreMatchScreen.OnNewRun` — changed `ReloadCurrentScene()` to `ChangeSceneToFile("res://Scenes/MainMenu.tscn")`. When a run ends and the player clicks "Run Over — New Run", they now always return to the main menu rather than reloading PreMatchScreen in place.
 
-**`PostMatchScreen` Hunt annotation**
-- ResultLabel appends: "✓ Hero reclaimed!" / "✕ Hero still captured — N attempts remaining" / "✕ Reclaim window closed"
+### Other Session 5 fixes (still valid)
+- **GameBoard redirect fix** — no valid 5-card deck → `CallDeferred` redirect to PreMatchScreen
+- **Sumi ability fix** — `OriginalOwnerId != CurrentPlayerId` guard prevents captured Sumi from buffing enemy team
+- **StartButton double-wire fix** — `if (_isRunOver) return true` early return in `CheckRunOver`
+- Full Hunt system: capture → Headless → Step Up → Reclaim → Reunion banner
+- Existing heroes designatable as interim (no stat mutation)
 
 ---
 
@@ -181,10 +168,7 @@ BondResolver.ContaminationEnabled = district.Controller == "HollowChoir";
 ```
 
 ### The Rivalry — double log
-`BondResolver.Apply` called twice in `GameManager.PlayCard`. Cosmetic only, no gameplay impact.
-
-### Spreading Rule resets on every session
-`DistrictManager.Initialize()` was previously called in `GameBoard._Ready()`, resetting all meters. **Fixed in Phase 8a** — district meters now persist via `SaveManager`.
+`BondResolver.Apply` called twice in `GameManager.PlayCard`. Cosmetic only, no gameplay impact. The first call exists for Contamination (disabled); the second follows DomainResolver. Will become non-redundant when Contamination is re-enabled.
 
 ### Conscription pool
 AI always uses its fixed hand under Conscription — AI has no roster to draw from.
@@ -196,16 +180,28 @@ Per `systems.md §5.1` — cards joining roster by capture should arrive Shaken 
 Hunt panel shows disabled Buyout button with "Phase 9" label. Full buyout requires scrip economy (Phase 9).
 
 ### Hunt matches currently run district protocols
-Hunt (Reclaim) matches inherit the district's active protocols (Wall Signature, Cascade, etc.) on top of the AsFlipped stake. This is unintentional — `systems.md §7.3` specifies only "AsFlipped, hero-stake rule" with no mention of protocols. The fix (build a clean base-capture-only `MatchConfig` when `session.IsHuntMatch` is true in `GameBoard._Ready`) is deferred to Phase 9. Implementation: one `if (session.IsHuntMatch)` branch before `_matchConfig = DistrictManager.Instance.BuildMatchConfig()`.
+Hunt (Reclaim) matches inherit the district's active protocols. `systems.md §7.3` specifies only "AsFlipped, hero-stake rule" with no protocols. Fix: one `if (session.IsHuntMatch)` branch before `_matchConfig = DistrictManager.Instance.BuildMatchConfig()` in `GameBoard._Ready`, building a clean base-capture-only config instead. Deferred to Phase 9.
 
 ### Multi-Hunt not implemented
-Currently only one Hero Hunt can be active at a time. If your hero is captured while already Headless, the second capture is silently dropped (the card is removed from roster but no Hunt opens). Phase 7c will add `List<HuntEntry>` to `GameSession`, a Hunt cap of 3, oldest-Hunt expiry, and a Hunt selector UI in `PreMatchScreen`.
+Only one Hero Hunt can be active at a time. Second hero capture while Headless is silently dropped (card removed from roster, no Hunt opens). Phase 7c: `List<HuntEntry>` in `GameSession`, Hunt cap of 3, oldest-Hunt expiry, Hunt selector UI in PreMatchScreen.
 
-### MainMenu routing
-`PreMatchScreen.OnNewRun` calls `InitializeNewRun()` directly and routes to `PreMatchScreen`, bypassing `MainMenu`. Should route back to `MainMenu.tscn`. Fix: change `GetTree().ChangeSceneToFile("res://Scenes/PreMatch/PreMatchScreen.tscn")` in `OnNewRun` to `"res://Scenes/MainMenu.tscn"`.
+### AI hand position may need scene layout tuning
+`AIHandContainer` uses `offset_top = -200.0` (above the board's 80px top). Depending on the window resolution this may clip. Tune the offset in the scene editor — the hand should sit in the negative-Y space above the board container (which starts at Y=80).
 
-### Enemy hand not visible
-AI hand exists as `List<CardInstance>` in `GameManager` but has no visual node. Only visible under the Intercept protocol. Fix: add a second `HandNode` to `Scenes/Board/GameBoard.tscn` and export it on `GameBoard` as `AIHand`; populate it alongside `PlayerHand` in `DealHands`.
+### Captured Sumi never benefits P1 after being won
+`ApplyTurnEndAbilities` guards on `OriginalOwnerId == CurrentPlayerId`. A Sumi won from the AI (OriginalOwnerId=2) will never fire her Compound for P1. This is the conservative choice for a pre-campaign game; revisit when the roster system makes cross-origin heroes common.
+
+### `_selectedHandIndex` dead field
+`GameBoard._selectedHandIndex` is set but never read — the actual index is always computed via `hand.IndexOf`. Safe to remove in any cleanup pass.
+
+### `SelectCardFromHand()` dead method
+`GameBoard.SelectCardFromHand()` is never called anywhere. Safe to remove.
+
+### `DistrictLabel` export unwired
+`GameBoard.cs` exports `DistrictLabel` but `GameBoard.tscn` has no matching node. The code null-checks it. Wire a label node in the scene or remove the export.
+
+### Bondresolver.cs filename casing
+`Scripts/Rules/Bondresolver.cs` — lowercase `r`. Safe on Windows; Linux builds will fail if the namespace import ever case-sensitively fails. Rename to `BondResolver.cs` in a cleanup pass.
 
 ---
 
@@ -225,10 +221,8 @@ AI hand exists as `List<CardInstance>` in `GameManager` but has no visual node. 
 
 ## What's Next (Priority Order)
 
-### Immediate cleanup (next session)
-- **MainMenu routing** — one-line fix in `PreMatchScreen.OnNewRun` (see Known Issues)
-- **Enemy hand visible** — add `AIHand` node to `GameBoard.tscn` + populate in `DealHands` (see Known Issues)
-- **Testing suite** — dedicated Claude Code session; automate game-state assertions and gameplay simulations
+### Immediate — Testing suite
+Dedicated Claude Code session. Automate game-state assertions and gameplay simulations to produce data on win rates, capture patterns, and system edge cases.
 
 ### Phase 8b — Street Cred (`systems.md §8`)
 Single broad campaign stat (Nameless → Known → Named → Notorious → Legend). Affects:
@@ -262,6 +256,8 @@ Prestige condition (Legend cred + take The Vault). Skyline rival system. Two end
 - **Contamination re-enable**: wire `BondResolver.ContaminationEnabled` to district controller check
 - **Conscription AI roster**: give AI a persistent roster so Conscription draws from it
 - **Faction-specific AI decks**: AI always fields Vesna+Verity; Phase 8b+ should vary by district controller
+- **Dead code cleanup**: remove `_selectedHandIndex`, `SelectCardFromHand()`, wire or remove `DistrictLabel`
+- **Bondresolver.cs rename**: `Bondresolver.cs` → `BondResolver.cs` for Linux safety
 
 ---
 

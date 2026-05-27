@@ -8,6 +8,7 @@ public partial class GameBoard : Node2D
 {
 	[Export] public Control  BoardContainer { get; set; }
 	[Export] public HandNode PlayerHand     { get; set; }
+	[Export] public HandNode AIHand         { get; set; }
 	[Export] public Label    ScoreP1        { get; set; }
 	[Export] public Label    ScoreP2        { get; set; }
 	[Export] public Label    DistrictLabel  { get; set; }
@@ -132,6 +133,7 @@ public partial class GameBoard : Node2D
 
 		SpawnGrid();
 		RefreshHand();
+		RefreshAIHand();
 		UpdateScores();
 
 		if (PlayerHand != null)
@@ -159,6 +161,20 @@ public partial class GameBoard : Node2D
 	{
 		if (PlayerHand == null) return;
 		PlayerHand.PopulateHand(_game.GetHand(1));
+	}
+
+	/// <summary>
+	/// Populates the AI hand display. Called once after DealHands.
+	/// AI cards show with OwnerId=2 (magenta) and are non-interactive —
+	/// HandNode's click buttons are removed after population.
+	/// Under Intercept this was the only time the AI hand was visible;
+	/// now it is always shown so the player can see what they're up against.
+	/// </summary>
+	private void RefreshAIHand()
+	{
+		if (AIHand == null) return;
+		AIHand.PopulateHand(_game.GetHand(2));
+		AIHand.SetInteractive(false);
 	}
 
 	private void UpdateScores()
@@ -502,6 +518,9 @@ public partial class GameBoard : Node2D
 
 		var aiCard = _cardScene.Instantiate<CardNode>();
 		aiCard.Initialize(hand[bestHandIndex]);
+
+		// Remove from AI hand display before PlayCard mutates the hand list.
+		AIHand?.RemoveCard(bestHandIndex);
 
 		var captured = _game.PlayCard(bestHandIndex, bestRow, bestCol);
 		if (captured == null) return;

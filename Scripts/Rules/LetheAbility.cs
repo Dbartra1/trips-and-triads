@@ -7,13 +7,13 @@ namespace TripsAndTriads.Rules
 	/// The Understudy — printed 0/0/0/0. On placement, permanently copies the
 	/// four edge values of the highest-total card currently on the board.
 	/// Placed into an empty board she stays a corpse. Copies numbers only —
-	/// not abilities, faction, or bonds.
+	/// not abilities, faction, bonds, or transient domain/bond bonuses.
 	/// </summary>
 	public class LetheAbility : ICardAbility
 	{
 		public void OnPlaced(BoardState board, CardInstance card, int row, int col)
 		{
-			CardInstance best     = null;
+			CardInstance best      = null;
 			int          bestTotal = -1;
 
 			for (int r = 0; r < BoardState.Size; r++)
@@ -25,10 +25,12 @@ namespace TripsAndTriads.Rules
 					var other = board.GetCard(r, c);
 					if (other == null) continue;
 
-					int total = other.GetValue(Direction.Top)
-					          + other.GetValue(Direction.Right)
-					          + other.GetValue(Direction.Bottom)
-					          + other.GetValue(Direction.Left);
+					// Use GetBaseValue — lore: "copies the four numbers only, not Domains or bonds."
+					// GetValue() includes transient domain/bond bonuses which Lethe must not copy.
+					int total = other.GetBaseValue(Direction.Top)
+					          + other.GetBaseValue(Direction.Right)
+					          + other.GetBaseValue(Direction.Bottom)
+					          + other.GetBaseValue(Direction.Left);
 
 					if (total > bestTotal)
 					{
@@ -44,16 +46,16 @@ namespace TripsAndTriads.Rules
 				return;
 			}
 
-			card.TopOverride    = best.GetValue(Direction.Top);
-			card.RightOverride  = best.GetValue(Direction.Right);
-			card.BottomOverride = best.GetValue(Direction.Bottom);
-			card.LeftOverride   = best.GetValue(Direction.Left);
+			card.TopOverride    = best.GetBaseValue(Direction.Top);
+			card.RightOverride  = best.GetBaseValue(Direction.Right);
+			card.BottomOverride = best.GetBaseValue(Direction.Bottom);
+			card.LeftOverride   = best.GetBaseValue(Direction.Left);
 
-			GD.Print($"Lethe copies {best.Data.Name} — " +
-			         $"becomes {card.GetValue(Direction.Top)}/" +
-			         $"{card.GetValue(Direction.Right)}/" +
-			         $"{card.GetValue(Direction.Bottom)}/" +
-			         $"{card.GetValue(Direction.Left)}");
+			GD.Print($"Lethe copies {best.Data.Name} (base values) — " +
+			         $"becomes {card.GetBaseValue(Direction.Top)}/" +
+			         $"{card.GetBaseValue(Direction.Right)}/" +
+			         $"{card.GetBaseValue(Direction.Bottom)}/" +
+			         $"{card.GetBaseValue(Direction.Left)}");
 		}
 
 		public void OnTurnEnd(BoardState board, CardInstance card, int row, int col)

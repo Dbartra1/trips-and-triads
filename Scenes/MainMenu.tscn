@@ -2,14 +2,15 @@
 
 [ext_resource type="Script" uid="uid://c5g2bo3prmekv" path="res://Scripts/MainMenu.cs" id="1_tt5f1"]
 
-[node name="MainMenu" type="Control" unique_id=2110343158 node_paths=PackedStringArray("NewRunButton", "QuitButton")]
+[node name="MainMenu" type="Control" unique_id=2110343158 node_paths=PackedStringArray("NewRunButton", "ContinueButton", "QuitButton")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_tt5f1")
-NewRunButton = NodePath("Center/VBox/NewRunButton")
-QuitButton = NodePath("Center/VBox/QuitButton")
+NewRunButton    = NodePath("Center/VBox/NewRunButton")
+ContinueButton  = NodePath("Center/VBox/ContinueButton")
+QuitButton      = NodePath("Center/VBox/QuitButton")
 
 [node name="Center" type="CenterContainer" parent="." unique_id=2110964651]
 layout_mode = 0
@@ -33,6 +34,11 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "A cyberpunk card game"
 horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="Center/VBox" unique_id=123456789]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+text = "Continue"
 
 [node name="NewRunButton" type="Button" parent="Center/VBox" unique_id=16933829]
 custom_minimum_size = Vector2(200, 50)

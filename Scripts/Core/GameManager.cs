@@ -175,7 +175,12 @@ namespace TripsAndTriads.Core
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
-					if (card == null || card.OriginalOwnerId != CurrentPlayerId) continue;
+					// Only fire abilities on cards whose original owner is the current player
+					// AND who are still controlled by that player — a captured Compound hero
+					// should not buff the enemy team.
+					if (card == null) continue;
+					if (card.OriginalOwnerId != CurrentPlayerId) continue;
+					if (card.OwnerId != CurrentPlayerId) continue;
 					card.Ability?.OnTurnEnd(Board, card, r, c);
 				}
 		}

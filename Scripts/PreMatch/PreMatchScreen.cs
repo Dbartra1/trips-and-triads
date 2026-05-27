@@ -496,6 +496,11 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		if (session == null) return false;
 
+		// If already in run-over state, return true immediately — don't re-wire
+		// the StartButton. This prevents the double-disconnect error when
+		// OnPromoteCardSelected calls CheckRunOver a second time.
+		if (_isRunOver) return true;
+
 		// A valid deck needs 5 cards with at most 1 hero.
 		// Selectable slots = non-heroes + min(heroes, 1).
 		int heroes     = session.Roster.FindAll(c => c.Tier == Tier.Hero).Count;

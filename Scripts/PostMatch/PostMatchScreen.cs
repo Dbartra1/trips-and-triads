@@ -53,7 +53,7 @@ public partial class PostMatchScreen : Control
 			}
 
 			ResultLabel.Text = resultText;
-			var color = session.PlayerWon ? new Color("4a90d9") : new Color("d94a4a");
+			var color = session.PlayerWon ? new Color("3ecdef") : new Color("fd1d75");
 			ResultLabel.AddThemeColorOverride("font_color", color);
 		}
 

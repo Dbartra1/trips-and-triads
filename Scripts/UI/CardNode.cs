@@ -16,38 +16,11 @@ namespace TripsAndTriads.UI
 
         private CardInstance _cardInstance;
 
-        // Set to true by PreMatchScreen for the interim hero so border shows orange.
-        public bool IsInterim { get; set; } = false;
-
-        private static readonly Color P1Color      = new Color("4a90d9");
-        private static readonly Color P2Color      = new Color("d94a4a");
-        private static readonly Color SelectedTint = new Color(1.25f, 1.25f, 1.25f);
-
-        // ── Tier border colors — cyberpunk loot rarity ─────────────────────────
-        private static Color TierBorderColor(Tier tier, bool isInterim) => tier switch
-        {
-            Tier.Hero    => isInterim ? new Color("ff6d00") : new Color("ea00ff"),
-            Tier.TopTier => new Color("ffd600"),
-            Tier.Pro     => new Color("00e5ff"),
-            _            => new Color("78909c"),   // Street
-        };
-
-        private static Color FactionColor(Faction faction) => faction switch
-        {
-            Faction.Ascendant   => new Color("1a2a1a"),
-            Faction.Razorkin    => new Color("2a0a0a"),
-            Faction.Ghostwire   => new Color("0a1a2a"),
-            Faction.Commons     => new Color("1a1a0a"),
-            Faction.Effigy      => new Color("1a0a1a"),
-            Faction.Lacquer     => new Color("1a1510"),
-            Faction.HollowChoir => new Color("050510"),
-            _                   => new Color("0f0f0f"),
-        };
+        private static readonly Color P1Color      = new Color("3ecdef"); // Player — cyan
+        private static readonly Color P2Color      = new Color("fd1d75"); // Enemy  — magenta
 
         public override void _Ready()
         {
-            // Fallback resolution — if the Inspector didn't wire these,
-            // find them by node name so the card works without manual wiring.
             Background      ??= GetNodeOrNull<Panel>("Panel");
             CardArt         ??= GetNodeOrNull<TextureRect>("CardArt");
             LabelTop        ??= GetNodeOrNull<Label>("LabelTop");
@@ -62,7 +35,6 @@ namespace TripsAndTriads.UI
         {
             _cardInstance = instance;
 
-            // Resolve nodes now if _Ready hasn't fired yet (e.g. instantiated but not in tree)
             Background      ??= GetNodeOrNull<Panel>("Panel");
             LabelTop        ??= GetNodeOrNull<Label>("LabelTop");
             LabelRight      ??= GetNodeOrNull<Label>("LabelRight");
@@ -82,8 +54,15 @@ namespace TripsAndTriads.UI
                 Background.OffsetRight  = 0;
                 Background.OffsetBottom = 0;
                 Background.MouseFilter  = MouseFilterEnum.Ignore;
-                Background.SelfModulate = FactionColor(instance.Data.Faction);
+                Background.SelfModulate = Colors.White;
             }
+
+            // All labels white — no tinting ever
+            var white = Colors.White;
+            if (LabelTop    != null) LabelTop.AddThemeColorOverride("font_color",    white);
+            if (LabelRight  != null) LabelRight.AddThemeColorOverride("font_color",  white);
+            if (LabelBottom != null) LabelBottom.AddThemeColorOverride("font_color", white);
+            if (LabelLeft   != null) LabelLeft.AddThemeColorOverride("font_color",   white);
 
             if (LabelTop != null)
             {
@@ -130,73 +109,26 @@ namespace TripsAndTriads.UI
                 LabelName.HorizontalAlignment = HorizontalAlignment.Center;
                 LabelName.VerticalAlignment   = VerticalAlignment.Center;
                 LabelName.AutowrapMode        = TextServer.AutowrapMode.WordSmart;
-                LabelName.AddThemeColorOverride("font_color", new Color(1, 1, 1, 0.55f));
+                LabelName.AddThemeColorOverride("font_color", new Color(1, 1, 1, 0.7f));
             }
 
-            ApplyTierBorder(instance.Data.Tier);
             Refresh();
-        }
-
-        private void ApplyTierBorder(Tier tier)
-        {
-            var borderColor = TierBorderColor(tier, IsInterim);
-            var glowColor   = new Color(borderColor.R, borderColor.G, borderColor.B, 0.35f);
-
-            // Outer glow layer — slightly larger, translucent
-            var glowStyle = new StyleBoxFlat();
-            glowStyle.BgColor           = new Color(0, 0, 0, 0);
-            glowStyle.BorderWidthLeft   = 3;
-            glowStyle.BorderWidthTop    = 3;
-            glowStyle.BorderWidthRight  = 3;
-            glowStyle.BorderWidthBottom = 3;
-            glowStyle.BorderColor       = glowColor;
-            glowStyle.SetCornerRadiusAll(4);
-            glowStyle.ShadowColor  = glowColor;
-            glowStyle.ShadowSize   = 6;
-            glowStyle.ShadowOffset = Vector2.Zero;
-
-            var glowPanel = new Panel();
-            glowPanel.MouseFilter = MouseFilterEnum.Ignore;
-            glowPanel.SetAnchorsPreset(LayoutPreset.FullRect);
-            glowPanel.AddThemeStyleboxOverride("panel", glowStyle);
-            AddChild(glowPanel);
-            MoveChild(glowPanel, 1); // Just above Background, behind everything else
-
-            // Inner crisp border layer
-            var borderStyle = new StyleBoxFlat();
-            borderStyle.BgColor           = new Color(0, 0, 0, 0);
-            borderStyle.BorderWidthLeft   = 2;
-            borderStyle.BorderWidthTop    = 2;
-            borderStyle.BorderWidthRight  = 2;
-            borderStyle.BorderWidthBottom = 2;
-            borderStyle.BorderColor       = borderColor;
-            borderStyle.SetCornerRadiusAll(3);
-
-            var borderPanel = new Panel();
-            borderPanel.MouseFilter = MouseFilterEnum.Ignore;
-            borderPanel.SetAnchorsPreset(LayoutPreset.FullRect);
-            borderPanel.AddThemeStyleboxOverride("panel", borderStyle);
-            AddChild(borderPanel);
-            MoveChild(borderPanel, 2); // Above glow, below labels
         }
 
         public void Refresh()
         {
             if (_cardInstance == null) return;
 
-            // Re-resolve in case Refresh is called before _Ready fires
             LabelTop        ??= GetNodeOrNull<Label>("LabelTop");
             LabelRight      ??= GetNodeOrNull<Label>("LabelRight");
             LabelBottom     ??= GetNodeOrNull<Label>("LabelBottom");
             LabelLeft       ??= GetNodeOrNull<Label>("LabelLeft");
             LabelName       ??= GetNodeOrNull<Label>("LabelName");
 
-            // Read edges from the instance (respects overrides from Vesna/Sumi/Lethe).
-            // Name comes from CardData — it never changes.
-            if (LabelTop    != null) LabelTop.Text    = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Top).ToString();
-            if (LabelRight  != null) LabelRight.Text  = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Right).ToString();
-            if (LabelBottom != null) LabelBottom.Text = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Bottom).ToString();
-            if (LabelLeft   != null) LabelLeft.Text   = _cardInstance.GetValue(TripsAndTriads.Core.Direction.Left).ToString();
+            if (LabelTop    != null) LabelTop.Text    = _cardInstance.GetValue(Direction.Top).ToString();
+            if (LabelRight  != null) LabelRight.Text  = _cardInstance.GetValue(Direction.Right).ToString();
+            if (LabelBottom != null) LabelBottom.Text = _cardInstance.GetValue(Direction.Bottom).ToString();
+            if (LabelLeft   != null) LabelLeft.Text   = _cardInstance.GetValue(Direction.Left).ToString();
             if (LabelName   != null) LabelName.Text   = _cardInstance.Data.Name;
 
             SetOwnerColor(_cardInstance.OwnerId);
@@ -204,20 +136,19 @@ namespace TripsAndTriads.UI
 
         public void SetOwnerColor(int ownerId)
         {
-            Modulate = ownerId == 1 ? P1Color : P2Color;
+            if (Background == null) return;
+            var color = ownerId == 1 ? P1Color : P2Color;
+            var style = new StyleBoxFlat();
+            style.BgColor = color;
+            style.SetCornerRadiusAll(4);
+            Background.AddThemeStyleboxOverride("panel", style);
         }
 
         public void SetSelected(bool selected)
         {
             SelectionBorder ??= GetNodeOrNull<Panel>("SelectionBorder");
-
             if (SelectionBorder != null)
                 SelectionBorder.Visible = selected;
-
-            if (selected)
-                Modulate = (_cardInstance?.OwnerId == 1 ? P1Color : P2Color) * SelectedTint;
-            else
-                SetOwnerColor(_cardInstance?.OwnerId ?? 1);
         }
 
         public CardInstance GetCardInstance() => _cardInstance;

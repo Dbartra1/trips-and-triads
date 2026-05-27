@@ -164,8 +164,16 @@ public partial class GameBoard : Node2D
 
 	private void UpdateScores()
 	{
-		if (ScoreP1 != null) ScoreP1.Text = $"P1  {_game.Board.GetScore(1)}";
-		if (ScoreP2 != null) ScoreP2.Text = $"{_game.Board.GetScore(2)}  P2";
+		if (ScoreP1 != null)
+		{
+			ScoreP1.Text = $"P1  {_game.Board.GetScore(1)}";
+			ScoreP1.AddThemeColorOverride("font_color", new Color("3ecdef"));
+		}
+		if (ScoreP2 != null)
+		{
+			ScoreP2.Text = $"{_game.Board.GetScore(2)}  P2";
+			ScoreP2.AddThemeColorOverride("font_color", new Color("fd1d75"));
+		}
 	}
 
 	private void RefreshAllCells()
@@ -228,7 +236,7 @@ public partial class GameBoard : Node2D
 			if (EndResultLabel != null)
 			{
 				EndResultLabel.Text = session?.WinnerText ?? "";
-				var col = (session?.PlayerWon ?? false) ? new Color("4a90d9") : new Color("d94a4a");
+				var col = (session?.PlayerWon ?? false) ? new Color("3ecdef") : new Color("fd1d75");
 				EndResultLabel.AddThemeColorOverride("font_color", col);
 			}
 

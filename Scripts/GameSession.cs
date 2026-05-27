@@ -94,10 +94,10 @@ public partial class GameSession : Node
 		_instance = this;
 		if (!IsInitialized)
 		{
-			// Try to resume from a saved game first
+			// Databases must load before SaveManager can deserialize card IDs.
+			// DistrictManager is initialized inside both LoadGame and InitializeNewRun.
 			CardDatabase.Instance.Load();
 			DistrictDatabase.Instance.Load();
-			DistrictManager.Instance.Initialize();
 
 			if (!SaveManager.LoadGame())
 				InitializeNewRun();

@@ -70,12 +70,13 @@ public partial class GameBoard : Node2D
 		}
 		else if (session != null && session.Roster.Count >= 5)
 		{
-			// Session exists but no valid deck — send back to PreMatchScreen so
-			// the player can pick their deck rather than auto-launching with a
-			// potentially broken hand.
-			GD.Print("GameBoard: no valid deck in session — redirecting to PreMatchScreen.");
-			GetTree().ChangeSceneToFile("res://Scenes/PreMatch/PreMatchScreen.tscn");
-			return;
+		// No valid deck — redirect to PreMatchScreen so the player can pick one.
+		// Must use CallDeferred because ChangeSceneToFile can't be called
+		// while the scene tree is still initializing in _Ready().
+		GD.Print("GameBoard: no valid deck in session — redirecting to PreMatchScreen.");
+		GetTree().CallDeferred(SceneTree.MethodName.ChangeSceneToFile,
+			"res://Scenes/PreMatch/PreMatchScreen.tscn");
+		return;
 		}
 		else
 		{

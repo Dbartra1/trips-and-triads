@@ -96,6 +96,9 @@ public static class SaveManager
         var dm      = DistrictManager.Instance;
         if (session == null || dm == null) return false;
 
+        // Initialize meters to defaults first so SetMeter calls have valid keys.
+        dm.Initialize();
+
         // ── Session ───────────────────────────────────────────────────────────
         var sess = root?["session"];
         if (sess == null) return false;

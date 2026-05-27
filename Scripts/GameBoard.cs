@@ -38,21 +38,28 @@ public partial class GameBoard : Node2D
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
-		// Databases may already be loaded by GameSession autoload — safe to call again
+		// Databases may already be loaded by GameSession autoload — safe to call again.
+		// Do NOT call DistrictManager.Initialize() here — it would reset control meters
+		// that were just loaded from a save file.
 		CardDatabase.Instance.Load();
 		DistrictDatabase.Instance.Load();
-		DistrictManager.Instance.Initialize();
 
 		// ── Read district and deck from GameSession if available ──────────────
 		string districtId = "the_stub";
 		List<CardData> p1Cards;
 
 		var session = GameSession.Instance;
+
+		// Validate that SelectedDeck cards are still in the roster — a saved deck
+		// can become stale if cards were captured between sessions.
+		if (session != null)
+		{
+			session.SelectedDeck.RemoveAll(c => !session.Roster.Contains(c));
+		}
+
 		if (session != null && session.SelectedDeck.Count == 5)
 		{
 			districtId = session.SelectedDistrictId;
-			// Under Conscription, pass the full roster so the random draw has the whole pool.
-			// Otherwise pass the selected 5-card deck.
 			bool isConscription = DistrictDatabase.Instance
 				.GetDistrict(districtId)?.Conscription ?? false;
 			p1Cards = isConscription
@@ -63,28 +70,19 @@ public partial class GameBoard : Node2D
 		}
 		else if (session != null && session.Roster.Count >= 5)
 		{
-			// Session exists but no deck picked — auto-select best 5 from roster.
-			// This ensures board cards are always from the Roster so stake removal works.
-			districtId = session.SelectedDistrictId;
-			p1Cards    = CrewGenerator.SelectBestFive(new System.Collections.Generic.List<CardData>(session.Roster));
-			session.SelectedDeck = new System.Collections.Generic.List<CardData>(p1Cards);
-			GD.Print($"GameBoard: auto-selected best 5 from roster ({p1Cards.Count} cards).");
-			foreach (var c in p1Cards)
-				GD.Print($"  {c.Name} ({c.Tier})");
+			// Session exists but no valid deck — send back to PreMatchScreen so
+			// the player can pick their deck rather than auto-launching with a
+			// potentially broken hand.
+			GD.Print("GameBoard: no valid deck in session — redirecting to PreMatchScreen.");
+			GetTree().ChangeSceneToFile("res://Scenes/PreMatch/PreMatchScreen.tscn");
+			return;
 		}
 		else
 		{
 			// True standalone fallback (editor only) — generate a crew directly.
-			// Note: stake resolution won't affect GameSession roster in this mode.
 			GD.Print("GameBoard: no GameSession — generating crew directly (editor mode).");
 			var crew = CrewGenerator.Generate();
 			p1Cards  = CrewGenerator.SelectBestFive(crew);
-			GD.Print("=== Generated Crew (editor standalone) ===");
-			foreach (var c in crew)
-				GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left} | Domain:{c.DomainType} Ability:{c.AbilityType}");
-			GD.Print("=== Playing best 5 ===");
-			foreach (var c in p1Cards)
-				GD.Print($"  {c.Name} ({c.Tier})");
 		}
 
 		DistrictManager.Instance.SelectDistrict(districtId);

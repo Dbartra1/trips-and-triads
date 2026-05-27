@@ -38,8 +38,9 @@ public static class SaveManager
 
         // ── Session ───────────────────────────────────────────────────────────
         var sess = new JsonObject();
-        sess["roster"]          = SerializeCardList(session.Roster);
-        sess["selectedDeckIds"] = SerializeCardRefList(session.SelectedDeck);
+        sess["roster"] = SerializeCardList(session.Roster);
+        // SelectedDeck and IsHuntMatch are NOT persisted — transient match state.
+        // PreMatchScreen always rebuilds the deck fresh each session.
 
         // Hunt state
         sess["capturedHeroId"]          = session.CapturedHero?.Id ?? "";
@@ -47,8 +48,7 @@ public static class SaveManager
                                           ? SerializeCard(session.CapturedHero) : null;
         sess["capturingFaction"]        = (int)session.CapturingFaction;
         sess["reclamationAttemptsLeft"] = session.ReclamationAttemptsLeft;
-        sess["isHuntMatch"]             = session.IsHuntMatch;
-        sess["heroReclaimed"]           = session.HeroReclaimed;
+        // isHuntMatch and heroReclaimed are transient — not saved
         sess["interimHeroId"]           = session.InterimHero?.Id ?? "";
         sess["interimHeroFull"]         = session.InterimHero != null && string.IsNullOrEmpty(session.InterimHero.Id)
                                           ? SerializeCard(session.InterimHero) : null;
@@ -101,18 +101,7 @@ public static class SaveManager
         if (sess == null) return false;
 
         session.LoadRoster(DeserializeCardList(sess["roster"]));
-
-        var deckIds = sess["selectedDeckIds"]?.AsArray();
-        if (deckIds != null)
-        {
-            var deck = new List<CardData>();
-            foreach (var idNode in deckIds)
-            {
-                var card = FindCardInRoster(session.Roster, idNode?.ToString());
-                if (card != null) deck.Add(card);
-            }
-            session.SelectedDeck = deck;
-        }
+        // SelectedDeck is not restored — PreMatchScreen rebuilds it each session.
 
         // Hunt state
         var capturedId = sess["capturedHeroId"]?.ToString();
@@ -148,8 +137,7 @@ public static class SaveManager
             session.LoadDeckSnapshot(snap);
         }
 
-        session.IsHuntMatch  = (bool)(sess["isHuntMatch"]  ?? false);
-        session.HeroReclaimed = (bool)(sess["heroReclaimed"] ?? false);
+        // isHuntMatch and heroReclaimed are transient — not restored
 
         // Reunion state
         bool reunionPending = (bool)(sess["reunionPending"] ?? false);

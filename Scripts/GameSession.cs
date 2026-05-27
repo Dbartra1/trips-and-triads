@@ -92,7 +92,43 @@ public partial class GameSession : Node
 	public override void _Ready()
 	{
 		_instance = this;
-		if (!IsInitialized) InitializeNewRun();
+		if (!IsInitialized)
+		{
+			// Try to resume from a saved game first
+			CardDatabase.Instance.Load();
+			DistrictDatabase.Instance.Load();
+			DistrictManager.Instance.Initialize();
+
+			if (!SaveManager.LoadGame())
+				InitializeNewRun();
+		}
+	}
+
+	// ── Save / Load support ──────────────────────────────────────────────────
+	// Called exclusively by SaveManager — do not call from game logic.
+
+	public void LoadRoster(List<CardData> roster)
+	{
+		Roster = roster;
+		IsInitialized = true;
+	}
+
+	public void LoadHuntState(CardData captured, Faction faction, int attempts)
+	{
+		CapturedHero            = captured;
+		CapturingFaction        = faction;
+		ReclamationAttemptsLeft = attempts;
+	}
+
+	public void LoadInterimHero(CardData interim) => InterimHero = interim;
+
+	public void LoadDeckSnapshot(List<CardData> snap) => DeckWhenHeroWasCaptured = snap;
+
+	public void LoadReunionState(CardData original, CardData interim)
+	{
+		ReunionPending  = true;
+		ReunionOriginal = original;
+		ReunionInterim  = interim;
 	}
 
 	// ── Run lifecycle ─────────────────────────────────────────────────────────
@@ -116,6 +152,9 @@ public partial class GameSession : Node
 
 		ClearHunt();
 
+		// Delete any existing save — this is a fresh run
+		SaveManager.DeleteSave();
+
 		GD.Print($"GameSession: new run started. Roster: {Roster.Count} cards.");
 		foreach (var c in Roster)
 			GD.Print($"  [{c.Tier}] {c.Name} | {c.Top}/{c.Right}/{c.Bottom}/{c.Left}");
@@ -137,6 +176,9 @@ public partial class GameSession : Node
 			Roster.Remove(card);
 
 		GD.Print($"GameSession: stake applied. Roster now {Roster.Count} cards.");
+
+		// Persist after every stake resolution so progress is never lost
+		SaveManager.SaveGame();
 	}
 
 	/// <summary>Clear match result data before starting a new match.</summary>

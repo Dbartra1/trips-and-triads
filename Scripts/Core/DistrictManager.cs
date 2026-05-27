@@ -112,6 +112,20 @@ namespace TripsAndTriads.Core
 		public int GetControlMeter(string districtId) =>
 			_controlMeters.TryGetValue(districtId, out var m) ? m : 50;
 
+		/// <summary>Returns a snapshot of all control meters (for save).</summary>
+		public IEnumerable<(string id, int value)> GetAllMeters()
+		{
+			foreach (var kvp in _controlMeters)
+				yield return (kvp.Key, kvp.Value);
+		}
+
+		/// <summary>Directly sets a control meter value (for load).</summary>
+		public void SetMeter(string districtId, int value)
+		{
+			if (_controlMeters.ContainsKey(districtId))
+				_controlMeters[districtId] = System.Math.Clamp(value, 0, 100);
+		}
+
 		// ── Protocol factory ──────────────────────────────────────────────────────
 		private static IProtocol BuildProtocol(string name) => name switch
 		{

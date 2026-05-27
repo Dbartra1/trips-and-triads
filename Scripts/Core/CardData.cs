@@ -33,6 +33,25 @@ namespace TripsAndTriads.Core
 			Direction.Left   => Direction.Right,
 			_                => Direction.Top
 		};
+
+		/// <summary>Returns a new CardData with all fields copied. Used by SaveManager
+		/// to clone database templates before applying saved mutations.</summary>
+		public CardData ShallowClone() => new CardData
+		{
+			Id          = Id,
+			Name        = Name,
+			Top         = Top,
+			Right       = Right,
+			Bottom      = Bottom,
+			Left        = Left,
+			Level       = Level,
+			Element     = Element,
+			ArtPath     = ArtPath,
+			Faction     = Faction,
+			Tier        = Tier,
+			DomainType  = DomainType,
+			AbilityType = AbilityType,
+		};
 	}
 
 	public enum Direction  { Top, Right, Bottom, Left }

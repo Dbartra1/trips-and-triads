@@ -184,6 +184,49 @@ namespace TripsAndTriads.Core
 
 		// ── Street generation ─────────────────────────────────────────────────────
 
+
+		// ── AI hand ───────────────────────────────────────────────────────────────
+
+		/// <summary>
+		/// Generate the AI's 5-card hand: fixed hero + fixed TopTier + 3 generated Streets.
+		/// </summary>
+		public static System.Collections.Generic.List<CardData> GenerateAIHand(
+			CardDatabase db, Random? rng = null)
+		{
+			rng ??= new Random();
+			var usedFirstNames = new HashSet<string>();
+			var hand = new System.Collections.Generic.List<CardData>();
+
+			var vesna = db.GetCard("hch_hero_vesna");
+			if (vesna != null) hand.Add(CloneCard(vesna));
+
+			var verity = db.GetCard("eff_top_verity");
+			if (verity != null) hand.Add(CloneCard(verity));
+
+			for (int i = 0; i < 3; i++)
+				hand.Add(GenerateStreet(rng, usedFirstNames));
+
+			return hand;
+		}
+
+		/// <summary>Shallow clone of a CardData — all fields copied, new reference.</summary>
+		private static CardData CloneCard(CardData src) => new CardData
+		{
+			Id          = src.Id,
+			Name        = src.Name,
+			Top         = src.Top,
+			Right       = src.Right,
+			Bottom      = src.Bottom,
+			Left        = src.Left,
+			Level       = src.Level,
+			Element     = src.Element,
+			ArtPath     = src.ArtPath,
+			Faction     = src.Faction,
+			Tier        = src.Tier,
+			DomainType  = src.DomainType,
+			AbilityType = src.AbilityType,
+		};
+
 		private static CardData GenerateStreet(Random? rng, HashSet<string> usedFirstNames)
 		{
 			rng ??= new System.Random();

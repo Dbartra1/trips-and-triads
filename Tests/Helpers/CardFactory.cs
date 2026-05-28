@@ -125,6 +125,12 @@ namespace TripsAndTriads.Tests.Helpers
                 .Faction(Core.Faction.Lacquer).Tier(Core.Tier.TopTier)
                 .Build(owner);
 
+        public static CardInstance Verity(int owner = 1) =>
+            Create("Verity").Id("eff_top_verity")
+                .Stats(7, 9, 7, 9)
+                .Faction(Core.Faction.Effigy).Tier(Core.Tier.TopTier)
+                .Build(owner);
+
         /// <summary>
         /// Generic Street card with controllable stats.
         /// Useful for filling boards without influencing the system under test.

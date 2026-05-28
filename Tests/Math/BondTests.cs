@@ -296,18 +296,22 @@ namespace TripsAndTriads.Tests.Math
         public void Understudy_LetheNotModified_NoBondFires()
         {
             // Lethe with no copy (stays 0/0/0/0) — IsModified=false, bond skipped.
+            // IMPORTANT: use board.PlaceCard directly, not BoardBuilder.Place.
+            // BoardBuilder auto-calls OnPlaced which would trigger the copy.
             var yune  = CardFactory.SeraphYune(owner: 1);
             var lethe = CardFactory.Lethe(owner: 2);
 
             var board = new BoardBuilder()
-                .Place(yune,  row: 0, col: 1)
-                .Place(lethe, row: 1, col: 1) // adjacent, but no copy triggered
+                .Place(yune, row: 0, col: 1)
                 .BuildBoard();
+
+            // Place Lethe without triggering OnPlaced — she stays 0/0/0/0, IsModified=false
+            board.PlaceCard(lethe, 1, 1);
 
             BondResolver.Apply(board);
 
-            // Lethe has no overrides (IsModified=false) → bond doesn't fire
-            Assert.Equal(10, yune.GetBaseValue(Direction.Top)); // unchanged
+            // IsModified=false → ApplyLetheBonds returns early → Yune unchanged
+            Assert.Equal(10, yune.GetBaseValue(Direction.Top));
         }
 
         // ══════════════════════════════════════════════════════════════════════

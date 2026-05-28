@@ -75,12 +75,16 @@ namespace TripsAndTriads.Core
 			for (int i = 1; i < 4; i++)
 				if (edges[i] > edges[highIdx]) highIdx = i;
 
-			int lowIdx = 0;
-			for (int i = 1; i < 4; i++)
-				if (edges[i] < edges[lowIdx]) lowIdx = i;
-
 			edges[highIdx] = 10;
-			if (edges[lowIdx] > 3) edges[lowIdx] = 3;
+
+			int lowIdx = -1;
+			for (int i = 0; i < 4; i++)
+			{
+				if (i == highIdx) continue;
+				if (lowIdx == -1 || edges[i] < edges[lowIdx]) lowIdx = i;
+			}
+
+			if (lowIdx >= 0 && edges[lowIdx] > 3) edges[lowIdx] = 3;
 
 			return (edges[0], edges[1], edges[2], edges[3]);
 		}
@@ -96,13 +100,21 @@ namespace TripsAndTriads.Core
 			for (int i = 1; i < 4; i++)
 				if (edges[i] > edges[highIdx]) highIdx = i;
 
-			// Find lowest edge — this becomes the soft side (capped to 3).
-			int lowIdx = 0;
-			for (int i = 1; i < 4; i++)
-				if (edges[i] < edges[lowIdx]) lowIdx = i;
-
+			// Promote highest to A FIRST, then find lowest among remaining edges.
+			// Finding lowIdx before promotion causes a bug when all edges are equal:
+			// highIdx and lowIdx would both be 0, setting edges[0] to 10 then to 3,
+			// resulting in no A on the card.
 			edges[highIdx] = 10;
-			if (edges[lowIdx] > 3) edges[lowIdx] = 3;
+
+			// Find lowest edge that is NOT the promoted edge.
+			int lowIdx = -1;
+			for (int i = 0; i < 4; i++)
+			{
+				if (i == highIdx) continue;
+				if (lowIdx == -1 || edges[i] < edges[lowIdx]) lowIdx = i;
+			}
+
+			if (lowIdx >= 0 && edges[lowIdx] > 3) edges[lowIdx] = 3;
 
 			best.Top    = edges[0];
 			best.Right  = edges[1];

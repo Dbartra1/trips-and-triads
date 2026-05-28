@@ -27,9 +27,9 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_SelectsHighestTotalCard()
         {
-            var weak   = CardFactory.Street("Weak",   t:3, r:3, b:3, l:3).Data();
-            var strong = CardFactory.Street("Strong", t:7, r:7, b:7, l:7).Data();
-            var mid    = CardFactory.Street("Mid",    t:5, r:5, b:5, l:5).Data();
+            var weak   = CardFactory.Street("Weak",   t:3, r:3, b:3, l:3).Data;
+            var strong = CardFactory.Street("Strong", t:7, r:7, b:7, l:7).Data;
+            var mid    = CardFactory.Street("Mid",    t:5, r:5, b:5, l:5).Data;
 
             var deck = new List<CardData> { weak, mid, strong };
             var promoted = StepUpPromoter.Promote(deck);
@@ -42,7 +42,7 @@ namespace TripsAndTriads.Tests.Math
         {
             // Hero in the deck should never be selected as a candidate.
             var hero   = CardFactory.SeraphYune().Data;
-            var nonHero = CardFactory.Street("Candidate", t:6, r:6, b:6, l:6).Data();
+            var nonHero = CardFactory.Street("Candidate", t:6, r:6, b:6, l:6).Data;
 
             var deck = new List<CardData> { hero, nonHero };
             var promoted = StepUpPromoter.Promote(deck);
@@ -77,7 +77,7 @@ namespace TripsAndTriads.Tests.Math
         public void Promote_HighestEdge_BecomesA()
         {
             // Top is clearly highest
-            var card = CardFactory.Street("Card", t:8, r:5, b:4, l:3).Data();
+            var card = CardFactory.Street("Card", t:8, r:5, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Top);
@@ -86,7 +86,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_HighestEdge_Right()
         {
-            var card = CardFactory.Street("Card", t:5, r:9, b:4, l:3).Data();
+            var card = CardFactory.Street("Card", t:5, r:9, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Right);
@@ -95,7 +95,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_HighestEdge_Bottom()
         {
-            var card = CardFactory.Street("Card", t:5, r:4, b:8, l:3).Data();
+            var card = CardFactory.Street("Card", t:5, r:4, b:8, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Bottom);
@@ -104,7 +104,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_HighestEdge_Left()
         {
-            var card = CardFactory.Street("Card", t:5, r:4, b:3, l:7).Data();
+            var card = CardFactory.Street("Card", t:5, r:4, b:3, l:7).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Left);
@@ -116,7 +116,7 @@ namespace TripsAndTriads.Tests.Math
         public void Promote_LowestEdgeAboveThree_CappedToThree()
         {
             // Lowest is Left=4 — above 3, should be capped
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(3, card.Left);
@@ -125,7 +125,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_LowestEdgeAlreadyThree_Unchanged()
         {
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:3).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(3, card.Left);
@@ -135,7 +135,7 @@ namespace TripsAndTriads.Tests.Math
         public void Promote_LowestEdgeBelowThree_LeftAlone()
         {
             // Lowest is Left=1 — below 3, must not be raised
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:1).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:1).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(1, card.Left);
@@ -144,7 +144,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_LowestEdgeTwo_LeftAlone()
         {
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:2).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:2).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(2, card.Left);
@@ -157,7 +157,7 @@ namespace TripsAndTriads.Tests.Math
         {
             // Top=8 (highest → A), Left=2 (lowest → unchanged ≤3)
             // Middle: Right=6, Bottom=5 — must not change
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:2).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:2).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Top);    // promoted
@@ -171,7 +171,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_TierBecomesHero()
         {
-            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data();
+            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data;
             Assert.Equal(Tier.Street, card.Tier);
 
             StepUpPromoter.Promote(new List<CardData> { card });
@@ -182,7 +182,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_LevelBecomesToen()
         {
-            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data();
+            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(10, card.Level);
@@ -191,7 +191,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_AbilityTypeBecomesNone()
         {
-            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data();
+            var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
             Assert.Equal(AbilityType.None, card.AbilityType);
@@ -223,7 +223,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void PreviewPromotion_DoesNotMutateCard()
         {
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data;
             var before = (card.Top, card.Right, card.Bottom, card.Left,
                           card.Tier, card.DomainType);
 
@@ -241,7 +241,7 @@ namespace TripsAndTriads.Tests.Math
         public void PreviewPromotion_ReturnsCorrectProjectedStats()
         {
             // Top=8 (highest → 10), Left=4 (lowest, >3 → 3), Right/Bottom unchanged
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data();
+            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data;
             var (top, right, bottom, left) = StepUpPromoter.PreviewPromotion(card);
 
             Assert.Equal(10, top);
@@ -255,8 +255,8 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void PromoteSpecific_PromotesChosenCard_NotHighestTotal()
         {
-            var weak   = CardFactory.Street("Weak",   t:3, r:3, b:3, l:3).Data();
-            var strong = CardFactory.Street("Strong", t:8, r:8, b:8, l:8).Data();
+            var weak   = CardFactory.Street("Weak",   t:3, r:3, b:3, l:3).Data;
+            var strong = CardFactory.Street("Strong", t:8, r:8, b:8, l:8).Data;
 
             // Explicitly promote the weak card
             StepUpPromoter.PromoteSpecific(weak);

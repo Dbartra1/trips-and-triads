@@ -34,6 +34,7 @@ namespace TripsAndTriads.Tests.Math
             var deck = new List<CardData> { weak, mid, strong };
             var promoted = StepUpPromoter.Promote(deck);
 
+            Assert.NotNull(promoted);
             Assert.Equal("Strong", promoted.Name);
         }
 
@@ -47,6 +48,7 @@ namespace TripsAndTriads.Tests.Math
             var deck = new List<CardData> { hero, nonHero };
             var promoted = StepUpPromoter.Promote(deck);
 
+            Assert.NotNull(promoted);
             Assert.Equal("Candidate", promoted.Name);
         }
 

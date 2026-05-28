@@ -39,7 +39,8 @@ namespace TripsAndTriads.Core
 		// ── Player crew ───────────────────────────────────────────────────────────
 
 		/// <summary>Generate a 7-card player crew: Hero + Pro + 5 Street.</summary>
-		public static List<CardData> Generate(Random rng = null)
+		public static List<CardData> Generate(Random? rng = null)
+		{
 		{
 			rng ??= new Random();
 			var usedFirstNames = new HashSet<string>();
@@ -75,55 +76,6 @@ namespace TripsAndTriads.Core
 
 			return hand;
 		}
-
-		// ── AI hand ───────────────────────────────────────────────────────────────
-
-		/// <summary>
-		/// Generate the AI's 5-card hand: fixed hero + fixed Pro + 3 generated Streets.
-		/// The fixed hero (Vesna) gives the AI a consistent, learnable threat.
-		/// The Pro and Streets vary each game so the supporting cast feels fresh.
-		/// </summary>
-		public static List<CardData> GenerateAIHand(CardDatabase db, Random rng = null)
-		{
-			rng ??= new Random();
-			var usedFirstNames = new HashSet<string>();
-
-			var hand = new List<CardData>();
-
-			// Fixed hero — Vesna is the AI's anchor threat.
-			// Clone the database card so any in-game mutation (e.g. StepUpPromoter)
-			// on a player-won copy never corrupts the database original.
-			var vesna = db.GetCard("hch_hero_vesna");
-			if (vesna != null) hand.Add(CloneCard(vesna));
-
-			// Fixed TopTier — Verity gives the AI a reliable high-value support card.
-			var verity = db.GetCard("eff_top_verity");
-			if (verity != null) hand.Add(CloneCard(verity));
-
-			// 3 generated Street cards — vary each game (already unique instances)
-			for (int i = 0; i < 3; i++)
-				hand.Add(GenerateStreet(rng, usedFirstNames));
-
-			return hand;
-		}
-
-		/// <summary>Shallow clone of a CardData — all fields copied, new reference.</summary>
-		private static CardData CloneCard(CardData src) => new CardData
-		{
-			Id          = src.Id,
-			Name        = src.Name,
-			Top         = src.Top,
-			Right       = src.Right,
-			Bottom      = src.Bottom,
-			Left        = src.Left,
-			Level       = src.Level,
-			Element     = src.Element,
-			ArtPath     = src.ArtPath,
-			Faction     = src.Faction,
-			Tier        = src.Tier,
-			DomainType  = src.DomainType,
-			AbilityType = src.AbilityType,
-		};
 
 		// ── Hero generation ───────────────────────────────────────────────────────
 
@@ -211,7 +163,7 @@ namespace TripsAndTriads.Core
 
 		// ── Pro generation ────────────────────────────────────────────────────────
 
-		public static CardData GeneratePro(Random rng, HashSet<string> usedFirstNames)
+		public static CardData GeneratePro(Random? rng, HashSet<string> usedFirstNames)
 		{
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(ProMin, ProMax + 1);
@@ -340,7 +292,7 @@ namespace TripsAndTriads.Core
 			return idx;
 		}
 
-		private static T Pick<T>(T[] table, Random rng) =>
+		private static T Pick<T>(T[] table, Random? rng) =>
 			table[rng.Next(table.Length)];
 
 		private static AbilityType PickWeighted(

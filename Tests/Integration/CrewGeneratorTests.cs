@@ -243,9 +243,9 @@ namespace TripsAndTriads.Tests.Integration
             // Generate many crews seeded to hit HollowChoir heroes.
             // When a Choir hero appears, it must have exactly one 0 edge.
             var rng     = new Random(42);
-            int checked = 0;
+            int checkedCount = 0;
 
-            for (int i = 0; i < 5000 && checked < 50; i++)
+            for (int i = 0; i < 5000 && checkedCount < 50; i++)
             {
                 var hero = CrewGenerator.Generate(rng).Find(c => c.Tier == Tier.Hero)!;
                 if (hero.Faction != Faction.HollowChoir) continue;
@@ -253,10 +253,10 @@ namespace TripsAndTriads.Tests.Integration
                 var edges  = new[] { hero.Top, hero.Right, hero.Bottom, hero.Left };
                 int zeroes = System.Array.FindAll(edges, e => e == 0).Length;
                 Assert.Equal(1, zeroes);
-                checked++;
+                checkedCount++;
             }
             // If we couldn't get 50 Choir heroes in 5000 generations something is wrong
-            Assert.True(checked > 0, "Could not generate any HollowChoir heroes in 5000 attempts");
+            Assert.True(checkedCount > 0, "Could not generate any HollowChoir heroes in 5000 attempts");
         }
 
         // ── Unique names ─────────────────────────────────────────────────────

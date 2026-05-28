@@ -15,7 +15,7 @@ namespace TripsAndTriads.Core
 		/// Starting edge cap for AI Decay heroes (Vesna).
 		/// Default 7 — set higher for dangerous districts.
 		/// </summary>
-		public int VesnaStartingCap { get; set; } = 7;
+		public int VesnaStartingCap { get; set; } = 10; // Full stats — cap is now a no-op; decay handles balance
 
 		private Dictionary<int, List<CardInstance>> _hands = new()
 		{

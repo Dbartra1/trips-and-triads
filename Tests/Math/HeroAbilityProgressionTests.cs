@@ -35,14 +35,12 @@ namespace TripsAndTriads.Tests.Math
         }
 
         [Theory]
-        [InlineData(1, 9)]
-        [InlineData(2, 8)]
-        [InlineData(3, 7)]
-        [InlineData(4, 6)]
-        [InlineData(5, 5)]
-        [InlineData(9, 1)]
-        [InlineData(10, 0)]
-        public void Vesna_DecaysExactlyMinusOnePerTurn(int turns, int expectedValue)
+        [InlineData(1, 8)]
+        [InlineData(2, 6)]
+        [InlineData(3, 4)]
+        [InlineData(4, 2)]
+        [InlineData(5, 0)]
+        public void Vesna_DecaysExactlyMinusTwoPerTurn(int turns, int expectedValue)
         {
             var (board, vesna) = PlaceVesna();
             var ability = new VesnaAbility();
@@ -62,8 +60,8 @@ namespace TripsAndTriads.Tests.Math
             var (board, vesna) = PlaceVesna();
             var ability = new VesnaAbility();
 
-            // Apply 15 turns of decay — 5 beyond the floor
-            for (int t = 0; t < 15; t++)
+            // Apply 10 turns of decay — 5 beyond the floor (hits 0 at turn 5)
+            for (int t = 0; t < 10; t++)
                 ability.OnTurnEnd(board, vesna, 1, 1);
 
             Assert.Equal(0, vesna.GetBaseValue(Direction.Top));
@@ -82,8 +80,8 @@ namespace TripsAndTriads.Tests.Math
             ability.OnTurnEnd(board, vesna, 1, 1);
             ability.OnTurnEnd(board, vesna, 1, 1);
 
-            // All four must be exactly 7 after 3 turns
-            int expected = 7;
+            // All four must be exactly 4 after 3 turns (10 - 2*3 = 4)
+            int expected = 4;
             Assert.Equal(expected, vesna.GetBaseValue(Direction.Top));
             Assert.Equal(expected, vesna.GetBaseValue(Direction.Right));
             Assert.Equal(expected, vesna.GetBaseValue(Direction.Bottom));

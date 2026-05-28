@@ -256,7 +256,7 @@ namespace TripsAndTriads.Tests.Simulation
             _output.WriteLine("Pro:    total 16–22, edges 2–9");
             _output.WriteLine("Hero:   exactly 1 A, soft edge ≤ 4");
             _output.WriteLine("AbilityWeights: None=75%, Compound=15%, Copy=10%");
-            _output.WriteLine("AI VesnaStartingCap: 7 (in The Stub)");
+            _output.WriteLine("AI Vesna: 10/10/10/10, decays -2/turn (no cap)");
             _output.WriteLine("");
             _output.WriteLine("Target win rate: 40–65% for new player experience.");
             _output.WriteLine("If below 40%: raise Street/Pro stat bands or lower VesnaStartingCap.");

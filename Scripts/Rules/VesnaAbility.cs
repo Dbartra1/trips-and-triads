@@ -16,7 +16,7 @@ namespace TripsAndTriads.Rules
 
 		public void OnTurnEnd(BoardState board, CardInstance card, int row, int col)
 		{
-			card.AdjustAllEdges(-1);
+			card.AdjustAllEdges(-2);
 
 			// Print base values (Override ?? Data), not GetValue() which includes
 			// transient domain bonuses and would give a misleading number.

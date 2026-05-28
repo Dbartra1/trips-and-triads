@@ -8,7 +8,7 @@ namespace TripsAndTriads.Rules
 
 		public void OnTurnEnd(BoardState board, CardInstance card, int row, int col)
 		{
-			card.AdjustAllEdges(-1);
+			card.AdjustAllEdges(-2);
 
 			int t = card.TopOverride    ?? card.Data.Top;
 			int r = card.RightOverride  ?? card.Data.Right;

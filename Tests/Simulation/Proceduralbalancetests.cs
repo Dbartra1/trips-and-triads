@@ -113,7 +113,7 @@ namespace TripsAndTriads.Tests.Simulation
             _output.WriteLine($"AI wins        : {totalGames - totalWins} ({1 - winRate:P1})");
             _output.WriteLine($"Avg score margin (P1-P2): {avgMargin:F2}");
             _output.WriteLine($"Avg captures per game   : {avgCap:F2}");
-            _output.WriteLine();
+            _output.WriteLine("");
 
             var marginGroups = allMargins
                 .GroupBy(m => m).OrderBy(g => g.Key)
@@ -257,7 +257,7 @@ namespace TripsAndTriads.Tests.Simulation
             _output.WriteLine("Hero:   exactly 1 A, soft edge ≤ 4");
             _output.WriteLine("AbilityWeights: None=75%, Compound=15%, Copy=10%");
             _output.WriteLine("AI VesnaStartingCap: 7 (in The Stub)");
-            _output.WriteLine();
+            _output.WriteLine("");
             _output.WriteLine("Target win rate: 40–65% for new player experience.");
             _output.WriteLine("If below 40%: raise Street/Pro stat bands or lower VesnaStartingCap.");
             _output.WriteLine("If above 65%: lower Street/Pro stat bands or raise VesnaStartingCap.");

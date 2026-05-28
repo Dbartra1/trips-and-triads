@@ -41,7 +41,6 @@ namespace TripsAndTriads.Core
 		/// <summary>Generate a 7-card player crew: Hero + Pro + 5 Street.</summary>
 		public static List<CardData> Generate(Random? rng = null)
 		{
-		{
 			rng ??= new Random();
 			var usedFirstNames = new HashSet<string>();
 			var crew = new List<CardData>();
@@ -138,7 +137,7 @@ namespace TripsAndTriads.Core
 					break;
 
 				case Faction.Lacquer:
-					AssignRandom(slots, 10, rng.Next(3, 6), rng.Next(4, 7), rng.Next(4, 7), rng);
+					AssignRandom(slots, 10, rng.Next(3, 5), rng.Next(4, 7), rng.Next(4, 7), rng);
 					break;
 
 				case Faction.HollowChoir:
@@ -165,6 +164,7 @@ namespace TripsAndTriads.Core
 
 		public static CardData GeneratePro(Random? rng, HashSet<string> usedFirstNames)
 		{
+			rng ??= new System.Random();
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(ProMin, ProMax + 1);
 			int[] edges = DistributeStats(total, 2, 9, rng);
@@ -184,8 +184,9 @@ namespace TripsAndTriads.Core
 
 		// ── Street generation ─────────────────────────────────────────────────────
 
-		private static CardData GenerateStreet(Random rng, HashSet<string> usedFirstNames)
+		private static CardData GenerateStreet(Random? rng, HashSet<string> usedFirstNames)
 		{
+			rng ??= new System.Random();
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(StreetMin, StreetMax + 1);
 			int[] edges = DistributeStats(total, 2, 5, rng); // floor raised to 2
@@ -292,8 +293,11 @@ namespace TripsAndTriads.Core
 			return idx;
 		}
 
-		private static T Pick<T>(T[] table, Random? rng) =>
-			table[rng.Next(table.Length)];
+		private static T Pick<T>(T[] table, Random? rng)
+		{
+			rng ??= new System.Random();
+			return table[rng.Next(table.Length)];
+		}
 
 		private static AbilityType PickWeighted(
 			(AbilityType ability, int weight)[] table, Random rng)

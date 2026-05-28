@@ -38,6 +38,8 @@ namespace TripsAndTriads.Core
 		/// </summary>
 		public static string GenerateOperatorName(Random? rng, HashSet<string>? usedFirstNames = null)
 		{
+			rng ??= new System.Random();
+			usedFirstNames ??= new HashSet<string>();
 			string first = PickUnique(FirstNames, rng, usedFirstNames);
 			return $"{first} {Pick(LastNames, rng)}";
 		}
@@ -48,6 +50,8 @@ namespace TripsAndTriads.Core
 		/// </summary>
 		public static string GenerateHeroName(Random? rng, HashSet<string>? usedFirstNames = null)
 		{
+			rng ??= new System.Random();
+			usedFirstNames ??= new HashSet<string>();
 			string first = PickUnique(FirstNames, rng, usedFirstNames);
 			return $"{first} {Pick(LastNames, rng)}, {Pick(HeroTitles, rng)}";
 		}
@@ -72,7 +76,7 @@ namespace TripsAndTriads.Core
 			return Pick(table, rng);
 		}
 
-		private static string Pick(string[] table, Random rng) =>
+		private static string Pick(string[] table, Random? rng) =>
 			table[rng.Next(table.Length)];
 	}
 }

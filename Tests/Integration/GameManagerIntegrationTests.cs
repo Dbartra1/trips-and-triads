@@ -218,8 +218,8 @@ namespace TripsAndTriads.Tests.Integration
             gm.PlayCard(0, 1, 1);
 
             var vesna = gm.Board.GetCard(1, 1)!;
-            // Vesna starts 10/10/10/10, decays once → 9
-            Assert.Equal(9, vesna.GetBaseValue(Direction.Top));
+            // Vesna enters at VesnaStartingCap=7, decays once → 6
+            Assert.Equal(6, vesna.GetBaseValue(Direction.Top));
         }
 
         [Fact]

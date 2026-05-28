@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TripsAndTriads.Logic")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7480f95b2753328b00302a278ae00debb5b20c41")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b280a37a35d14a0840eddd2b154831287ca0d824")]
 [assembly: System.Reflection.AssemblyProductAttribute("TripsAndTriads.Logic")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TripsAndTriads.Logic")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

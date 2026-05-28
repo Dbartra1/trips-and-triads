@@ -113,7 +113,7 @@ namespace TripsAndTriads.Tests.Math
         [InlineData(4, 6, 3, 7, true)]  // 4+6=10, 3+7=10 → match
         [InlineData(4, 6, 3, 8, false)] // 4+6=10, 3+8=11 → no match
         [InlineData(1, 9, 2, 8, true)]  // 1+9=10, 2+8=10 → match
-        [InlineData(10, 0, 5, 5, true)] // 10+0=10, 5+5=10 → match
+        [InlineData(2,  8, 3, 7, true)]  // 2+8=10, 3+7=10; attacker loses both (no base capture)
         public void Tally_SumEquality(
             int attackTop, int northBottom,
             int attackRight, int eastLeft,

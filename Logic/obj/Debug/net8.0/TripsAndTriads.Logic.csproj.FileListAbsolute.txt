@@ -1,0 +1,12 @@
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\bin\Debug\net8.0\TripsAndTriads.Logic.deps.json
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\bin\Debug\net8.0\TripsAndTriads.Logic.dll
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\bin\Debug\net8.0\TripsAndTriads.Logic.pdb
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.AssemblyInfoInputs.cache
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.AssemblyInfo.cs
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.csproj.CoreCompileInputs.cache
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.sourcelink.json
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.dll
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\refint\TripsAndTriads.Logic.dll
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\TripsAndTriads.Logic.pdb
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Logic\obj\Debug\net8.0\ref\TripsAndTriads.Logic.dll

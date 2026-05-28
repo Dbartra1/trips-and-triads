@@ -211,7 +211,7 @@ namespace TripsAndTriads.Tests.Capture
             var choirCard = CardFactory.Create("Choir Card")
                 .Stats(1, 1, 1, 1)
                 .Faction(Faction.HollowChoir).Tier(Tier.Street)
-                .Build(owner: 2);
+                .Build(ownerId: 2);
 
             var board = new BoardBuilder()
                 .Place(vesna,    row: 2, col: 2)

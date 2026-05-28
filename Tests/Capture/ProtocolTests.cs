@@ -101,7 +101,7 @@ namespace TripsAndTriads.Tests.Capture
                 .Id("eff_top_verity")
                 .Stats(7, 9, 7, 9)
                 .Faction(Faction.Effigy).Tier(Tier.TopTier)
-                .Build(owner: 1);
+                .Build(ownerId: 1);
 
             // Enemies designed to tie with Verity on two contacts
             var board = new BoardBuilder()

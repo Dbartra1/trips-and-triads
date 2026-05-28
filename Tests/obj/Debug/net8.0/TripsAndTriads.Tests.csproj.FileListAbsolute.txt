@@ -1,0 +1,7 @@
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\bin\Debug\net8.0\CoverletSourceRootsMapping_TripsAndTriads.Tests
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.csproj.AssemblyReference.cache
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.AssemblyInfoInputs.cache
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.AssemblyInfo.cs
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.csproj.CoreCompileInputs.cache
+C:\Users\dfbar\OneDrive\Documents\trips-and-triads\Tests\obj\Debug\net8.0\TripsAndTriads.Tests.sourcelink.json

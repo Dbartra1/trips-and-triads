@@ -37,9 +37,9 @@ namespace TripsAndTriads.Core
 		/// it to Hero. Returns the promoted card, or <c>null</c> if no eligible
 		/// non-hero card exists.
 		/// </summary>
-		public static CardData Promote(List<CardData> deckCards)
+		public static CardData? Promote(List<CardData> deckCards)
 		{
-			CardData best     = null;
+			CardData? best     = null;
 			int      bestTotal = -1;
 
 			foreach (var card in deckCards)
@@ -57,7 +57,7 @@ namespace TripsAndTriads.Core
 		/// Promotes a specific card chosen by the player rather than auto-selecting.
 		/// The card must be a non-hero. Returns the promoted card.
 		/// </summary>
-		public static CardData PromoteSpecific(CardData target)
+		public static CardData? PromoteSpecific(CardData? target)
 		{
 			if (target == null || target.Tier == Tier.Hero) return null;
 			return ApplyPromotion(target);

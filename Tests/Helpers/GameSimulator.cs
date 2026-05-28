@@ -220,18 +220,16 @@ namespace TripsAndTriads.Tests.Helpers
             int  bestHand    = 0;
             int  bestRow     = -1;
             int  bestCol     = -1;
-            var  resolver    = new CaptureResolver();
             var  empty       = EmptyCells(board);
 
             for (int hi = 0; hi < hand.Count; hi++)
             {
                 foreach (var (er, ec) in empty)
                 {
-                    // Temporarily place the card to count captures
-                    board.PlaceCard(hand[hi], er, ec);
-                    int score = resolver.Resolve(board, er, ec).Count;
-                    // Remove it
-                    board.PlaceCard(null!, er, ec); // clear cell
+                    // Pure read-only estimate — never mutates the board.
+                    // Counts adjacent enemy cards this card's edges beat.
+                    // Sufficient as a greedy heuristic; avoids board corruption.
+                    int score = EstimateCaptures(board, hand[hi], er, ec);
 
                     if (score > bestScore)
                     {
@@ -243,14 +241,33 @@ namespace TripsAndTriads.Tests.Helpers
                 }
             }
 
-            // Fallback: any cell
-            if (bestRow == -1)
+            // Fallback: first empty cell, first card
+            if (bestRow == -1 && empty.Count > 0)
             {
                 bestRow = empty[0].row;
                 bestCol = empty[0].col;
             }
 
             return (bestHand, bestRow, bestCol);
+        }
+
+        /// <summary>
+        /// Read-only capture estimate. Counts adjacent enemy cards whose
+        /// defending edge the card beats. Does not place the card or mutate the board.
+        /// </summary>
+        private static int EstimateCaptures(BoardState board, CardInstance card, int row, int col)
+        {
+            int count = 0;
+            foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
+            {
+                var (nRow, nCol) = board.GetNeighbor(row, col, dir);
+                if (!board.IsInBounds(nRow, nCol)) continue;
+                var neighbor = board.GetCard(nRow, nCol);
+                if (neighbor == null || neighbor.OwnerId == card.OwnerId) continue;
+                if (card.GetValue(dir) > neighbor.GetValue(card.Data.Opposite(dir)))
+                    count++;
+            }
+            return count;
         }
 
         private static List<(int row, int col)> EmptyCells(BoardState board)

@@ -122,18 +122,18 @@ namespace TripsAndTriads.Tests.Capture
         [Fact]
         public void Tally_EqualSums_CapturesBothCards()
         {
-            // Attacker Top=7, EnemyNorth Bottom=3  → sum = 10
-            // Attacker Right=4, EnemyEast Left=6   → sum = 10
-            // Equal sums → The Tally fires, both captured.
+            // Attacker Top=4, EnemyNorth Bottom=6  → sum=10; 4<6 so no base capture
+            // Attacker Right=3, EnemyEast Left=7   → sum=10; 3<7 so no base capture
+            // Two matching sums with no prior base captures → Tally fires on both.
             var config   = new MatchConfig { Protocols = new List<IProtocol> { new TallyProtocol() } };
             var resolver = new CaptureResolver(config);
 
             var board = new BoardBuilder()
-                .Place(CardFactory.Street("EnemyNorth", t:1, r:1, b:3, l:1, owner:2), row:0, col:1)
-                .Place(CardFactory.Street("EnemyEast",  t:1, r:1, b:1, l:6, owner:2), row:1, col:2)
+                .Place(CardFactory.Street("EnemyNorth", t:1, r:1, b:6, l:1, owner:2), row:0, col:1)
+                .Place(CardFactory.Street("EnemyEast",  t:1, r:1, b:1, l:7, owner:2), row:1, col:2)
                 .BuildBoard();
 
-            var attacker = CardFactory.Street("Attacker", t:7, r:4, b:1, l:1, owner:1);
+            var attacker = CardFactory.Street("Attacker", t:4, r:3, b:1, l:1, owner:1);
             board.PlaceCard(attacker, 1, 1);
 
             var captures = resolver.Resolve(board, 1, 1);
@@ -258,11 +258,15 @@ namespace TripsAndTriads.Tests.Capture
             var config   = MatchConfig.PowderRoom(); // Tally + Handshake
             var resolver = new CaptureResolver(config);
 
-            // Design scenario where Tally fires on north/south and Handshake on east/west.
-            // North: attacker Top=6, enemy Bottom=4 → sum 10
-            // South: attacker Bottom=5, enemy Top=5 → sum 10 (also a Handshake tie!)
-            // East:  attacker Right=7, enemy Left=7 → Handshake tie (also sum 14)
-            // West:  attacker Left=7, enemy Right=7 → Handshake tie (also sum 14)
+            // N: attacker Top=6 > N Bottom=4 → base capture (sum irrelevant).
+            // E: attacker Right=7 ties E Left=7; sum=14, no base capture.
+            // W: attacker Left=7 ties W Right=7; sum=14, no base capture.
+            // S: attacker Bottom=5 ties S Top=5; sum=10, no base capture.
+            //
+            // After base capture removes N from the pool:
+            //   Tally: E+W both sum=14 → Tally fires on E and W.
+            //   Handshake: S is the only remaining tie (1 contact) → doesn't fire.
+            // Total: N (base) + E + W (Tally) = 3 captures.
             var board = new BoardBuilder()
                 .Place(CardFactory.Street("N", t:1, r:1, b:4, l:1, owner:2), row:0, col:1)
                 .Place(CardFactory.Street("S", t:5, r:1, b:1, l:1, owner:2), row:2, col:1)
@@ -275,9 +279,10 @@ namespace TripsAndTriads.Tests.Capture
 
             var captures = resolver.Resolve(board, 1, 1);
 
-            // All 4 should be captured — a mix of Tally (N+S sum match)
-            // and Handshake (E+W tie match).
-            Assert.Equal(4, captures.Count);
+            Assert.Equal(3, captures.Count);
+            Assert.Contains((0, 1), captures); // N via base
+            Assert.Contains((1, 2), captures); // E via Tally
+            Assert.Contains((1, 0), captures); // W via Tally
         }
     }
 }

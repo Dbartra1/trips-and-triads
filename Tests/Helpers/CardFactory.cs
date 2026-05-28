@@ -66,20 +66,20 @@ namespace TripsAndTriads.Tests.Helpers
 
         public static CardInstance SeraphYune(int owner = 1) =>
             Create("Seraph Yune").Id("asc_hero_seraph_yune")
-                .Stats(10, 8, 8, 3)
+                .Stats(10, 8, 3, 8)
                 .Faction(Core.Faction.Ascendant).Tier(Core.Tier.Hero)
                 .Domain(DomainType.AegisProtocol)
                 .Build(owner);
 
         public static CardInstance SisterGrin(int owner = 1) =>
             Create("Sister Grin").Id("rzk_hero_sister_grin")
-                .Stats(10, 10, 2, 3)
+                .Stats(10, 2, 3, 10)
                 .Faction(Core.Faction.Razorkin).Tier(Core.Tier.Hero)
                 .Build(owner);
 
         public static CardInstance Riven(int owner = 1) =>
             Create("Riven").Id("gwi_hero_riven")
-                .Stats(3, 9, 9, 2)
+                .Stats(3, 9, 2, 9)
                 .Faction(Core.Faction.Ghostwire).Tier(Core.Tier.Hero)
                 .Domain(DomainType.LateralGrid)
                 .Build(owner);
@@ -114,13 +114,13 @@ namespace TripsAndTriads.Tests.Helpers
 
         public static CardInstance CassiaVane(int owner = 1) =>
             Create("Dr. Cassia Vane").Id("asc_top_cassia_vane")
-                .Stats(7, 6, 8, 5)
+                .Stats(7, 8, 5, 6)
                 .Faction(Core.Faction.Ascendant).Tier(Core.Tier.TopTier)
                 .Build(owner);
 
         public static CardInstance TheHeir(int owner = 1) =>
             Create("The Heir").Id("lac_top_the_heir")
-                .Stats(7, 7, 5, 7)
+                .Stats(7, 5, 7, 7)
                 .Faction(Core.Faction.Lacquer).Tier(Core.Tier.TopTier)
                 .Build(owner);
 

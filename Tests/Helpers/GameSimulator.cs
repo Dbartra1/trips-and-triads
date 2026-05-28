@@ -201,7 +201,7 @@ namespace TripsAndTriads.Tests.Helpers
         {
             if (strategy == Strategy.Random)
                 return RandomMove(board, hand, rng);
-            return GreedyMove(board, hand);
+            return GreedyMove(board, hand, rng);
         }
 
         private static (int handIdx, int row, int col) RandomMove(
@@ -214,12 +214,10 @@ namespace TripsAndTriads.Tests.Helpers
         }
 
         private static (int handIdx, int row, int col) GreedyMove(
-            BoardState board, List<CardInstance> hand)
+            BoardState board, List<CardInstance> hand, System.Random rng)
         {
             int  bestScore   = -1;
-            int  bestHand    = 0;
-            int  bestRow     = -1;
-            int  bestCol     = -1;
+            var  bestMoves   = new System.Collections.Generic.List<(int hi, int row, int col)>();
             var  empty       = EmptyCells(board);
 
             for (int hi = 0; hi < hand.Count; hi++)
@@ -228,27 +226,29 @@ namespace TripsAndTriads.Tests.Helpers
                 {
                     // Pure read-only estimate — never mutates the board.
                     // Counts adjacent enemy cards this card's edges beat.
-                    // Sufficient as a greedy heuristic; avoids board corruption.
                     int score = EstimateCaptures(board, hand[hi], er, ec);
 
                     if (score > bestScore)
                     {
                         bestScore = score;
-                        bestHand  = hi;
-                        bestRow   = er;
-                        bestCol   = ec;
+                        bestMoves.Clear();
+                        bestMoves.Add((hi, er, ec));
+                    }
+                    else if (score == bestScore)
+                    {
+                        bestMoves.Add((hi, er, ec));
                     }
                 }
             }
 
-            // Fallback: first empty cell, first card
-            if (bestRow == -1 && empty.Count > 0)
-            {
-                bestRow = empty[0].row;
-                bestCol = empty[0].col;
-            }
+            // Fallback: any empty cell, first card
+            if (bestMoves.Count == 0 && empty.Count > 0)
+                return (0, empty[0].row, empty[0].col);
 
-            return (bestHand, bestRow, bestCol);
+            // Random tie-breaking: when multiple moves share the best score,
+            // pick randomly so games vary even with identical decks and seeds.
+            var chosen = bestMoves[rng.Next(bestMoves.Count)];
+            return (chosen.hi, chosen.row, chosen.col);
         }
 
         /// <summary>

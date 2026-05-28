@@ -4,5 +4,7 @@
 
 
 /Builds/
-/Tests/
-/Logic/
+/Logic/bin/
+/Logic/obj/
+/Tests/bin/
+/Tests/obj/

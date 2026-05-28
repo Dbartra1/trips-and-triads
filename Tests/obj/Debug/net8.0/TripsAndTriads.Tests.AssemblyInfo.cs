@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TripsAndTriads.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b280a37a35d14a0840eddd2b154831287ca0d824")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3de5a0a4260622dd203221bd8b1d5c5f70d40918")]
 [assembly: System.Reflection.AssemblyProductAttribute("TripsAndTriads.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TripsAndTriads.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

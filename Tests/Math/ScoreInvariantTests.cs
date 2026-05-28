@@ -33,19 +33,19 @@ namespace TripsAndTriads.Tests.Math
 
             var p1Deck = new List<CardData>
             {
-                CardFactory.Street("P1a", t:8, r:8, b:8, l:8).Data(),
-                CardFactory.Street("P1b", t:7, r:7, b:7, l:7).Data(),
-                CardFactory.Street("P1c", t:6, r:6, b:6, l:6).Data(),
-                CardFactory.Street("P1d", t:5, r:5, b:5, l:5).Data(),
-                CardFactory.Street("P1e", t:4, r:4, b:4, l:4).Data(),
+                CardFactory.Street("P1a", t:8, r:8, b:8, l:8).Data,
+                CardFactory.Street("P1b", t:7, r:7, b:7, l:7).Data,
+                CardFactory.Street("P1c", t:6, r:6, b:6, l:6).Data,
+                CardFactory.Street("P1d", t:5, r:5, b:5, l:5).Data,
+                CardFactory.Street("P1e", t:4, r:4, b:4, l:4).Data,
             };
             var p2Deck = new List<CardData>
             {
-                CardFactory.Street("P2a", t:1, r:1, b:1, l:1).Data(),
-                CardFactory.Street("P2b", t:1, r:1, b:1, l:1).Data(),
-                CardFactory.Street("P2c", t:1, r:1, b:1, l:1).Data(),
-                CardFactory.Street("P2d", t:1, r:1, b:1, l:1).Data(),
-                CardFactory.Street("P2e", t:1, r:1, b:1, l:1).Data(),
+                CardFactory.Street("P2a", t:1, r:1, b:1, l:1).Data,
+                CardFactory.Street("P2b", t:1, r:1, b:1, l:1).Data,
+                CardFactory.Street("P2c", t:1, r:1, b:1, l:1).Data,
+                CardFactory.Street("P2d", t:1, r:1, b:1, l:1).Data,
+                CardFactory.Street("P2e", t:1, r:1, b:1, l:1).Data,
             };
 
             gm.DealHands(p1Deck, p2Deck);
@@ -120,7 +120,7 @@ namespace TripsAndTriads.Tests.Math
 
             var deck = new List<CardData>();
             for (int i = 0; i < 5; i++)
-                deck.Add(CardFactory.Street($"P{i}", t:5, r:5, b:5, l:5).Data());
+                deck.Add(CardFactory.Street($"P{i}", t:5, r:5, b:5, l:5).Data);
 
             gm.DealHands(deck, deck);
 

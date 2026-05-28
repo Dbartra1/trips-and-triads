@@ -62,21 +62,22 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Handshake_ExactEquality_OffByOneDoesNotTrigger()
         {
-            // Attacker Top=5, North Bottom=6 (one apart — miss)
-            // Attacker Right=5, East Left=4 (one apart — miss)
+            // Attacker Top=5, North Bottom=6: 5<6 — miss, no base capture
+            // Attacker Right=5, East Left=6:  5<6 — miss, no base capture
+            // Neither edge is equal, neither wins → nothing captured at all.
             var config   = new MatchConfig { Protocols = new List<IProtocol> { new HandshakeProtocol() } };
             var resolver = new CaptureResolver(config);
 
             var board = new BoardBuilder()
                 .Place(CardFactory.Street("N", t:1, r:1, b:6, l:1, owner:2), row:0, col:1)
-                .Place(CardFactory.Street("E", t:1, r:1, b:1, l:4, owner:2), row:1, col:2)
+                .Place(CardFactory.Street("E", t:1, r:1, b:1, l:6, owner:2), row:1, col:2)
                 .BuildBoard();
 
             var attacker = CardFactory.Street("Att", t:5, r:5, b:1, l:1, owner:1);
             board.PlaceCard(attacker, 1, 1);
 
             var captures = resolver.Resolve(board, 1, 1);
-            Assert.Empty(captures); // no base capture (5<6, 5>4 base captures East)
+            Assert.Empty(captures);
         }
 
         [Fact]

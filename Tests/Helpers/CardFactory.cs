@@ -75,6 +75,7 @@ namespace TripsAndTriads.Tests.Helpers
             Create("Sister Grin").Id("rzk_hero_sister_grin")
                 .Stats(10, 2, 3, 10)
                 .Faction(Core.Faction.Razorkin).Tier(Core.Tier.Hero)
+                .Domain(DomainType.Killzone)
                 .Build(owner);
 
         public static CardInstance Riven(int owner = 1) =>

@@ -12,7 +12,14 @@
 **Editor:** Cursor  
 **Platform:** Windows + RTX 4080
 
-**To run:** Open project in Godot → Play. Main scene is `Scenes/MainMenu.tscn`.
+**To run the game:** Open project in Godot → Play. Main scene is `Scenes/MainMenu.tscn`.
+
+**To run the test suite:**
+```
+dotnet build Logic/TripsAndTriads.Logic.csproj
+dotnet test  Tests/TripsAndTriads.Tests.csproj --verbosity normal
+```
+`--verbosity normal` is required — the simulation tests print win-rate summaries to output.
 
 **Autoload required:** `Project → Project Settings → Globals` → Add `res://Scripts/GameSession.cs` as `GameSession`. If this is missing the game will crash on launch.
 
@@ -27,7 +34,19 @@
 MainMenu → PreMatchScreen → GameBoard → PostMatchScreen → PreMatchScreen
 ```
 
-### Key Singletons
+### Project Layout
+```
+trips-and-triads/
+  Logic/    ← Pure C# class library. No Godot dependency. The test suite's source of truth.
+  Tests/    ← xUnit test project. References Logic/ only.
+  Scripts/  ← Godot game scripts. Contain the live GD.Print / Godot API calls.
+  Scenes/   ← Godot scene files.
+  Data/     ← cards.json, districts.json
+```
+
+**The Logic/ and Scripts/ relationship:** `Logic/` contains extracted copies of all game logic files with `GD.Print` replaced by `TestLogger.Log`. `Scripts/` retains the originals with live Godot calls. When logic changes, **both copies must be updated**. See §Testing Suite for details.
+
+### Key Singletons (Godot layer)
 | Singleton | File | Role |
 |---|---|---|
 | `GameSession` (Autoload) | `Scripts/GameSession.cs` | Persistent campaign state: Roster, SelectedDeck, SelectedDistrictId, match result, full Hunt state |
@@ -80,6 +99,25 @@ Scripts/
   UI/
     CardNode.cs / CellNode.cs / HandNode.cs
 
+Logic/                              ← Godot-free extractions for testing
+  TripsAndTriads.Logic.csproj
+  TestLogger.cs                     — GD.Print shim; captures log messages for assertions
+  Core/   (CardData, CardInstance, BoardState, GameManager)
+  Rules/  (all resolvers, protocols, abilities, interfaces)
+
+Tests/
+  TripsAndTriads.Tests.csproj
+  Helpers/
+    CardFactory.cs                  — fluent card builder; named shortcuts for every hero
+    BoardBuilder.cs                 — fluent board setup; resolves domains/bonds after placement
+    GameSimulator.cs                — full mock games; Random/Greedy strategies; BatchResult + Summary()
+  Capture/
+    BaseCaptureTests.cs             — 10 unit tests: edge comparison, geometry, named hero shapes
+    ProtocolTests.cs                — 9 tests: Handshake, Tally, Wall Signature, stacking
+    ChainTests.cs                   — 7 tests: The Breach, Cascade, The Listener
+  Simulation/
+    WinRateTests.cs                 — hero matrix, district protocol impact, 1000-game Monte Carlo
+
 Data/
   Cards/cards.json
   Districts/districts.json
@@ -95,7 +133,7 @@ Data/
 - End panel overlay → PostMatchScreen → PreMatchScreen
 
 ### Card Systems (Phases 1–4)
-- 29 named cards, all hero mechanics (Vesna decay, Sumi compound, Lethe copy)
+- 29 named cards, all hero mechanics (Vesna decay, Sumi compound, Lethe copy — base value fix applied)
 - Domain system, all 7 bonds
 
 ### Protocols (Phase 5)
@@ -108,100 +146,98 @@ Handshake, The Tally, Wall Signature, Cascade, Intercept, Conscription, Standoff
 Player 7-card crew (Hero + Pro + 5 Street), AI fixed hand (Vesna + Verity + 3 Streets), NameGenerator
 
 ### Campaign Loop (Phase 7 — complete)
-- `GameSession` autoload persisting all state across scenes
-- **All 4 stakes fully implemented** in `GameBoard.ResolveStake`:
-  - **OneJob** — winner takes 1 card; heroes now capturable (no protection)
-  - **TheSpread** — winner takes N cards equal to score margin; heroes sorted last
-  - **AsFlipped** — player keeps AI-original cards they control; loses P1-original cards AI controls
-  - **Everything** — winner takes loser's entire board hand
-- Run-over condition: roster < 5 → message replaces grid, button rewired to New Run
+All 4 stakes, run-over condition, full Hunt system (capture → Headless → Step Up → Reclaim → Reunion)
 
 ### Save States (Phase 8a — confirmed working)
-Full implementation of campaign persistence via `Scripts/Core/SaveManager.cs`.
+Full persistence via `SaveManager`. Roster, Hunt state, district meters, active district ID all survive sessions.
 
-**`CardData.ShallowClone()`** — used by SaveManager to clone database templates before applying saved mutations.
-
-**`DistrictManager.GetAllMeters()` / `SetMeter()`** — expose control meter state for save/load.
-
-**`GameSession` load methods** — `LoadRoster`, `LoadHuntState`, `LoadInterimHero`, `LoadDeckSnapshot`, `LoadReunionState` — called exclusively by SaveManager.
-
-**Save triggers:**
-- `ApplyStakeResult()` — saves after every match (roster changes)
-- `InitializeNewRun()` — deletes existing save (fresh start)
-- `_Ready()` — attempts `SaveManager.LoadGame()` on startup; falls back to `InitializeNewRun()` if no save exists
-
-**What is saved:** Roster (full CardData including procedural and mutated stats), Hunt state (captured hero stored in full — not a roster reference — captor faction, reclaim attempts, interim hero, deck snapshot), Reunion state, district control meters, active district ID.
-
-**Save format:** JSON at `user://savegame.json`. Named cards use database Id as key. Procedural cards (all player-generated cards) use Name as key — `CardKey()` handles this automatically.
-
-### MainMenu (Sessions 5–6)
-`Scripts/MainMenu.cs` and `Scenes/MainMenu.tscn` — **Continue** button appears only when a save file exists; goes directly to PreMatchScreen with loaded state. **New Run** calls `InitializeNewRun()` (deletes save, fresh crew), then goes to PreMatchScreen. `project.godot` — `run/main_scene` = `res://Scenes/MainMenu.tscn`.
+### Board Layout (Session 6 — confirmed working)
+Classic Triple Triad layout: hands on left (AI) and right (Player) sides of the board.
+- `HandNode` uses `VBoxContainer` — cards stack vertically
+- `mouse_filter = 2` (Ignore) on container nodes — bounding box does not block board clicks
+- `SetInteractive(false)` strips click buttons from AI hand cards
 
 ### AI Hand Always Visible (Session 6)
-`GameBoard.tscn` — added `AIHandContainer` + `AIHandNode` (second HandNode instance) positioned above the board (offset_top = -200 to -8, symmetrically opposite the player hand at 680–872). `[Export] public HandNode AIHand` wired to `CanvasLayer/AIHandContainer/AIHandNode`.
-
-`GameBoard.cs` — `RefreshAIHand()` called after `DealHands`: populates AI hand via `AIHand.PopulateHand(_game.GetHand(2))` then calls `AIHand.SetInteractive(false)`. In `RunAI()`, `AIHand?.RemoveCard(bestHandIndex)` is called before `PlayCard` so the display stays in sync as the AI plays out.
-
-`HandNode.cs` — `SetInteractive(bool)` strips the invisible click-button overlay from every card node in the hand. When `false`, removes the Button child from each CardNode so cards are visible but unclickable.
+`AIHandNode` wired to `[Export] public HandNode AIHand` in `GameBoard.cs`. Populated via `RefreshAIHand()` after `DealHands`. Cards removed from display in `RunAI()` as the AI plays. Non-interactive.
 
 ### Lethe Base-Value Fix (Session 6)
-`LetheAbility.cs` — `OnPlaced` now uses `GetBaseValue()` instead of `GetValue()` for both the total-comparison loop and the override assignment. Per `lore.md §7`: "copies the four numbers only — not Domains or bonds." `GetValue()` was including transient domain/bond bonuses (e.g., a Yune under Aegis Protocol would give Lethe buffed values); `GetBaseValue()` is correct.
+`LetheAbility.OnPlaced` uses `GetBaseValue()` — copies stat numbers only, not transient domain/bond bonuses. Applied in both `Scripts/Rules/LetheAbility.cs` and `Logic/Rules/LetheAbility.cs`.
 
-### New Run → MainMenu routing (Session 6)
-`PreMatchScreen.OnNewRun` — changed `ReloadCurrentScene()` to `ChangeSceneToFile("res://Scenes/MainMenu.tscn")`. When a run ends and the player clicks "Run Over — New Run", they now always return to the main menu rather than reloading PreMatchScreen in place.
+### New Run → MainMenu (Session 6)
+`PreMatchScreen.OnNewRun` routes to `MainMenu.tscn`. Player always hits the main menu between runs.
 
-### Other Session 5 fixes (still valid)
-- **GameBoard redirect fix** — no valid 5-card deck → `CallDeferred` redirect to PreMatchScreen
-- **Sumi ability fix** — `OriginalOwnerId != CurrentPlayerId` guard prevents captured Sumi from buffing enemy team
-- **StartButton double-wire fix** — `if (_isRunOver) return true` early return in `CheckRunOver`
-- Full Hunt system: capture → Headless → Step Up → Reclaim → Reunion banner
-- Existing heroes designatable as interim (no stat mutation)
+---
+
+## Testing Suite (Session 6)
+
+### Architecture
+The suite lives entirely outside Godot. `Logic/` is a pure .NET 8 class library — an exact copy of all game logic files with `GD.Print` replaced by `TestLogger.Log`. `Tests/` is an xUnit project referencing `Logic/` only.
+
+**`TestLogger`** — the shim. `TestLogger.Log(msg)` buffers to `Messages` list; `TestLogger.Clear()` resets between tests. Set `WriteToConsole = true` to see output during debugging.
+
+**`CardFactory`** — fluent builder. Named shortcuts (`SeraphYune()`, `SisterGrin()`, etc.) use exact lore.md stat lines. Generic `Street(name, t, r, b, l)` fills boards without affecting the system under test.
+
+**`BoardBuilder`** — fluent board setup. Calls `DomainResolver.Apply` and `BondResolver.Apply` after all placements so tests start in game-accurate state.
+
+**`GameSimulator`** — runs full mock games. Two strategies: `Random` (Monte Carlo baseline) and `Greedy` (mirrors production AI). `RunBatch(p1Factory, p2Factory, games)` returns a `BatchResult` with win rates, score margins, capture averages, and a `Summary()` string.
+
+### Keeping Logic/ in sync
+When any game logic file in `Scripts/` changes, the matching file in `Logic/` must be updated to match — only difference is `GD.Print` → `TestLogger.Log`. This is a manual step. A future session could automate this with a source generator or shared project reference.
+
+### Running
+```
+dotnet test Tests/ --verbosity normal
+```
+The simulation tests (`WinRateTests`) print full output including the hero matchup matrix and protocol impact table. They assert only sanity ranges (win rates between 30–85%) — the interesting data is in the output, not the pass/fail.
+
+### Extending the suite
+- **New card:** add a named shortcut to `CardFactory` and a deck factory method in `WinRateTests`.
+- **New protocol:** add a class in `Logic/Rules/`, add it to `MatchConfig`, write tests in `ProtocolTests.cs`.
+- **New bond/ability:** add to `Logic/Rules/`, write tests in a new `Tests/Abilities/` folder.
+- **New system (Hollowing, Payroll, etc.):** add a new test file under `Tests/` in the appropriate folder.
 
 ---
 
 ## Known Issues / Tech Debt
 
+### Logic/ sync is manual
+When `Scripts/` logic changes, `Logic/` must be updated by hand. No automation yet.
+
 ### Contamination Disabled
-`BondResolver.ContaminationEnabled = false` — intentional. Re-enable per district when campaign layer is live:
+`BondResolver.ContaminationEnabled = false` — re-enable per district when campaign layer is live:
 ```csharp
 BondResolver.ContaminationEnabled = district.Controller == "HollowChoir";
 ```
 
 ### The Rivalry — double log
-`BondResolver.Apply` called twice in `GameManager.PlayCard`. Cosmetic only, no gameplay impact. The first call exists for Contamination (disabled); the second follows DomainResolver. Will become non-redundant when Contamination is re-enabled.
+`BondResolver.Apply` called twice in `GameManager.PlayCard`. Cosmetic only.
 
 ### Conscription pool
-AI always uses its fixed hand under Conscription — AI has no roster to draw from.
+AI always uses its fixed hand under Conscription — no roster to draw from.
 
 ### Shaken mechanic not implemented
 Per `systems.md §5.1` — cards joining roster by capture should arrive Shaken (lowest edge = 0 for first match). Not yet built.
 
 ### Buyout not implemented
-Hunt panel shows disabled Buyout button with "Phase 9" label. Full buyout requires scrip economy (Phase 9).
+Hunt panel shows disabled Buyout button. Requires scrip economy (Phase 9).
 
 ### Hunt matches currently run district protocols
-Hunt (Reclaim) matches inherit the district's active protocols. `systems.md §7.3` specifies only "AsFlipped, hero-stake rule" with no protocols. Fix: one `if (session.IsHuntMatch)` branch before `_matchConfig = DistrictManager.Instance.BuildMatchConfig()` in `GameBoard._Ready`, building a clean base-capture-only config instead. Deferred to Phase 9.
+`systems.md §7.3` specifies base-capture-only for Hunt matches. Fix: one `if (session.IsHuntMatch)` branch in `GameBoard._Ready` before `BuildMatchConfig()`. Deferred to Phase 9.
 
 ### Multi-Hunt not implemented
-Only one Hero Hunt can be active at a time. Second hero capture while Headless is silently dropped (card removed from roster, no Hunt opens). Phase 7c: `List<HuntEntry>` in `GameSession`, Hunt cap of 3, oldest-Hunt expiry, Hunt selector UI in PreMatchScreen.
+Only one Hunt active at a time. Second hero capture while Headless is silently dropped.
 
-### AI hand position may need scene layout tuning
-`AIHandContainer` uses `offset_top = -200.0` (above the board's 80px top). Depending on the window resolution this may clip. Tune the offset in the scene editor — the hand should sit in the negative-Y space above the board container (which starts at Y=80).
+### Captured Sumi never benefits P1
+`OriginalOwnerId` guard prevents a won Sumi from firing Compound for P1. Revisit when cross-origin heroes are common.
 
-### Captured Sumi never benefits P1 after being won
-`ApplyTurnEndAbilities` guards on `OriginalOwnerId == CurrentPlayerId`. A Sumi won from the AI (OriginalOwnerId=2) will never fire her Compound for P1. This is the conservative choice for a pre-campaign game; revisit when the roster system makes cross-origin heroes common.
-
-### `_selectedHandIndex` dead field
-`GameBoard._selectedHandIndex` is set but never read — the actual index is always computed via `hand.IndexOf`. Safe to remove in any cleanup pass.
-
-### `SelectCardFromHand()` dead method
-`GameBoard.SelectCardFromHand()` is never called anywhere. Safe to remove.
+### `_selectedHandIndex` dead field / `SelectCardFromHand()` dead method
+Safe to remove in any cleanup pass.
 
 ### `DistrictLabel` export unwired
-`GameBoard.cs` exports `DistrictLabel` but `GameBoard.tscn` has no matching node. The code null-checks it. Wire a label node in the scene or remove the export.
+`GameBoard.cs` exports `DistrictLabel`; no matching node in scene. Wire or remove.
 
-### Bondresolver.cs filename casing
-`Scripts/Rules/Bondresolver.cs` — lowercase `r`. Safe on Windows; Linux builds will fail if the namespace import ever case-sensitively fails. Rename to `BondResolver.cs` in a cleanup pass.
+### `Bondresolver.cs` filename casing
+Lowercase `r` — safe on Windows, risk on Linux builds. Rename to `BondResolver.cs`.
 
 ---
 
@@ -221,8 +257,11 @@ Only one Hero Hunt can be active at a time. Second hero capture while Headless i
 
 ## What's Next (Priority Order)
 
-### Immediate — Testing suite
-Dedicated Claude Code session. Automate game-state assertions and gameplay simulations to produce data on win rates, capture patterns, and system edge cases.
+### Immediate — run the test suite
+```
+dotnet test Tests/ --verbosity normal
+```
+Review the hero matchup matrix and protocol impact table. Flag any win rate outside 40–60% on the balanced mirror match as a balance concern.
 
 ### Phase 8b — Street Cred (`systems.md §8`)
 Single broad campaign stat (Nameless → Known → Named → Notorious → Legend). Affects:
@@ -234,13 +273,13 @@ Single broad campaign stat (Nameless → Known → Named → Notorious → Legen
 
 ### Phase 9 — Economy & Fixers (`systems.md §9`)
 - Scrip as campaign currency (enables Buyout in the Hunt panel)
-- 5 Fixers: Della (Standing Work / Mutual Aid), Vig (Wagers), Atlas (Intel / Hunt location), Mrs. Oba (Long Account / debt), The Tailor (Ghost Contracts)
+- 5 Fixers: Della, Vig, Atlas, Mrs. Oba, The Tailor
 - Contract system as curated duels with scrip payouts
 - Free agent Meet → Audition → Sign flow
-- **Hunt protocol fix** — strip district protocols from Hunt matches (see Known Issues)
+- **Hunt protocol fix** (see Known Issues)
 
 ### Phase 7c — Multi-Hunt (deferred)
-Multiple simultaneous Hunts, Hunt cap of 3, oldest-Hunt expiry (see Known Issues).
+Multiple simultaneous Hunts, Hunt cap of 3, oldest-Hunt expiry.
 
 ### Phase 10 — The Hollowing (`systems.md §10`)
 Dead Line contracts → Touched → Fading → Claimed affliction track.
@@ -252,12 +291,13 @@ Upkeep per overworld turn. Debt → Collectors → escalating ladder. Mutual Aid
 Prestige condition (Legend cred + take The Vault). Skyline rival system. Two endings.
 
 ### Near-term cleanup (any session)
-- **Shaken mechanic** (`systems.md §5.1`): lowest edge = 0 for first match after capture; 3rd Shaken → permanent Calloused
-- **Contamination re-enable**: wire `BondResolver.ContaminationEnabled` to district controller check
-- **Conscription AI roster**: give AI a persistent roster so Conscription draws from it
-- **Faction-specific AI decks**: AI always fields Vesna+Verity; Phase 8b+ should vary by district controller
-- **Dead code cleanup**: remove `_selectedHandIndex`, `SelectCardFromHand()`, wire or remove `DistrictLabel`
-- **Bondresolver.cs rename**: `Bondresolver.cs` → `BondResolver.cs` for Linux safety
+- Shaken mechanic (`systems.md §5.1`)
+- Contamination re-enable
+- Conscription AI roster
+- Faction-specific AI decks (Phase 8b+)
+- Dead code: `_selectedHandIndex`, `SelectCardFromHand()`, `DistrictLabel`
+- `Bondresolver.cs` → `BondResolver.cs`
+- `Logic/` sync automation
 
 ---
 

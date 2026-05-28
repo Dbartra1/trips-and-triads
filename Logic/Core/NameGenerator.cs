@@ -62,21 +62,21 @@ namespace TripsAndTriads.Core
 		/// </summary>
 		private static string PickUnique(string[] table, Random? rng, HashSet<string>? used)
 		{
-			if (used == null) return Pick(table, rng);
+			if (used == null) return Pick(table, rng!);
 
 			// Try up to 20 times to find an unused name
 			for (int i = 0; i < 20; i++)
 			{
-				string candidate = table[rng.Next(table.Length)];
+				string candidate = table[rng!.Next(table.Length)];
 				if (used.Add(candidate)) // Add returns false if already present
 					return candidate;
 			}
 
 			// Exhausted retries — just pick anything
-			return Pick(table, rng);
+			return Pick(table, rng!);
 		}
 
 		private static string Pick(string[] table, Random? rng) =>
-			table[rng.Next(table.Length)];
+			table[rng!.Next(table.Length)];
 	}
 }

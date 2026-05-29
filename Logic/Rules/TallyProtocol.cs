@@ -7,6 +7,18 @@ namespace TripsAndTriads.Rules
 	{
 		public string Name => "The Tally";
 
+		/// <summary>
+		/// How close two contact sums must be to count as a match.
+		/// 0 = exact equality (default, Scale-10).
+		/// 2 = within ±2 (Scale-20).
+		/// </summary>
+		private readonly int _sumTolerance;
+
+		public TallyProtocol(int sumTolerance = 0)
+		{
+			_sumTolerance = sumTolerance;
+		}
+
 		public List<(int row, int col)> Resolve(
 			BoardState board, CardInstance placed,
 			int row, int col,
@@ -36,7 +48,7 @@ namespace TripsAndTriads.Rules
 			{
 				for (int j = i + 1; j < contacts.Count; j++)
 				{
-					if (contacts[i].sum != contacts[j].sum) continue;
+					if (System.Math.Abs(contacts[i].sum - contacts[j].sum) > _sumTolerance) continue;
 
 					foreach (var (sum, tr, tc) in new[] { contacts[i], contacts[j] })
 					{
@@ -47,7 +59,7 @@ namespace TripsAndTriads.Rules
 						if (target == null) continue;
 						target.OwnerId = placed.OwnerId;
 						captured.Add((tr, tc));
-						TestLogger.Log($"The Tally — {target.Data.Name} captured (sum={sum}).");
+						TestLogger.Log($"The Tally — {target.Data.Name} captured (sum={sum}, tolerance={_sumTolerance}).");
 					}
 				}
 			}

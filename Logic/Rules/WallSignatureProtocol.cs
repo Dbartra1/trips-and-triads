@@ -7,7 +7,23 @@ namespace TripsAndTriads.Rules
 	{
 		public string Name => "Wall Signature";
 
-		private const int WallValue = 10;
+		/// <summary>
+		/// The value a board edge contributes to sum matching.
+		/// 10 = Scale-10 default. 20 = Scale-20.
+		/// </summary>
+		private readonly int _wallValue;
+
+		/// <summary>
+		/// How close two sums must be to match.
+		/// 0 = exact equality (default). 2 = within ±2 (Scale-20).
+		/// </summary>
+		private readonly int _sumTolerance;
+
+		public WallSignatureProtocol(int wallValue = 10, int sumTolerance = 0)
+		{
+			_wallValue    = wallValue;
+			_sumTolerance = sumTolerance;
+		}
 
 		public List<(int row, int col)> Resolve(
 			BoardState board, CardInstance placed,
@@ -24,7 +40,7 @@ namespace TripsAndTriads.Rules
 
 				if (!board.IsInBounds(nRow, nCol))
 				{
-					contacts.Add((attackVal + WallValue, null, null));
+					contacts.Add((attackVal + _wallValue, null, null));
 					continue;
 				}
 
@@ -41,7 +57,7 @@ namespace TripsAndTriads.Rules
 			{
 				for (int j = i + 1; j < contacts.Count; j++)
 				{
-					if (contacts[i].sum != contacts[j].sum) continue;
+					if (System.Math.Abs(contacts[i].sum - contacts[j].sum) > _sumTolerance) continue;
 
 					foreach (var (sum, tr, tc) in new[] { contacts[i], contacts[j] })
 					{
@@ -55,7 +71,7 @@ namespace TripsAndTriads.Rules
 						target.OwnerId = placed.OwnerId;
 						captured.Add(((int)tr, (int)tc));
 						TestLogger.Log($"Wall Signature — {target.Data.Name} captured " +
-						               $"(wall-extended sum={sum}).");
+						               $"(sum={sum}, wallValue={_wallValue}, tolerance={_sumTolerance}).");
 					}
 				}
 			}

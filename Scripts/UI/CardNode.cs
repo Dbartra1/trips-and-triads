@@ -164,26 +164,32 @@ namespace TripsAndTriads.UI
         // ── Flip animation ────────────────────────────────────────────────────
 
         /// <summary>
-        /// Flip the card visually to the new owner: squeeze X to 0, swap color, unsqueeze.
-        /// Called by CellNode.FlipCard() when a capture changes OwnerId.
+        /// Flip the card visually to the new owner.
+        /// PivotOffset is set to the card center (60,80) so the squeeze is
+        /// symmetric — both edges contract toward the middle — instead of
+        /// collapsing from the left edge.
         /// </summary>
         public void FlipToOwner(int newOwnerId)
         {
+            // Center the pivot so the card squeezes from both sides equally
+            PivotOffset = new Vector2(60, 80);
+
             var tween = CreateTween();
             tween.SetTrans(Tween.TransitionType.Sine);
+            tween.SetEase(Tween.EaseType.InOut);
 
-            // Squeeze to flat
-            tween.TweenProperty(this, "scale:x", 0.0f, 0.1f);
+            // Squeeze to edge-on (0.2 s)
+            tween.TweenProperty(this, "scale:x", 0.0f, 0.2f);
 
-            // Swap color at midpoint
+            // Swap color and refresh stats at the flat midpoint
             tween.TweenCallback(Callable.From(() =>
             {
                 SetOwnerColor(newOwnerId);
                 Refresh();
             }));
 
-            // Unsqueeze back
-            tween.TweenProperty(this, "scale:x", 1.0f, 0.1f);
+            // Unsqueeze back to full (0.2 s) — total flip = 0.4 s
+            tween.TweenProperty(this, "scale:x", 1.0f, 0.2f);
         }
 
         // ── Drag support ──────────────────────────────────────────────────────
@@ -202,25 +208,33 @@ namespace TripsAndTriads.UI
 
         /// <summary>
         /// Godot 4 drag-and-drop. Returns the hand index as drag data.
-        /// The drag preview is a semi-transparent ghost of this card.
+        /// Ghost is instantiated from the scene file so it has all child nodes
+        /// (labels, background panel) and is actually visible during drag.
+        /// A wrapper Control offsets the ghost by half its size so the card
+        /// center sits under the cursor rather than the top-left corner.
         /// </summary>
         public override Variant _GetDragData(Vector2 atPosition)
         {
             if (!_isDraggable || _cardInstance == null || _handIndex < 0)
                 return default;
 
-            // Notify GameBoard (via signal) that drag has started for this card
+            // Notify GameBoard that drag has started for this card
             EmitSignal(SignalName.DragStarted, this);
 
-            // Create a ghost preview that follows the cursor
-            var ghost = new CardNode();
-            ghost.CustomMinimumSize = new Vector2(120, 160);
-            ghost.Initialize(_cardInstance);
-            ghost.Modulate = new Color(1f, 1f, 1f, 0.65f);
-            // Keep ghost at card dimensions so it looks like the card
-            SetDragPreview(ghost);
+            // Must load from scene — `new CardNode()` has no children and is invisible
+            var cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
+            if (cardScene != null)
+            {
+                var wrapper = new Control();
+                var ghost   = cardScene.Instantiate<CardNode>();
+                ghost.CustomMinimumSize = new Vector2(120, 160);
+                ghost.Position          = new Vector2(-60, -80); // center card on cursor
+                ghost.Initialize(_cardInstance);
+                ghost.Modulate = new Color(1f, 1f, 1f, 0.75f);
+                wrapper.AddChild(ghost);
+                SetDragPreview(wrapper);
+            }
 
-            // Return hand index so the drop target can identify which slot
             return Variant.From(_handIndex);
         }
 

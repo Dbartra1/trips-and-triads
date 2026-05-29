@@ -75,7 +75,7 @@ namespace TripsAndTriads.Core
 			for (int i = 1; i < 4; i++)
 				if (edges[i] > edges[highIdx]) highIdx = i;
 
-			edges[highIdx] = 10;
+			edges[highIdx] = 20; // Scale-20 A
 
 			int lowIdx = -1;
 			for (int i = 0; i < 4; i++)
@@ -84,7 +84,7 @@ namespace TripsAndTriads.Core
 				if (lowIdx == -1 || edges[i] < edges[lowIdx]) lowIdx = i;
 			}
 
-			if (lowIdx >= 0 && edges[lowIdx] > 3) edges[lowIdx] = 3;
+			if (lowIdx >= 0 && edges[lowIdx] > 6) edges[lowIdx] = 6; // Scale-20 soft cap
 
 			return (edges[0], edges[1], edges[2], edges[3]);
 		}
@@ -104,7 +104,7 @@ namespace TripsAndTriads.Core
 			// Finding lowIdx before promotion causes a bug when all edges are equal:
 			// highIdx and lowIdx would both be 0, setting edges[0] to 10 then to 3,
 			// resulting in no A on the card.
-			edges[highIdx] = 10;
+			edges[highIdx] = 20; // Scale-20 A
 
 			// Find lowest edge that is NOT the promoted edge.
 			int lowIdx = -1;
@@ -114,7 +114,7 @@ namespace TripsAndTriads.Core
 				if (lowIdx == -1 || edges[i] < edges[lowIdx]) lowIdx = i;
 			}
 
-			if (lowIdx >= 0 && edges[lowIdx] > 3) edges[lowIdx] = 3;
+			if (lowIdx >= 0 && edges[lowIdx] > 6) edges[lowIdx] = 6; // Scale-20 soft cap
 
 			best.Top    = edges[0];
 			best.Right  = edges[1];
@@ -122,7 +122,7 @@ namespace TripsAndTriads.Core
 			best.Left   = edges[3];
 
 			best.Tier        = Tier.Hero;
-			best.Level       = 10;
+			best.Level       = 20;
 			best.DomainType  = DefaultDomain(best.Faction);
 			best.AbilityType = AbilityType.None;
 

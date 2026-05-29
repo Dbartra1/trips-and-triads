@@ -24,7 +24,7 @@ namespace TripsAndTriads.Core
 		/// Scale-20: A = 20, so 20 is the no-op cap (Vesna enters at full 20/20/20/20).
 		/// At Scale-10 (named Vesna = 10/10/10/10), cap of 20 still has no effect.
 		/// Set lower by DistrictManager for early districts if needed.
-		public int VesnaStartingCap { get; set; } = 20;
+		public int VesnaStartingCap { get; set; } = 14; // Scale-20: named Vesna=20, cap 14 for The Stub
 
 		private Dictionary<int, List<CardInstance>> _hands = new()
 		{
@@ -93,7 +93,7 @@ namespace TripsAndTriads.Core
 						instance.RightOverride  = System.Math.Min(card.Right,  cap);
 						instance.BottomOverride = System.Math.Min(card.Bottom, cap);
 						instance.LeftOverride   = System.Math.Min(card.Left,   cap);
-						GD.Print($"Vesna enters at {cap}/{cap}/{cap}/{cap} (capped for this district).");
+						GD.Print($"Vesna enters at {inst.OverrideTop}/{inst.OverrideRight}/{inst.OverrideBottom}/{inst.OverrideLeft} (cap={cap}).");
 					}
 
 					_hands[2].Add(instance);

@@ -11,8 +11,8 @@ namespace TripsAndTriads.Core
 	/// </summary>
 	public static class CrewGenerator
 	{
-		private const int StreetMin = 10, StreetMax = 14; // raised floor; min edge now 2
-		private const int ProMin    = 16, ProMax    = 22;
+		private const int StreetMin = 20, StreetMax = 28; // Scale-20
+		private const int ProMin    = 32, ProMax    = 44;  // Scale-20
 
 		// Decay is Vesna's curse — thematically wrong on a player hero who
 		// is supposed to be building toward something. Removed from the pool.
@@ -101,43 +101,43 @@ namespace TripsAndTriads.Core
 
 		private static int[] GenerateHeroEdges(Faction faction, Random rng)
 		{
-			int soft = rng.Next(2, 5);
-			int midA = rng.Next(5, 9);
-			int midB = rng.Next(5, 9);
+			int soft = rng.Next(4, 9);    // Scale-20 soft range
+			int midA = rng.Next(10, 17);  // Scale-20 mid range
+			int midB = rng.Next(10, 17);
 			var slots = new int[4];
 
 			switch (faction)
 			{
 				case Faction.Ascendant:
-					slots[0] = 10; slots[2] = soft;
+					slots[0] = 20; slots[2] = soft;
 					slots[1] = midA; slots[3] = midB;
 					break;
 
 				case Faction.Razorkin:
-					if (rng.Next(2) == 0) { slots[0] = 10; slots[1] = soft; }
-					else                  { slots[3] = 10; slots[2] = soft; }
-					FillRemainingMid(slots, rng.Next(2, 5), rng.Next(2, 5));
+					if (rng.Next(2) == 0) { slots[0] = 20; slots[1] = soft; }
+					else                  { slots[3] = 20; slots[2] = soft; }
+					FillRemainingMid(slots, rng.Next(4, 9), rng.Next(4, 9));
 					break;
 
 				case Faction.Ghostwire:
-					if (rng.Next(2) == 0) { slots[3] = 10; slots[0] = soft; }
-					else                  { slots[1] = 10; slots[2] = soft; }
+					if (rng.Next(2) == 0) { slots[3] = 20; slots[0] = soft; }
+					else                  { slots[1] = 20; slots[2] = soft; }
 					FillRemainingMid(slots, midA, midB);
 					break;
 
 				case Faction.Commons:
-					AssignRandom(slots, 10, soft, rng.Next(5, 8), rng.Next(5, 8), rng);
+					AssignRandom(slots, 20, soft, rng.Next(10, 16), rng.Next(10, 16), rng);
 					break;
 
 				case Faction.Effigy:
 					if (rng.Next(2) == 0)
-					{ slots[0] = 10; slots[2] = 10; slots[1] = soft; slots[3] = soft; }
+					{ slots[0] = 20; slots[2] = 20; slots[1] = soft; slots[3] = soft; }
 					else
-					{ slots[1] = 10; slots[3] = 10; slots[0] = soft; slots[2] = soft; }
+					{ slots[1] = 20; slots[3] = 20; slots[0] = soft; slots[2] = soft; }
 					break;
 
 				case Faction.Lacquer:
-					AssignRandom(slots, 10, rng.Next(3, 5), rng.Next(4, 7), rng.Next(4, 7), rng);
+					AssignRandom(slots, 20, rng.Next(6, 9), rng.Next(10, 17), rng.Next(10, 17), rng);
 					break;
 
 				case Faction.HollowChoir:
@@ -146,14 +146,14 @@ namespace TripsAndTriads.Core
 					var remaining = new List<int>();
 					for (int i = 0; i < 4; i++) if (i != tollDir) remaining.Add(i);
 					int aIdx = remaining[rng.Next(remaining.Count)];
-					slots[aIdx] = 10;
+					slots[aIdx] = 20;
 					remaining.Remove(aIdx);
-					slots[remaining[0]] = rng.Next(7, 10);
-					slots[remaining[1]] = rng.Next(7, 10);
+					slots[remaining[0]] = rng.Next(14, 19); // Scale-20 Choir mids
+					slots[remaining[1]] = rng.Next(14, 19);
 					break;
 
 				default:
-					AssignRandom(slots, 10, soft, midA, midB, rng);
+					AssignRandom(slots, 20, soft, midA, midB, rng);
 					break;
 			}
 
@@ -167,7 +167,7 @@ namespace TripsAndTriads.Core
 			rng ??= new System.Random();
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(ProMin, ProMax + 1);
-			int[] edges = DistributeStats(total, 2, 9, rng);
+			int[] edges = DistributeStats(total, 4, 18, rng); // Scale-20 Pro
 			ApplyFactionBias(edges, faction, rng);
 
 			return new CardData
@@ -232,7 +232,7 @@ namespace TripsAndTriads.Core
 			rng ??= new System.Random();
 			var faction = Pick(AllFactions, rng);
 			int total   = rng.Next(StreetMin, StreetMax + 1);
-			int[] edges = DistributeStats(total, 2, 5, rng); // floor raised to 2
+			int[] edges = DistributeStats(total, 4, 10, rng); // Scale-20 Street
 
 			return new CardData
 			{

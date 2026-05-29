@@ -7,7 +7,9 @@ using TripsAndTriads.UI;
 
 public partial class GameBoard : Node2D
 {
-	[Export] public Control  BoardContainer { get; set; }
+	[Export] public Control  BoardContainer   { get; set; }
+	[Export] public Control  HandContainer    { get; set; }  // player hand parent — assigned in scene
+	[Export] public Control  AIHandContainer  { get; set; }  // AI hand parent — assigned in scene
 	[Export] public HandNode PlayerHand     { get; set; }
 	[Export] public HandNode AIHand         { get; set; }
 	[Export] public Label    ScoreP1        { get; set; }
@@ -140,6 +142,7 @@ public partial class GameBoard : Node2D
 		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
 
 		SpawnGrid();
+		SizeHandContainers();
 		RefreshHand();
 		RefreshAIHand();
 		UpdateScores();
@@ -148,6 +151,43 @@ public partial class GameBoard : Node2D
 			PlayerHand.CardSelected += OnCardSelected;
 
 		GD.Print("Board ready. Player 1's turn.");
+	}
+
+	private void SizeHandContainers()
+	{
+		// The containers must:
+		//   1. Be exactly wide enough for one card (120 px) + small padding.
+		//   2. NOT intercept mouse events in the board area.
+		//
+		// Root cause of the cell dead-zone: Control nodes default to
+		// MouseFilter = Stop, so any container whose rect overlaps a board cell
+		// will swallow clicks before CellNode can receive them. Setting the
+		// filter to Ignore lets all events pass through to whatever is below.
+		//
+		// Sizing is done in code so the scene-editor bounding boxes don't matter.
+
+		float boardH  = BoardState.Size * CellHeight; // 3 × 192 = 576
+		var   handSz  = new Vector2(150f, boardH);
+		var   boardPos = BoardContainer?.GlobalPosition ?? Vector2.Zero;
+
+		if (HandContainer != null)
+		{
+			HandContainer.MouseFilter       = MouseFilterEnum.Ignore;
+			HandContainer.CustomMinimumSize = handSz;
+			HandContainer.Size              = handSz;
+			HandContainer.GlobalPosition    = new Vector2(boardPos.X - 160f, boardPos.Y);
+			GD.Print($"HandContainer: size={handSz}, globalPos={HandContainer.GlobalPosition}");
+		}
+
+		if (AIHandContainer != null)
+		{
+			AIHandContainer.MouseFilter       = MouseFilterEnum.Ignore;
+			AIHandContainer.CustomMinimumSize = handSz;
+			AIHandContainer.Size              = handSz;
+			float boardRight = boardPos.X + BoardState.Size * CellWidth;
+			AIHandContainer.GlobalPosition = new Vector2(boardRight + 10f, boardPos.Y);
+			GD.Print($"AIHandContainer: size={handSz}, globalPos={AIHandContainer.GlobalPosition}");
+		}
 	}
 
 	private void SpawnGrid()

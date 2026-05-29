@@ -15,6 +15,11 @@ namespace TripsAndTriads.Rules
 		}
 
 		public List<(int row, int col)> Resolve(BoardState board, int row, int col)
+			=> Resolve(board, row, col, null);
+
+		public List<(int row, int col)> Resolve(
+			BoardState board, int row, int col,
+			List<CaptureEvent> events)
 		{
 			var allCaptured = new List<(int row, int col)>();
 			var visited     = new HashSet<(int, int)>();
@@ -25,10 +30,10 @@ namespace TripsAndTriads.Rules
 
 			// ── The Rivalry ───────────────────────────────────────────────────────
 			if (placed.RivalryActive)
-				ResolveRivalry(board, placed, row, col, allCaptured, visited);
+				ResolveRivalry(board, placed, row, col, allCaptured, visited, events);
 
 			// ── Base capture ──────────────────────────────────────────────────────
-			var baseCaptured = ResolveSingle(board, row, col, placed, visited);
+			var baseCaptured = ResolveSingle(board, row, col, placed, visited, events, "");
 			allCaptured.AddRange(baseCaptured);
 			foreach (var pos in baseCaptured) visited.Add(pos);
 
@@ -42,29 +47,36 @@ namespace TripsAndTriads.Rules
 					if (visited.Contains(pos)) continue;
 					protocolCaptured.Add(pos);
 					visited.Add(pos);
+
+					// Record protocol capture event
+					var captured = board.GetCard(pos.row, pos.col);
+					if (captured != null && events != null)
+						events.Add(new CaptureEvent(
+							captured.Data.Name, captured.Data.Faction,
+							placed.Data.Name,   placed.Data.Faction,
+							0, 0, Direction.Top,
+							"", protocol.Name));
 				}
 			}
 
 			// ── Cascade ───────────────────────────────────────────────────────────
-			// Protocol captures chain under base capture rules when Cascade is active.
 			if (_config.Cascade && protocolCaptured.Count > 0)
 			{
 				foreach (var (cr, cc) in protocolCaptured)
 				{
 					GD.Print($"Cascade triggered from protocol capture at ({cr},{cc}).");
-					ResolveChain(board, cr, cc, allCaptured, visited);
+					ResolveChain(board, cr, cc, allCaptured, visited, events, "Cascade");
 				}
 			}
 
 			allCaptured.AddRange(protocolCaptured);
 
 			// ── The Breach ────────────────────────────────────────────────────────
-			// Base captures chain when placed card is adjacent to friendly Vesna.
 			if (IsAdjacentToVesna(board, row, col, placed.OwnerId))
 				foreach (var (cr, cc) in baseCaptured)
 				{
 					if (!visited.Contains((cr, cc))) visited.Add((cr, cc));
-					ResolveChain(board, cr, cc, allCaptured, visited);
+					ResolveChain(board, cr, cc, allCaptured, visited, events, "The Breach");
 				}
 
 			return allCaptured;
@@ -73,7 +85,8 @@ namespace TripsAndTriads.Rules
 		// ── The Rivalry ───────────────────────────────────────────────────────────
 		private void ResolveRivalry(
 			BoardState board, CardInstance placed, int row, int col,
-			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
+			List<(int, int)> allCaptured, HashSet<(int, int)> visited,
+			List<CaptureEvent> events)
 		{
 			string rivalId = placed.Data.Id == "asc_hero_seraph_yune"
 				? "rzk_hero_sister_grin"
@@ -99,6 +112,11 @@ namespace TripsAndTriads.Rules
 					neighbor.OwnerId = placed.OwnerId;
 					allCaptured.Add((nRow, nCol));
 					visited.Add((nRow, nCol));
+					events?.Add(new CaptureEvent(
+						neighbor.Data.Name, neighbor.Data.Faction,
+						placed.Data.Name,   placed.Data.Faction,
+						attackVal, defendVal, dir,
+						"", "The Rivalry"));
 					GD.Print($"The Rivalry — {placed.Data.Name} wins.");
 				}
 				else
@@ -112,12 +130,13 @@ namespace TripsAndTriads.Rules
 		// ── Chain resolver (The Breach / Cascade) ─────────────────────────────────
 		private void ResolveChain(
 			BoardState board, int row, int col,
-			List<(int, int)> allCaptured, HashSet<(int, int)> visited)
+			List<(int, int)> allCaptured, HashSet<(int, int)> visited,
+			List<CaptureEvent> events, string protocolNote)
 		{
 			var card = board.GetCard(row, col);
 			if (card == null) return;
 
-			var newCaptures = ResolveSingle(board, row, col, card, visited);
+			var newCaptures = ResolveSingle(board, row, col, card, visited, events, protocolNote);
 
 			foreach (var (nr, nc) in newCaptures)
 			{
@@ -125,14 +144,15 @@ namespace TripsAndTriads.Rules
 				allCaptured.Add((nr, nc));
 				visited.Add((nr, nc));
 				GD.Print($"Chain: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
-				ResolveChain(board, nr, nc, allCaptured, visited);
+				ResolveChain(board, nr, nc, allCaptured, visited, events, protocolNote);
 			}
 		}
 
 		// ── Single capture pass ───────────────────────────────────────────────────
 		private List<(int row, int col)> ResolveSingle(
 			BoardState board, int row, int col,
-			CardInstance attacker, HashSet<(int, int)> visited)
+			CardInstance attacker, HashSet<(int, int)> visited,
+			List<CaptureEvent> events, string protocolNote)
 		{
 			var captured = new List<(int row, int col)>();
 
@@ -160,6 +180,15 @@ namespace TripsAndTriads.Rules
 				{
 					neighbor.OwnerId = attacker.OwnerId;
 					captured.Add((nRow, nCol));
+
+					// Build domain note from the bonus delta
+					string domainNote = BuildDomainNote(attacker, dir);
+
+					events?.Add(new CaptureEvent(
+						neighbor.Data.Name, neighbor.Data.Faction,
+						attacker.Data.Name,  attacker.Data.Faction,
+						attackVal, defendVal, dir,
+						domainNote, protocolNote));
 				}
 			}
 
@@ -167,6 +196,20 @@ namespace TripsAndTriads.Rules
 		}
 
 		// ── Helpers ───────────────────────────────────────────────────────────────
+
+		private static string BuildDomainNote(CardInstance attacker, Direction dir)
+		{
+			int bonus = dir switch
+			{
+				Direction.Top    => attacker.DomainBonusTop    + attacker.BondBonusTop,
+				Direction.Right  => attacker.DomainBonusRight  + attacker.BondBonusRight,
+				Direction.Bottom => attacker.DomainBonusBottom + attacker.BondBonusBottom,
+				Direction.Left   => attacker.DomainBonusLeft   + attacker.BondBonusLeft,
+				_                => 0
+			};
+			return bonus > 0 ? $"aura +{bonus}" : "";
+		}
+
 		private bool IsAdjacentToVesna(BoardState board, int row, int col, int ownerId)
 		{
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))

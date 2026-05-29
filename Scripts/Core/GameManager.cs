@@ -5,6 +5,21 @@ using TripsAndTriads.Rules;
 
 namespace TripsAndTriads.Core
 {
+	/// <summary>
+	/// Records everything that happened during a single capture — used by the
+	/// kill feed to display what was captured, by what, with what modifiers.
+	/// </summary>
+	public record CaptureEvent(
+		string   CapturedName,
+		Faction  CapturedFaction,
+		string   CapturingName,
+		Faction  CapturingFaction,
+		int      AttackVal,
+		int      DefendVal,
+		Direction Edge,
+		string   DomainNote,   // e.g. "Killzone +4" or ""
+		string   ProtocolNote  // e.g. "Handshake" / "Cascade" or ""
+	);
 	public class GameManager
 	{
 		public BoardState  Board           { get; } = new BoardState();
@@ -14,6 +29,12 @@ namespace TripsAndTriads.Core
 
 		// When Standoff triggers, this is set so GameBoard can start the rematch.
 		public bool        StandoffTriggered { get; private set; } = false;
+
+		/// <summary>
+		/// Populated by PlayCard each turn. GameBoard reads this after each call
+		/// to update the kill feed. Cleared at the start of every PlayCard call.
+		/// </summary>
+		public List<CaptureEvent> LastTurnEvents { get; } = new();
 
 		/// <summary>
 		/// Starting edge cap for AI Decay heroes (Vesna).
@@ -138,6 +159,9 @@ namespace TripsAndTriads.Core
 				return null;
 			}
 
+			// Clear events from the previous turn
+			LastTurnEvents.Clear();
+
 			var card = hand[handIndex];
 			hand.RemoveAt(handIndex);
 			Board.PlaceCard(card, row, col);
@@ -151,7 +175,7 @@ namespace TripsAndTriads.Core
 			DomainResolver.Apply(Board);
 			BondResolver.Apply(Board);
 
-			var captured = _resolver.Resolve(Board, row, col);
+			var captured = _resolver.Resolve(Board, row, col, LastTurnEvents);
 
 			GD.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
 			         $"Captured: {captured.Count}.");

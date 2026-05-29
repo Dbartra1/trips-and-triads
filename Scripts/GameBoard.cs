@@ -8,8 +8,9 @@ using TripsAndTriads.UI;
 public partial class GameBoard : Node2D
 {
 	[Export] public Control  BoardContainer   { get; set; }
-	[Export] public Control  HandContainer    { get; set; }  // player hand parent — assigned in scene
-	[Export] public Control  AIHandContainer  { get; set; }  // AI hand parent — assigned in scene
+	[Export] public Control  HandContainer    { get; set; }
+	[Export] public Control  AIHandContainer  { get; set; }
+	[Export] public Control  KillFeedContainer { get; set; } // optional scene node; created in code if null
 	[Export] public HandNode PlayerHand     { get; set; }
 	[Export] public HandNode AIHand         { get; set; }
 	[Export] public Label    ScoreP1        { get; set; }
@@ -33,6 +34,7 @@ public partial class GameBoard : Node2D
 	private CardInstance _selectedCardInstance = null;
 	private int          _selectedHandIndex    = -1;
 	private MatchConfig  _matchConfig;
+	private KillFeedNode _killFeed;
 
 	/// <summary>
 	/// How long (seconds) the AI "thinks" before placing its card.
@@ -143,6 +145,7 @@ public partial class GameBoard : Node2D
 
 		SpawnGrid();
 		SizeHandContainers();
+		InitKillFeed();
 		RefreshHand();
 		RefreshAIHand();
 		UpdateScores();
@@ -151,6 +154,41 @@ public partial class GameBoard : Node2D
 			PlayerHand.CardSelected += OnCardSelected;
 
 		GD.Print("Board ready. Player 1's turn.");
+	}
+
+	private void InitKillFeed()
+	{
+		// If a KillFeedContainer node was assigned in the scene editor, use it.
+		// Otherwise create a Control and position it below the board automatically.
+		var parent = KillFeedContainer ?? GetNodeOrNull<Control>("CanvasLayer");
+
+		_killFeed = new KillFeedNode();
+		_killFeed.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+		if (KillFeedContainer != null)
+		{
+			// Fill whatever container was assigned
+			_killFeed.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			KillFeedContainer.AddChild(_killFeed);
+		}
+		else
+		{
+			// Auto-position below the board: same X span, fixed 40px height
+			var boardPos = BoardContainer?.GlobalPosition ?? new Vector2(424, 168);
+			float boardW = BoardState.Size * CellWidth;
+			float boardBottom = boardPos.Y + BoardState.Size * CellHeight;
+
+			_killFeed.GlobalPosition    = new Vector2(boardPos.X, boardBottom + 12f);
+			_killFeed.CustomMinimumSize = new Vector2(boardW, 40f);
+			_killFeed.Size              = new Vector2(boardW, 40f);
+
+			// Add to CanvasLayer if found, else to GameBoard itself
+			var canvas = GetNodeOrNull<CanvasLayer>("CanvasLayer");
+			if (canvas != null) canvas.AddChild(_killFeed);
+			else                AddChild(_killFeed);
+		}
+
+		GD.Print("KillFeed: initialized.");
 	}
 
 	private void SizeHandContainers()
@@ -523,6 +561,8 @@ public partial class GameBoard : Node2D
 		foreach (var (r, c) in captured) _cells[r, c].FlipCard();
 		RefreshAllCells();
 
+		_killFeed?.PushEvents(_game.LastTurnEvents);
+
 		_selectedCard = null; _selectedCardInstance = null; _selectedHandIndex = -1;
 
 		UpdateScores();
@@ -615,6 +655,8 @@ public partial class GameBoard : Node2D
 		// Flip animation for every captured card
 		foreach (var (cr, cc) in captured) _cells[cr, cc].FlipCard();
 		RefreshAllCells();
+
+		_killFeed?.PushEvents(_game.LastTurnEvents);
 
 		UpdateScores();
 		GD.Print($"AI played {aiCardName} at ({bestRow},{bestCol}) capturing {captured.Count}.");

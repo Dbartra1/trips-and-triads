@@ -29,6 +29,10 @@ namespace TripsAndTriads.UI
             // CellNode itself must stop mouse events so _CanDropData fires here.
             MouseFilter = MouseFilterEnum.Stop;
 
+            // Hover highlight — signals, not virtual overrides (Godot 4 C# binding)
+            MouseEntered += OnMouseEntered;
+            MouseExited  += OnMouseExited;
+
             if (CellButton != null)
             {
                 CellButton.AnchorLeft   = 0;
@@ -93,13 +97,13 @@ namespace TripsAndTriads.UI
             }
         }
 
-        public override void _MouseEnter()
+        private void OnMouseEntered()
         {
             if (!_isOccupied)
                 Modulate = new Color(0.8f, 0.9f, 1.0f, 1.0f);
         }
 
-        public override void _MouseExit()
+        private void OnMouseExited()
         {
             Modulate = Colors.White;
         }

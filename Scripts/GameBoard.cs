@@ -172,7 +172,7 @@ public partial class GameBoard : Node2D
 
 		if (HandContainer != null)
 		{
-			HandContainer.MouseFilter       = MouseFilterEnum.Ignore;
+			HandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
 			HandContainer.CustomMinimumSize = handSz;
 			HandContainer.Size              = handSz;
 			HandContainer.GlobalPosition    = new Vector2(boardPos.X - 160f, boardPos.Y);
@@ -181,7 +181,7 @@ public partial class GameBoard : Node2D
 
 		if (AIHandContainer != null)
 		{
-			AIHandContainer.MouseFilter       = MouseFilterEnum.Ignore;
+			AIHandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
 			AIHandContainer.CustomMinimumSize = handSz;
 			AIHandContainer.Size              = handSz;
 			float boardRight = boardPos.X + BoardState.Size * CellWidth;

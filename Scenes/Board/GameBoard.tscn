@@ -15,13 +15,16 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "PlayerHand", "AIHand", "ScoreP1", "ScoreP2", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "HandContainer", "AIHandContainer", "PlayerHand", "AIHand", "ScoreP1", "ScoreP2", "DistrictLabel", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
 script = ExtResource("1_luxp4")
 BoardContainer = NodePath("CanvasLayer/BoardContainer")
+HandContainer = NodePath("CanvasLayer/HandContainer")
+AIHandContainer = NodePath("CanvasLayer/AIHandContainer")
 PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
 AIHand = NodePath("CanvasLayer/AIHandContainer/AIHandNode")
 ScoreP1 = NodePath("CanvasLayer/ScoreBar/LabelP1")
 ScoreP2 = NodePath("CanvasLayer/ScoreBar/LabelP2")
+DistrictLabel = NodePath("CanvasLayer/ScoreBar/DistrictLabel")
 EndPanel = NodePath("CanvasLayer/GameOverPanel")
 EndResultLabel = NodePath("CanvasLayer/GameOverPanel/LabelResult")
 EndScoreLabel = NodePath("CanvasLayer/GameOverPanel/LabelScores")
@@ -62,6 +65,14 @@ theme_override_font_sizes/font_size = 22
 text = "5  P2"
 horizontal_alignment = 2
 vertical_alignment = 1
+
+[node name="DistrictLabel" type="Label" parent="CanvasLayer/ScoreBar" unique_id=206052375]
+layout_mode = 0
+offset_left = 111.99999
+offset_top = -7.9999995
+offset_right = 152.0
+offset_bottom = 15.0
+scale = Vector2(5.96, 1)
 
 [node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
 layout_mode = 3

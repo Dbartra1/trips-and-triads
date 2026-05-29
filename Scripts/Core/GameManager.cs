@@ -93,7 +93,7 @@ namespace TripsAndTriads.Core
 						instance.RightOverride  = System.Math.Min(card.Right,  cap);
 						instance.BottomOverride = System.Math.Min(card.Bottom, cap);
 						instance.LeftOverride   = System.Math.Min(card.Left,   cap);
-						GD.Print($"Vesna enters at {inst.OverrideTop}/{inst.OverrideRight}/{inst.OverrideBottom}/{inst.OverrideLeft} (cap={cap}).");
+						GD.Print($"Vesna enters at {instance.TopOverride}/{instance.RightOverride}/{instance.BottomOverride}/{instance.LeftOverride} (cap={cap}).");
 					}
 
 					_hands[2].Add(instance);

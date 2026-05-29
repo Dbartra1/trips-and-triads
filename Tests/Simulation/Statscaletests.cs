@@ -129,14 +129,14 @@ namespace TripsAndTriads.Tests.Simulation
             });
 
             // Verity: 7/9/7/9 proportionally scaled
-            int vHigh = (int)Math.Round(scale * 0.9);
-            int vMid  = (int)Math.Round(scale * 0.7);
+            int vHigh = (int)System.Math.Round(scale * 0.9);
+            int vMid  = (int)System.Math.Round(scale * 0.7);
             hand.Add(new CardData
             {
                 Name    = "Verity",
                 Top     = vMid,  Right  = vHigh,
                 Bottom  = vMid,  Left   = vHigh,
-                Tier    = Tier.TopTier, Level = (int)Math.Round(scale * 0.8),
+                Tier    = Tier.TopTier, Level = (int)System.Math.Round(scale * 0.8),
                 Faction = Faction.Effigy,
             });
 
@@ -287,11 +287,11 @@ namespace TripsAndTriads.Tests.Simulation
                 var rng = new Random(Seed);
                 double wr = RunBalance(
                     r => GenerateScaledHand(r,
-                        sMin, sMax, 2, Math.Min(9, sMax / 2 + 1),
+                        sMin, sMax, 2, System.Math.Min(9, sMax / 2 + 1),
                         pMin, pMax, 2, 9,
                         10, 1, 3, 4, 8),
                     r => BuildScaledAIHand(r, 10,
-                        sMin, sMax, 2, Math.Min(9, sMax / 2 + 1)),
+                        sMin, sMax, 2, System.Math.Min(9, sMax / 2 + 1)),
                     rng);
 
                 string assessment = wr < 0.30 ? "too weak" :
@@ -354,7 +354,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 double wr  = (double)wins / total;
                 double cap = captures / total;
-                string note = Math.Abs(wr - 0.50) < 0.05
+                string note = System.Math.Abs(wr - 0.50) < 0.05
                     ? "balanced (as expected)"
                     : wr > 0.55 ? "P1 advantage" : "P2 advantage";
 
@@ -381,7 +381,7 @@ namespace TripsAndTriads.Tests.Simulation
             {
                 int sMin  = scale;
                 int sMax  = (int)(scale * 1.4);
-                int eMin  = Math.Max(1, scale / 5);
+                int eMin  = System.Math.Max(1, scale / 5);
                 int eMax  = scale / 2;
                 int pMin  = (int)(scale * 1.6);
                 int pMax  = (int)(scale * 2.2);
@@ -447,7 +447,7 @@ namespace TripsAndTriads.Tests.Simulation
             foreach (int scale in scales)
             {
                 int sMin = scale,   sMax = (int)(scale * 1.4);
-                int eMin = Math.Max(1, scale / 5);
+                int eMin = System.Math.Max(1, scale / 5);
                 int eMax = scale / 2;
 
                 var rng      = new Random(Seed);
@@ -475,7 +475,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 double avgCap    = totalCaptures / Games;
                 double avgMargin = margins.Average();
-                double stdDev    = Math.Sqrt(margins.Select(m => Math.Pow(m - avgMargin, 2)).Average());
+                double stdDev    = System.Math.Sqrt(margins.Select(m => System.Math.Pow(m - avgMargin, 2)).Average());
 
                 _output.WriteLine($"{$"1-{scale}",8} {avgCap,13:F1} {avgMargin,11:F2} {stdDev,14:F2}");
             }
@@ -495,13 +495,13 @@ namespace TripsAndTriads.Tests.Simulation
             int remaining = total;
             for (int i = 0; i < 3; i++)
             {
-                int lo   = Math.Max(minEdge, remaining - maxEdge * (3 - i));
-                int hi   = Math.Min(maxEdge, remaining - minEdge * (3 - i));
+                int lo   = System.Math.Max(minEdge, remaining - maxEdge * (3 - i));
+                int hi   = System.Math.Min(maxEdge, remaining - minEdge * (3 - i));
                 if (lo > hi) lo = hi;
                 edges[i]  = rng.Next(lo, hi + 1);
                 remaining -= edges[i];
             }
-            edges[3] = Math.Clamp(remaining, minEdge, maxEdge);
+            edges[3] = System.Math.Clamp(remaining, minEdge, maxEdge);
             Shuffle(edges, rng);
             return edges;
         }

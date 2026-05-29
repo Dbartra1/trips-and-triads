@@ -17,6 +17,7 @@ namespace TripsAndTriads.Tests.Math
     ///   - require adjacency
     ///   - reset cleanly between DomainResolver.Apply calls
     /// </summary>
+    [Collection("DomainState")]
     public class DomainStackingTests
     {
         // ══════════════════════════════════════════════════════════════════════

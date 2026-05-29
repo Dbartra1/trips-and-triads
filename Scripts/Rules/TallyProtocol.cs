@@ -6,8 +6,11 @@ namespace TripsAndTriads.Rules
 {
 	/// <summary>
 	/// The Tally (adapts: Plus) — when a placed card touches two enemy cards and
-	/// the two contact-pair SUMS are equal, both touched cards are captured
-	/// regardless of individual values.
+	/// the two contact-pair SUMS are equal (within sumTolerance), both touched cards
+	/// are captured regardless of individual values.
+	///
+	/// sumTolerance = 0  → exact sum equality (Scale-10 default).
+	/// sumTolerance = 2  → fires when |sum1 – sum2| ≤ 2 (Scale-20, Path A confirmed).
 	///
 	/// Lore: Lacquer counts what you owe. Two debts that add to the same figure
 	/// are the same debt — and Lacquer collects both.
@@ -16,6 +19,18 @@ namespace TripsAndTriads.Rules
 	public class TallyProtocol : IProtocol
 	{
 		public string Name => "The Tally";
+
+		/// <summary>
+		/// How close two contact sums must be to count as a match.
+		/// 0 = exact equality (default, Scale-10).
+		/// 2 = within ±2 (Scale-20, Path A confirmed).
+		/// </summary>
+		private readonly int _sumTolerance;
+
+		public TallyProtocol(int sumTolerance = 0)
+		{
+			_sumTolerance = sumTolerance;
+		}
 
 		public List<(int row, int col)> Resolve(
 			BoardState board, CardInstance placed,
@@ -44,14 +59,13 @@ namespace TripsAndTriads.Rules
 				contacts.Add((sum, nRow, nCol));
 			}
 
-			// Find any sum that appears two or more times — those contacts are captured
+			// Find any pair of contact sums within tolerance — capture both
 			for (int i = 0; i < contacts.Count; i++)
 			{
 				for (int j = i + 1; j < contacts.Count; j++)
 				{
-					if (contacts[i].sum != contacts[j].sum) continue;
+					if (System.Math.Abs(contacts[i].sum - contacts[j].sum) > _sumTolerance) continue;
 
-					// Both contacts share the same sum — capture them
 					foreach (var (sum, tr, tc) in new[] { contacts[i], contacts[j] })
 					{
 						if (alreadyCaptured.Contains((tr, tc))) continue;
@@ -61,7 +75,7 @@ namespace TripsAndTriads.Rules
 						if (target == null) continue;
 						target.OwnerId = placed.OwnerId;
 						captured.Add((tr, tc));
-						GD.Print($"The Tally — {target.Data.Name} captured (sum={sum}).");
+						GD.Print($"The Tally — {target.Data.Name} captured (sum={sum}, tolerance={_sumTolerance}).");
 					}
 				}
 			}

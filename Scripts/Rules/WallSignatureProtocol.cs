@@ -5,13 +5,14 @@ using TripsAndTriads.Core;
 namespace TripsAndTriads.Rules
 {
 	/// <summary>
-	/// Wall Signature (adapts: Same Wall) — for the purpose of Handshake,
-	/// the edge of the board counts as a value of A (10).
-	/// A card pressed against the board edge can tie WITH the wall itself,
-	/// and the wall has no loyalty — so the tie resolves to whoever placed the card.
+	/// Wall Signature (adapts: Same Wall) — the board edge counts as wallValue for
+	/// sum matching. A card pressed against the edge ties with the wall, and the wall
+	/// has no loyalty — so the tie resolves to whoever placed the card.
 	///
-	/// Wall Signature only adds value when combined with Handshake.
-	/// It extends the Handshake by counting board-edge contacts as value-10 ties.
+	/// wallValue   = 10  → Scale-10 default (A = 10).
+	/// wallValue   = 20  → Scale-20 (A = 20, Path A confirmed).
+	/// sumTolerance = 0  → exact sum equality (default).
+	/// sumTolerance = 2  → within ±2 (Scale-20, Path A confirmed).
 	///
 	/// Lore: The perimeter of a sanctioned board is a hard system boundary.
 	/// The edge of the world is on nobody's side.
@@ -21,7 +22,25 @@ namespace TripsAndTriads.Rules
 	{
 		public string Name => "Wall Signature";
 
-		private const int WallValue = 10; // A
+		/// <summary>
+		/// The value a board edge contributes to sum matching.
+		/// 10 = Scale-10 default (A = 10).
+		/// 20 = Scale-20 (Path A confirmed).
+		/// </summary>
+		private readonly int _wallValue;
+
+		/// <summary>
+		/// How close two sums must be to match.
+		/// 0 = exact equality (default, Scale-10).
+		/// 2 = within ±2 (Scale-20, Path A confirmed).
+		/// </summary>
+		private readonly int _sumTolerance;
+
+		public WallSignatureProtocol(int wallValue = 10, int sumTolerance = 0)
+		{
+			_wallValue    = wallValue;
+			_sumTolerance = sumTolerance;
+		}
 
 		public List<(int row, int col)> Resolve(
 			BoardState board, CardInstance placed,
@@ -30,7 +49,7 @@ namespace TripsAndTriads.Rules
 		{
 			var captured = new List<(int row, int col)>();
 
-			// Collect all contact sums — including board edges counted as WallValue
+			// Collect all contact sums — including board edges counted as _wallValue
 			var contacts = new List<(int sum, int? nRow, int? nCol)>();
 
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
@@ -40,8 +59,8 @@ namespace TripsAndTriads.Rules
 
 				if (!board.IsInBounds(nRow, nCol))
 				{
-					// Board edge — counts as WallValue for Handshake tie purposes
-					contacts.Add((attackVal + WallValue, null, null));
+					// Board edge — counts as _wallValue for sum matching
+					contacts.Add((attackVal + _wallValue, null, null));
 					continue;
 				}
 
@@ -54,15 +73,13 @@ namespace TripsAndTriads.Rules
 				contacts.Add((attackVal + defendVal, nRow, nCol));
 			}
 
-			// Find matching sums — if any two contacts (including wall contacts) share
-			// a sum, capture all real enemy cards in those matching contacts
+			// Find matching sums (within tolerance) — capture real enemy cards
 			for (int i = 0; i < contacts.Count; i++)
 			{
 				for (int j = i + 1; j < contacts.Count; j++)
 				{
-					if (contacts[i].sum != contacts[j].sum) continue;
+					if (System.Math.Abs(contacts[i].sum - contacts[j].sum) > _sumTolerance) continue;
 
-					// Capture any real (non-wall) cards in these contacts
 					foreach (var (sum, tr, tc) in new[] { contacts[i], contacts[j] })
 					{
 						if (tr == null || tc == null) continue; // wall contact, skip
@@ -75,7 +92,7 @@ namespace TripsAndTriads.Rules
 						target.OwnerId = placed.OwnerId;
 						captured.Add(((int)tr, (int)tc));
 						GD.Print($"Wall Signature — {target.Data.Name} captured " +
-						         $"(wall-extended sum={sum}).");
+						         $"(sum={sum}, wallValue={_wallValue}, tolerance={_sumTolerance}).");
 					}
 				}
 			}

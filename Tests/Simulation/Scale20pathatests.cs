@@ -25,6 +25,7 @@ namespace TripsAndTriads.Tests.Simulation
     ///   - All 8 districts remain in target range
     ///   - Existing protocol math tests still pass (defaults unchanged)
     /// </summary>
+    [Collection("DomainState")]
     public class Scale20PathATests
     {
         private readonly ITestOutputHelper _output;

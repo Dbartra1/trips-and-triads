@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TripsAndTriads.Core;
 using TripsAndTriads.Rules;
 using TripsAndTriads.UI;
@@ -30,6 +31,13 @@ public partial class GameBoard : Node2D
 	private CardInstance _selectedCardInstance = null;
 	private int          _selectedHandIndex    = -1;
 	private MatchConfig  _matchConfig;
+
+	/// <summary>
+	/// How long (seconds) the AI "thinks" before placing its card.
+	/// 0.5–1.0 s makes it feel deliberate without feeling slow.
+	/// Set to 0 to disable the delay (useful during automated tests).
+	/// </summary>
+	[Export] public float AiThinkDelay { get; set; } = 0.75f;
 
 	private PackedScene _cardScene;
 	private PackedScene _cellScene;
@@ -439,6 +447,7 @@ public partial class GameBoard : Node2D
 
 	private void OnCardSelected(int handIndex, CardNode cardNode)
 	{
+		// Toggle-deselect if same card tapped
 		if (_selectedCard == cardNode)
 		{
 			_selectedCard.SetSelected(false);
@@ -449,13 +458,13 @@ public partial class GameBoard : Node2D
 		_selectedCard         = cardNode;
 		_selectedCardInstance = cardNode.GetCardInstance();
 		_selectedCard.SetSelected(true);
-		GD.Print($"Card selected: {_selectedCardInstance.Data.Name}");
+		GD.Print($"Card selected (drag starting): {_selectedCardInstance.Data.Name}");
 	}
 
 	private void OnCellClicked(int row, int col)
 	{
 		if (_selectedCard == null || _selectedCardInstance == null)
-		{ GD.Print("No card selected from hand yet."); return; }
+		{ GD.Print("No card dragged from hand yet."); return; }
 
 		if (_game.CurrentPlayerId != 1)
 		{ GD.Print("Not Player 1's turn."); return; }
@@ -465,7 +474,7 @@ public partial class GameBoard : Node2D
 
 		if (currentIndex < 0)
 		{
-			GD.PrintErr("Selected card not found in hand.");
+			GD.PrintErr("Dragged card not found in hand.");
 			_selectedCard?.SetSelected(false);
 			_selectedCard = null; _selectedCardInstance = null;
 			return;
@@ -479,7 +488,8 @@ public partial class GameBoard : Node2D
 		PlayerHand.RemoveCard(visualIndex);
 		_cells[row, col].PlaceCard(_selectedCard);
 
-		foreach (var (r, c) in captured) _cells[r, c].RefreshCard();
+		// Flip animation for every captured card
+		foreach (var (r, c) in captured) _cells[r, c].FlipCard();
 		RefreshAllCells();
 
 		_selectedCard = null; _selectedCardInstance = null; _selectedHandIndex = -1;
@@ -491,14 +501,36 @@ public partial class GameBoard : Node2D
 		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
 		if (_game.GameOver) { EndMatchAndTransition(); return; }
 
-		RunAI();
+		// AI turn begins after a thinking delay
+		RunAIDelayed();
 	}
 
-	private void RunAI()
+	// ── AI thinking delay + animated card placement ───────────────────────────
+
+	/// <summary>
+	/// Entry point after the player places a card. Waits AiThinkDelay seconds
+	/// before the AI places its card, so it feels like the AI is deciding.
+	/// </summary>
+	private async void RunAIDelayed()
+	{
+		// Guard: game may have ended before the timer fires (e.g. fast Standoff)
+		if (_game.GameOver || _game.StandoffTriggered) return;
+
+		if (AiThinkDelay > 0f)
+			await ToSignal(GetTree().CreateTimer(AiThinkDelay), SceneTreeTimer.SignalName.Timeout);
+
+		// Re-check after the delay
+		if (_game.GameOver || _game.StandoffTriggered) return;
+
+		await RunAI();
+	}
+
+	private async Task RunAI()
 	{
 		var hand = _game.GetHand(2);
 		if (hand.Count == 0) return;
 
+		// ── Greedy decision ───────────────────────────────────────────────────
 		int bestScore = -1, bestHandIndex = 0, bestRow = -1, bestCol = -1;
 
 		for (int handIndex = 0; handIndex < hand.Count; handIndex++)
@@ -511,22 +543,46 @@ public partial class GameBoard : Node2D
 					{ bestScore = captures; bestHandIndex = handIndex; bestRow = r; bestCol = c; }
 				}
 
-		if (bestRow < 0 || bestHandIndex >= hand.Count) return; // no valid move found
-		// Capture name BEFORE PlayCard — PlayCard removes the card from hand,
-		// making hand[bestHandIndex] stale after the call.
+		if (bestRow < 0 || bestHandIndex >= hand.Count) return;
+
 		string aiCardName = hand[bestHandIndex].Data.Name;
 
 		var aiCard = _cardScene.Instantiate<CardNode>();
 		aiCard.Initialize(hand[bestHandIndex]);
 
-		// Remove from AI hand display before PlayCard mutates the hand list.
+		// Remove from AI hand display BEFORE the tween so the slot empties visually
 		AIHand?.RemoveCard(bestHandIndex);
 
-		var captured = _game.PlayCard(bestHandIndex, bestRow, bestCol);
-		if (captured == null) return;
+		// ── Animated card movement: hand area → board cell ────────────────────
+		Vector2 startPos = GetAICardStartPosition(bestHandIndex);
+		Vector2 cellGlobal = _cells[bestRow, bestCol].GlobalPosition
+		                   + new Vector2(CellPadding, CellPadding);
 
+		// Temporarily place card in the scene root for animation
+		AddChild(aiCard);
+		aiCard.GlobalPosition  = startPos;
+		aiCard.ZIndex          = 10; // float above everything
+		aiCard.CustomMinimumSize = new Vector2(CardWidth, CardHeight);
+		aiCard.Size              = new Vector2(CardWidth, CardHeight);
+
+		var tween = CreateTween();
+		tween.TweenProperty(aiCard, "global_position", cellGlobal, 0.30f)
+		     .SetTrans(Tween.TransitionType.Cubic)
+		     .SetEase(Tween.EaseType.Out);
+
+		await ToSignal(tween, Tween.SignalName.Finished);
+
+		// ── Update game state after animation completes ───────────────────────
+		var captured = _game.PlayCard(bestHandIndex, bestRow, bestCol);
+		if (captured == null) { aiCard.QueueFree(); return; }
+
+		// Transfer card from scene root into the cell container
+		RemoveChild(aiCard);
+		aiCard.ZIndex = 0;
 		_cells[bestRow, bestCol].PlaceCard(aiCard);
-		foreach (var (cr, cc) in captured) _cells[cr, cc].RefreshCard();
+
+		// Flip animation for every captured card
+		foreach (var (cr, cc) in captured) _cells[cr, cc].FlipCard();
 		RefreshAllCells();
 
 		UpdateScores();
@@ -536,6 +592,21 @@ public partial class GameBoard : Node2D
 		if (_game.StandoffTriggered)
 		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
 		if (_game.GameOver) EndMatchAndTransition();
+	}
+
+	/// <summary>
+	/// Returns the global start position for the AI card animation.
+	/// Uses the AIHand card node's position if available; falls back to a
+	/// reasonable off-screen position above the board.
+	/// </summary>
+	private Vector2 GetAICardStartPosition(int handIndex)
+	{
+		if (AIHand != null && handIndex >= 0 && handIndex < AIHand.Count)
+			return AIHand.GetCardGlobalPosition(handIndex);
+
+		// Fallback: position at the top-right of the viewport
+		var viewportSize = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1280, 720);
+		return new Vector2(viewportSize.X - 160, 80);
 	}
 
 	private int SimulateCaptures(CardInstance card, int row, int col)

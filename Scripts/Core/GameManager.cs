@@ -21,7 +21,10 @@ namespace TripsAndTriads.Core
 		/// higher (up to 10) in dangerous late-game districts.
 		/// Default 7 gives the player several turns before she's at full threat.
 		/// </summary>
-		public int VesnaStartingCap { get; set; } = 7;
+		/// Scale-20: A = 20, so 20 is the no-op cap (Vesna enters at full 20/20/20/20).
+		/// At Scale-10 (named Vesna = 10/10/10/10), cap of 20 still has no effect.
+		/// Set lower by DistrictManager for early districts if needed.
+		public int VesnaStartingCap { get; set; } = 20;
 
 		private Dictionary<int, List<CardInstance>> _hands = new()
 		{

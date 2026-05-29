@@ -11,6 +11,7 @@ namespace TripsAndTriads.Tests.Math
     /// confirm floor/ceiling clamping, and verify base-value vs effective-value
     /// distinction is maintained throughout ability progression.
     /// </summary>
+    [Collection("DomainState")]
     public class HeroAbilityProgressionTests
     {
         // ══════════════════════════════════════════════════════════════════════
@@ -98,7 +99,7 @@ namespace TripsAndTriads.Tests.Math
 
             // Data stat must stay at 10 — ability only sets Override
             Assert.Equal(10, vesna.Data.Top);
-            Assert.Equal(9,  vesna.GetBaseValue(Direction.Top)); // override = 9
+            Assert.Equal(8,  vesna.GetBaseValue(Direction.Top)); // override = 8 (decay is −2/turn)
         }
 
         [Fact]
@@ -110,11 +111,11 @@ namespace TripsAndTriads.Tests.Math
             var (board, vesna) = PlaceVesna();
             var ability = new VesnaAbility();
 
-            ability.OnTurnEnd(board, vesna, 1, 1); // base → 9
-            vesna.DomainBonusTop = 2;              // effective → 11
+            ability.OnTurnEnd(board, vesna, 1, 1); // base → 8 (decay is −2/turn)
+            vesna.DomainBonusTop = 2;              // effective → 10
 
-            Assert.Equal(9,  vesna.GetBaseValue(Direction.Top)); // decay only
-            Assert.Equal(11, vesna.GetValue(Direction.Top));     // +domain
+            Assert.Equal(8,  vesna.GetBaseValue(Direction.Top)); // decay only
+            Assert.Equal(10, vesna.GetValue(Direction.Top));     // +domain
         }
 
         // ══════════════════════════════════════════════════════════════════════

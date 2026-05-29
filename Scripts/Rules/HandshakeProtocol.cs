@@ -6,25 +6,37 @@ namespace TripsAndTriads.Rules
 {
 	/// <summary>
 	/// Handshake (adapts: Same) — when a placed card touches two or more enemy cards
-	/// and an edge value is EQUAL on any of those contacts, every card it ties with
-	/// is captured regardless of who is higher.
+	/// and an edge value is EQUAL (within tolerance) on any of those contacts, every
+	/// card it ties with is captured regardless of who is higher.
+	///
+	/// tolerance = 0  → exact equality (Scale-10 default).
+	/// tolerance = 2  → fires when |attack – defend| ≤ 2 (Scale-20, Path A).
 	///
 	/// Lore: Two identical signatures break the city's identity system.
-	/// A tie isn't a stalemate — it's a collision of identity.
 	/// Faction fingerprint: Effigy (point-symmetric stats make ties far more likely).
 	/// </summary>
 	public class HandshakeProtocol : IProtocol
 	{
 		public string Name => "Handshake";
 
+		/// <summary>
+		/// How close two edges must be to count as a "tie".
+		/// 0 = exact equality (default, Scale-10).
+		/// 2 = within ±2 (Scale-20, Path A confirmed).
+		/// </summary>
+		private readonly int _tolerance;
+
+		public HandshakeProtocol(int tolerance = 0)
+		{
+			_tolerance = tolerance;
+		}
+
 		public List<(int row, int col)> Resolve(
 			BoardState board, CardInstance placed,
 			int row, int col,
 			HashSet<(int, int)> alreadyCaptured)
 		{
-			var captured = new List<(int row, int col)>();
-
-			// Count how many enemy contacts tie with this card
+			var captured      = new List<(int row, int col)>();
 			var tiedPositions = new List<(int r, int c)>();
 
 			foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
@@ -40,7 +52,7 @@ namespace TripsAndTriads.Rules
 				int attackVal = placed.GetValue(dir);
 				int defendVal = neighbor.GetValue(placed.Data.Opposite(dir));
 
-				if (attackVal == defendVal)
+				if (System.Math.Abs(attackVal - defendVal) <= _tolerance)
 					tiedPositions.Add((nRow, nCol));
 			}
 
@@ -53,7 +65,7 @@ namespace TripsAndTriads.Rules
 					if (target == null) continue;
 					target.OwnerId = placed.OwnerId;
 					captured.Add((tr, tc));
-					GD.Print($"Handshake — {target.Data.Name} captured by tied edges.");
+					GD.Print($"Handshake — {target.Data.Name} captured by tied edges (tolerance={_tolerance}).");
 				}
 			}
 

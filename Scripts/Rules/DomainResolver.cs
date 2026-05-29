@@ -5,6 +5,15 @@ namespace TripsAndTriads.Rules
 {
 	public static class DomainResolver
 	{
+		/// <summary>
+		/// Multiplier for all domain bonuses.
+		/// 1 = Scale-10 default (bonuses as designed: +1 Aegis, +2 Killzone/Lateral).
+		/// 2 = Scale-20 (doubles all bonuses so they remain meaningful at doubled stats).
+		/// Reset to 1 after any test that changes it.
+		/// Driven by DistrictManager or GameBoard at match start.
+		/// </summary>
+		public static int BonusMultiplier { get; set; } = 1;
+
 		public static void Apply(BoardState board)
 		{
 			for (int r = 0; r < BoardState.Size; r++)
@@ -36,10 +45,10 @@ namespace TripsAndTriads.Rules
 		{
 			foreach (var (adj, _, _) in AdjacentFriendly(board, hero, hr, hc))
 			{
-				adj.DomainBonusTop    += 1;
-				adj.DomainBonusRight  += 1;
-				adj.DomainBonusBottom += 1;
-				adj.DomainBonusLeft   += 1;
+				adj.DomainBonusTop    += 1 * BonusMultiplier;
+				adj.DomainBonusRight  += 1 * BonusMultiplier;
+				adj.DomainBonusBottom += 1 * BonusMultiplier;
+				adj.DomainBonusLeft   += 1 * BonusMultiplier;
 			}
 		}
 
@@ -58,10 +67,10 @@ namespace TripsAndTriads.Rules
 				for (int i = 0; i < 2; i++)
 					switch (edges[i].dir)
 					{
-						case Direction.Top:    adj.DomainBonusTop    += 2; break;
-						case Direction.Right:  adj.DomainBonusRight  += 2; break;
-						case Direction.Bottom: adj.DomainBonusBottom += 2; break;
-						case Direction.Left:   adj.DomainBonusLeft   += 2; break;
+						case Direction.Top:    adj.DomainBonusTop    += 2 * BonusMultiplier; break;
+						case Direction.Right:  adj.DomainBonusRight  += 2 * BonusMultiplier; break;
+						case Direction.Bottom: adj.DomainBonusBottom += 2 * BonusMultiplier; break;
+						case Direction.Left:   adj.DomainBonusLeft   += 2 * BonusMultiplier; break;
 					}
 			}
 		}
@@ -70,8 +79,8 @@ namespace TripsAndTriads.Rules
 		{
 			foreach (var (adj, _, _) in AdjacentFriendly(board, hero, hr, hc))
 			{
-				adj.DomainBonusLeft  += 2;
-				adj.DomainBonusRight += 2;
+				adj.DomainBonusLeft  += 2 * BonusMultiplier;
+				adj.DomainBonusRight += 2 * BonusMultiplier;
 			}
 		}
 
@@ -87,18 +96,18 @@ namespace TripsAndTriads.Rules
 				friendlyCount++;
 				if (adj.Data.Faction == Faction.Commons)
 				{
-					adj.DomainBonusTop    += 1;
-					adj.DomainBonusRight  += 1;
-					adj.DomainBonusBottom += 1;
-					adj.DomainBonusLeft   += 1;
+					adj.DomainBonusTop    += 1 * BonusMultiplier;
+					adj.DomainBonusRight  += 1 * BonusMultiplier;
+					adj.DomainBonusBottom += 1 * BonusMultiplier;
+					adj.DomainBonusLeft   += 1 * BonusMultiplier;
 				}
 			}
 			if (friendlyCount > 0)
 			{
-				hero.DomainBonusTop    += friendlyCount;
-				hero.DomainBonusRight  += friendlyCount;
-				hero.DomainBonusBottom += friendlyCount;
-				hero.DomainBonusLeft   += friendlyCount;
+				hero.DomainBonusTop    += friendlyCount * BonusMultiplier;
+				hero.DomainBonusRight  += friendlyCount * BonusMultiplier;
+				hero.DomainBonusBottom += friendlyCount * BonusMultiplier;
+				hero.DomainBonusLeft   += friendlyCount * BonusMultiplier;
 			}
 		}
 

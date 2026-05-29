@@ -15,9 +15,18 @@ namespace TripsAndTriads.UI
         [Export] public Panel       SelectionBorder { get; set; }
 
         private CardInstance _cardInstance;
+        private bool         _isDraggable = false;
+        private int          _handIndex   = -1;
 
-        private static readonly Color P1Color      = new Color("3ecdef"); // Player — cyan
-        private static readonly Color P2Color      = new Color("fd1d75"); // Enemy  — magenta
+        private static readonly Color P1Color = new Color("3ecdef"); // Player — cyan
+        private static readonly Color P2Color = new Color("fd1d75"); // Enemy  — magenta
+
+        // ── Signals ───────────────────────────────────────────────────────────
+
+        /// <summary>Emitted when a drag begins on this card (drag replaces click-to-select).</summary>
+        [Signal] public delegate void DragStartedEventHandler(CardNode cardNode);
+
+        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         public override void _Ready()
         {
@@ -57,7 +66,6 @@ namespace TripsAndTriads.UI
                 Background.SelfModulate = Colors.White;
             }
 
-            // All labels white — no tinting ever
             var white = Colors.White;
             if (LabelTop    != null) LabelTop.AddThemeColorOverride("font_color",    white);
             if (LabelRight  != null) LabelRight.AddThemeColorOverride("font_color",  white);
@@ -115,15 +123,17 @@ namespace TripsAndTriads.UI
             Refresh();
         }
 
+        // ── Display ───────────────────────────────────────────────────────────
+
         public void Refresh()
         {
             if (_cardInstance == null) return;
 
-            LabelTop        ??= GetNodeOrNull<Label>("LabelTop");
-            LabelRight      ??= GetNodeOrNull<Label>("LabelRight");
-            LabelBottom     ??= GetNodeOrNull<Label>("LabelBottom");
-            LabelLeft       ??= GetNodeOrNull<Label>("LabelLeft");
-            LabelName       ??= GetNodeOrNull<Label>("LabelName");
+            LabelTop    ??= GetNodeOrNull<Label>("LabelTop");
+            LabelRight  ??= GetNodeOrNull<Label>("LabelRight");
+            LabelBottom ??= GetNodeOrNull<Label>("LabelBottom");
+            LabelLeft   ??= GetNodeOrNull<Label>("LabelLeft");
+            LabelName   ??= GetNodeOrNull<Label>("LabelName");
 
             if (LabelTop    != null) LabelTop.Text    = _cardInstance.GetValue(Direction.Top).ToString();
             if (LabelRight  != null) LabelRight.Text  = _cardInstance.GetValue(Direction.Right).ToString();
@@ -151,6 +161,72 @@ namespace TripsAndTriads.UI
                 SelectionBorder.Visible = selected;
         }
 
+        // ── Flip animation ────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Flip the card visually to the new owner: squeeze X to 0, swap color, unsqueeze.
+        /// Called by CellNode.FlipCard() when a capture changes OwnerId.
+        /// </summary>
+        public void FlipToOwner(int newOwnerId)
+        {
+            var tween = CreateTween();
+            tween.SetTrans(Tween.TransitionType.Sine);
+
+            // Squeeze to flat
+            tween.TweenProperty(this, "scale:x", 0.0f, 0.1f);
+
+            // Swap color at midpoint
+            tween.TweenCallback(Callable.From(() =>
+            {
+                SetOwnerColor(newOwnerId);
+                Refresh();
+            }));
+
+            // Unsqueeze back
+            tween.TweenProperty(this, "scale:x", 1.0f, 0.1f);
+        }
+
+        // ── Drag support ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Mark this card as draggable (player hand cards only).
+        /// Board cards and AI hand cards must not be draggable.
+        /// </summary>
+        public void SetDraggable(bool draggable, int handIndex = -1)
+        {
+            _isDraggable = draggable;
+            _handIndex   = handIndex;
+            // Enable mouse events on this node so _GetDragData fires
+            MouseFilter = draggable ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        }
+
+        /// <summary>
+        /// Godot 4 drag-and-drop. Returns the hand index as drag data.
+        /// The drag preview is a semi-transparent ghost of this card.
+        /// </summary>
+        public override Variant _GetDragData(Vector2 atPosition)
+        {
+            if (!_isDraggable || _cardInstance == null || _handIndex < 0)
+                return default;
+
+            // Notify GameBoard (via signal) that drag has started for this card
+            EmitSignal(SignalName.DragStarted, this);
+
+            // Create a ghost preview that follows the cursor
+            var ghost = new CardNode();
+            ghost.CustomMinimumSize = new Vector2(120, 160);
+            ghost.Initialize(_cardInstance);
+            ghost.Modulate = new Color(1f, 1f, 1f, 0.65f);
+            // Keep ghost at card dimensions so it looks like the card
+            SetDragPreview(ghost);
+
+            // Return hand index so the drop target can identify which slot
+            return Variant.From(_handIndex);
+        }
+
+        // ── Accessors ─────────────────────────────────────────────────────────
+
         public CardInstance GetCardInstance() => _cardInstance;
+        public int HandIndex => _handIndex;
     }
 }

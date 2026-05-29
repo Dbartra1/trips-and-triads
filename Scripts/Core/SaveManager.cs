@@ -28,6 +28,17 @@ public static class SaveManager
 
     public static bool SaveExists() => FileAccess.FileExists(SavePath);
 
+    /// <summary>
+    /// Returns the OS-level absolute path to the save file. Useful for bug reports
+    /// and diagnosing distributed-build save failures. Logs on first call.
+    /// </summary>
+    public static string GetSaveFilePath()
+    {
+        var path = ProjectSettings.GlobalizePath(SavePath);
+        GD.Print($"SaveManager: save file path = {path}");
+        return path;
+    }
+
     public static void SaveGame()
     {
         var session  = GameSession.Instance;
@@ -75,7 +86,9 @@ public static class SaveManager
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (file == null)
         {
-            GD.PrintErr($"SaveManager: could not open {SavePath} for writing.");
+            GD.PrintErr($"SaveManager: could not open {SavePath} for writing. " +
+                        $"OS path: {ProjectSettings.GlobalizePath(SavePath)}. " +
+                        $"FileAccess error: {FileAccess.GetOpenError()}");
             return;
         }
         file.StoreString(root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
@@ -166,10 +179,23 @@ public static class SaveManager
 
     public static void DeleteSave()
     {
-        if (SaveExists())
+        if (!SaveExists()) return;
+
+        // DirAccess.Open("user://") is reliable in both editor and exported builds.
+        // DirAccess.RemoveAbsolute(GlobalizePath(...)) can fail on some platforms
+        // when the globalized path format differs from what the OS expects.
+        var dir = DirAccess.Open("user://");
+        if (dir != null)
         {
-            DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath(SavePath));
-            GD.Print("SaveManager: save deleted.");
+            var err = dir.Remove("savegame.json");
+            if (err == Error.Ok)
+                GD.Print("SaveManager: save deleted.");
+            else
+                GD.PrintErr($"SaveManager: failed to delete save — error {err}.");
+        }
+        else
+        {
+            GD.PrintErr("SaveManager: could not open user:// directory to delete save.");
         }
     }
 

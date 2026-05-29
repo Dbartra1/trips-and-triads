@@ -31,15 +31,15 @@ public partial class PreMatchScreen : Control
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 
 		// Resolve node refs by path as fallback
-		DistrictGrid          ??= GetNodeOrNull<GridContainer>("HSplit/Left/DistrictSection/DistrictGrid");
-		RosterGrid            ??= GetNodeOrNull<GridContainer>("HSplit/Right/RosterSection/RosterScroll/RosterGrid");
-		DeckGrid              ??= GetNodeOrNull<GridContainer>("HSplit/Left/DeckSection/DeckGrid");
-		DeckCountLabel        ??= GetNodeOrNull<Label>("HSplit/Left/DeckSection/DeckCountLabel");
-		StartButton           ??= GetNodeOrNull<Button>("HSplit/Left/StartButton");
-		DistrictNameLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictNameLabel");
-		DistrictDescLabel     ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictDescLabel");
-		DistrictStakeLabel    ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictStakeLabel");
-		DistrictProtocolLabel ??= GetNodeOrNull<Label>("HSplit/Left/DistrictSection/DistrictProtocolLabel");
+		DistrictGrid          ??= GetNodeOrNull<GridContainer>("Margin/HSplit/Left/DistrictSection/DistrictGrid");
+		RosterGrid            ??= GetNodeOrNull<GridContainer>("Margin/HSplit/Right/RosterSection/RosterScroll/RosterGrid");
+		DeckGrid              ??= GetNodeOrNull<GridContainer>("Margin/HSplit/Left/DeckSection/DeckGrid");
+		DeckCountLabel        ??= GetNodeOrNull<Label>("Margin/HSplit/Left/DeckSection/DeckCountLabel");
+		StartButton           ??= GetNodeOrNull<Button>("Margin/HSplit/Left/StartButton");
+		DistrictNameLabel     ??= GetNodeOrNull<Label>("Margin/HSplit/Left/DistrictSection/DistrictNameLabel");
+		DistrictDescLabel     ??= GetNodeOrNull<Label>("Margin/HSplit/Left/DistrictSection/DistrictDescLabel");
+		DistrictStakeLabel    ??= GetNodeOrNull<Label>("Margin/HSplit/Left/DistrictSection/DistrictStakeLabel");
+		DistrictProtocolLabel ??= GetNodeOrNull<Label>("Margin/HSplit/Left/DistrictSection/DistrictProtocolLabel");
 
 		if (StartButton != null)
 			StartButton.Pressed += OnStartPressed;
@@ -600,9 +600,21 @@ public partial class PreMatchScreen : Control
 		_huntPopup.AddChild(overlay);
 
 		// Centered dialog box
+		// Center the dialog: anchor all four sides to 0.5 (screen center),
+		// then grow outward symmetrically. SetAnchorsAndOffsetsPreset(Center)
+		// anchors the TOP-LEFT corner at center — this is the correct approach.
 		var dialog = new PanelContainer();
-		dialog.CustomMinimumSize = new Vector2(480, 0);
-		dialog.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
+		dialog.CustomMinimumSize  = new Vector2(480, 0);
+		dialog.AnchorLeft         = 0.5f;
+		dialog.AnchorTop          = 0.5f;
+		dialog.AnchorRight        = 0.5f;
+		dialog.AnchorBottom       = 0.5f;
+		dialog.GrowHorizontal     = Control.GrowDirection.Both;
+		dialog.GrowVertical       = Control.GrowDirection.Both;
+		dialog.OffsetLeft         = -240f;
+		dialog.OffsetRight        =  240f;
+		dialog.OffsetTop          = -175f;
+		dialog.OffsetBottom       =  175f;
 		var dialogStyle = new StyleBoxFlat();
 		dialogStyle.BgColor           = new Color(0.08f, 0.06f, 0.12f, 1f);
 		dialogStyle.BorderWidthLeft   = 2;

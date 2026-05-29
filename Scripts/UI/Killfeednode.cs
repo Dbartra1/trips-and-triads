@@ -5,35 +5,18 @@ using TripsAndTriads.Core;
 namespace TripsAndTriads.UI
 {
 	/// <summary>
-	/// "The Wire" — a scrolling intercept-comms log at the bottom of the board.
+	/// "The Wire" — a scrollable intercept-comms log at the bottom of the board.
 	///
-	/// Entries stack vertically, newest at the bottom. Each entry lives for
-	/// EntryLifetime seconds before fading. The panel is tall enough to show
-	/// three entries at once so fast turns don't lose events.
-	///
-	/// Format:  ◈ VESNA[HCH] → CROW LORN[RZK]  [14>8 L]  ·  AURA +4
-	///          ◈ HANDSHAKE — VERITY[EFF] / RYN MARSH[GWI]
+	/// Entries never expire — the full match history is kept and scrollable.
+	/// Newest entries appear at the bottom. The panel auto-scrolls to the
+	/// latest entry after each turn.
 	/// </summary>
 	public partial class KillFeedNode : Control
 	{
-		// ── Config ────────────────────────────────────────────────────────────────
+		private ScrollContainer _scroll;
+		private VBoxContainer   _linesBox;
+		private Panel           _background;
 
-		/// <summary>Maximum entries kept in memory.</summary>
-		private const int MaxEntries = 12;
-
-		/// <summary>Maximum entries shown in the panel at once.</summary>
-		private const int MaxVisible = 4;
-
-		/// <summary>Seconds each entry stays visible before it is dropped.</summary>
-		private const float EntryLifetime = 8.0f;
-
-		// ── State ─────────────────────────────────────────────────────────────────
-
-		private readonly List<string> _entries    = new();
-		private VBoxContainer         _linesBox;
-		private Panel                 _background;
-
-		// ── Faction tags ──────────────────────────────────────────────────────────
 		private static readonly Dictionary<Faction, string> FactionTag = new()
 		{
 			{ Faction.Ascendant,   "[ASC]"  },
@@ -46,33 +29,37 @@ namespace TripsAndTriads.UI
 			{ Faction.None,        "[FREE]" },
 		};
 
-		// ── Lifecycle ─────────────────────────────────────────────────────────────
-
 		public override void _Ready()
 		{
-			// Background panel
+			// Background
 			_background = new Panel();
 			var style   = new StyleBoxFlat();
-			style.BgColor          = new Color(0.03f, 0.03f, 0.06f, 0.85f);
-			style.BorderWidthTop   = 1;
-			style.BorderColor      = new Color(0.15f, 0.6f, 0.5f, 0.6f);
+			style.BgColor        = new Color(0.03f, 0.03f, 0.06f, 0.85f);
+			style.BorderWidthTop = 1;
+			style.BorderColor    = new Color(0.15f, 0.6f, 0.5f, 0.6f);
 			_background.AddThemeStyleboxOverride("panel", style);
 			_background.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 			_background.MouseFilter = Control.MouseFilterEnum.Ignore;
 			AddChild(_background);
 
-			// Vertical stack of label lines — one per entry
-			_linesBox = new VBoxContainer();
-			_linesBox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-			_linesBox.OffsetLeft    = 12;
-			_linesBox.OffsetRight   = -12;
-			_linesBox.OffsetTop     = 8;
-			_linesBox.OffsetBottom  = -8;
-			_linesBox.MouseFilter   = Control.MouseFilterEnum.Ignore;
-			_linesBox.AddThemeConstantOverride("separation", 5);
-			AddChild(_linesBox);
+			// ScrollContainer fills the panel
+			_scroll = new ScrollContainer();
+			_scroll.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			_scroll.OffsetLeft   = 8;
+			_scroll.OffsetRight  = -8;
+			_scroll.OffsetTop    = 6;
+			_scroll.OffsetBottom = -6;
+			// Show vertical scrollbar; hide horizontal
+			_scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+			_scroll.VerticalScrollMode   = ScrollContainer.ScrollMode.ShowAlways;
+			AddChild(_scroll);
 
-			// Idle message — single centered label
+			// Entry stack inside the scroll
+			_linesBox = new VBoxContainer();
+			_linesBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			_linesBox.AddThemeConstantOverride("separation", 5);
+			_scroll.AddChild(_linesBox);
+
 			PushIdleMessage();
 		}
 
@@ -82,60 +69,40 @@ namespace TripsAndTriads.UI
 		{
 			if (events == null || events.Count == 0) return;
 
+			// Remove idle message on first real entry
+			if (_linesBox.GetChildCount() == 1 &&
+			    _linesBox.GetChild(0) is Label first &&
+			    first.Text.Contains("AWAITING INTERCEPT"))
+				first.QueueFree();
+
 			foreach (var ev in events)
-				_entries.Add(FormatEvent(ev));
+				AppendLine(FormatEvent(ev), alpha: 1.0f);
 
-			while (_entries.Count > MaxEntries)
-				_entries.RemoveAt(0);
-
-			RebuildLines();
-			ScheduleFade();
+			// Auto-scroll to bottom after Godot has laid out the new nodes
+			CallDeferred(MethodName.ScrollToBottom);
 		}
 
 		// ── Display ───────────────────────────────────────────────────────────────
 
-		private void RebuildLines()
+		private void AppendLine(string text, float alpha)
 		{
-			foreach (var child in _linesBox.GetChildren())
-				child.QueueFree();
-
-			if (_entries.Count == 0) { PushIdleMessage(); return; }
-
-			// Show the most recent MaxVisible entries, oldest at top
-			int start = System.Math.Max(0, _entries.Count - MaxVisible);
-			for (int i = start; i < _entries.Count; i++)
-			{
-				// Older entries are dimmer — fades from 0.45 to 1.0 across the window
-				float alpha = 0.45f + 0.55f * (float)(i - start) / System.Math.Max(1, MaxVisible - 1);
-
-				var lbl = new Label();
-				lbl.Text          = _entries[i];
-				lbl.Modulate      = new Color(0.55f, 0.95f, 0.75f, alpha);
-				lbl.AddThemeFontSizeOverride("font_size", 13);
-				lbl.MouseFilter   = Control.MouseFilterEnum.Ignore;
-				lbl.ClipContents  = true;
-				_linesBox.AddChild(lbl);
-			}
+			var lbl = new Label();
+			lbl.Text          = text;
+			lbl.Modulate      = new Color(0.55f, 0.95f, 0.75f, alpha);
+			lbl.AddThemeFontSizeOverride("font_size", 13);
+			lbl.MouseFilter   = Control.MouseFilterEnum.Ignore;
+			lbl.AutowrapMode  = TextServer.AutowrapMode.Off;
+			_linesBox.AddChild(lbl);
 		}
 
 		private void PushIdleMessage()
 		{
-			var lbl = new Label();
-			lbl.Text        = "◈  WIRE ACTIVE  —  AWAITING INTERCEPT";
-			lbl.Modulate    = new Color(0.55f, 0.95f, 0.75f, 0.4f);
-			lbl.AddThemeFontSizeOverride("font_size", 13);
-			lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
-			_linesBox.AddChild(lbl);
+			AppendLine("◈  WIRE ACTIVE  —  AWAITING INTERCEPT", alpha: 0.4f);
 		}
 
-		private void ScheduleFade()
+		private void ScrollToBottom()
 		{
-			var timer = GetTree().CreateTimer(EntryLifetime);
-			timer.Timeout += () =>
-			{
-				if (_entries.Count > 0) _entries.RemoveAt(0);
-				RebuildLines();
-			};
+			_scroll.ScrollVertical = (int)_scroll.GetVScrollBar().MaxValue;
 		}
 
 		// ── Formatting ────────────────────────────────────────────────────────────
@@ -154,7 +121,6 @@ namespace TripsAndTriads.UI
 				_                => "?"
 			};
 
-			// Protocol-only (Handshake / Tally — no edge values)
 			if (!string.IsNullOrEmpty(ev.ProtocolNote) && ev.AttackVal == 0 && ev.DefendVal == 0)
 				return $"◈  {ev.ProtocolNote.ToUpper()}  —  " +
 				       $"{ev.CapturingName.ToUpper()}{ct} / {ev.CapturedName.ToUpper()}{dt}";

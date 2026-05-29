@@ -581,10 +581,20 @@ public partial class PreMatchScreen : Control
 		overlay.MouseFilter = MouseFilterEnum.Ignore;
 		_huntPopup.AddChild(overlay);
 
-		// Centered dialog box
+		// Centered dialog — anchor all four sides to 0.5 (center of parent)
+		// and grow outward in both directions from that point.
 		var dialog = new PanelContainer();
-		dialog.CustomMinimumSize = new Vector2(480, 0);
-		dialog.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
+		dialog.CustomMinimumSize  = new Vector2(480, 0);
+		dialog.AnchorLeft         = 0.5f;
+		dialog.AnchorTop          = 0.5f;
+		dialog.AnchorRight        = 0.5f;
+		dialog.AnchorBottom       = 0.5f;
+		dialog.GrowHorizontal     = Control.GrowDirection.Both;
+		dialog.GrowVertical       = Control.GrowDirection.Both;
+		dialog.OffsetLeft         = -240f;
+		dialog.OffsetRight        = 240f;
+		dialog.OffsetTop          = -170f;
+		dialog.OffsetBottom       = 170f;
 		var dialogStyle = new StyleBoxFlat();
 		dialogStyle.BgColor           = new Color(0.08f, 0.06f, 0.12f, 1f);
 		dialogStyle.BorderWidthLeft   = 2;

@@ -1,29 +1,43 @@
-# Trips & Triads — Dev Handoff (Session 6)
+# Trips & Triads — Dev Handoff (Session 7)
 
-*Last updated end of context window 6. Hand this document back at the start of every new session.*
+*Last updated end of Session 7. Hand this document back at the start of every new session.*
 
 ---
 
 ## Quick Start
 
-**Repo:** https://github.com/Dbartra1/trips-and-triads  
-**Engine:** Godot 4.6.3 stable mono  
-**Language:** C# (.NET / net8.0)  
-**Editor:** Cursor  
+**Repo:** https://github.com/Dbartra1/trips-and-triads
+**Engine:** Godot 4.6.3 stable mono
+**Language:** C# (.NET / net8.0)
+**Editor:** Cursor
 **Platform:** Windows + RTX 4080
 
 **To run the game:** Open project in Godot → Play. Main scene is `Scenes/MainMenu.tscn`.
 
 **To run the test suite:**
 ```
-dotnet build Logic/TripsAndTriads.Logic.csproj
-dotnet test  Tests/TripsAndTriads.Tests.csproj --verbosity normal
+dotnet test Tests/ --verbosity normal
 ```
-`--verbosity normal` is required — the simulation tests print win-rate summaries to output.
 
-**Autoload required:** `Project → Project Settings → Globals` → Add `res://Scripts/GameSession.cs` as `GameSession`. If this is missing the game will crash on launch.
+**To run with output (simulation/balance tests):**
+```
+dotnet test Tests/ --filter "FullyQualifiedName~<TestClass>" --logger "console;verbosity=detailed"
+```
 
-**Design bibles:** `lore.md` and `systems.md` are attached to this project. Read both before touching faction mechanics, card stats, or campaign systems.
+**Current test count: ~246 tests (dotnet count), all passing.**
+
+**Autoload required:** `Project → Project Settings → Globals` → Add `res://Scripts/GameSession.cs` as `GameSession`.
+
+**Design bibles:** `lore.md` and `systems.md` are attached to this project.
+
+---
+
+## Workflow Convention
+
+1. All changes prototype in `Logic/` and `Tests/` first
+2. Confirm passing tests
+3. New chat session to port confirmed changes to `Scripts/` (production)
+4. File naming: just the filename, no suffix. Path clarified in text when ambiguous.
 
 ---
 
@@ -37,28 +51,14 @@ MainMenu → PreMatchScreen → GameBoard → PostMatchScreen → PreMatchScreen
 ### Project Layout
 ```
 trips-and-triads/
-  Logic/    ← Pure C# class library. No Godot dependency. The test suite's source of truth.
+  Logic/    ← Pure C# library. No Godot dependency. Test suite source of truth.
   Tests/    ← xUnit test project. References Logic/ only.
-  Scripts/  ← Godot game scripts. Contain the live GD.Print / Godot API calls.
+  Scripts/  ← Godot game scripts.
   Scenes/   ← Godot scene files.
   Data/     ← cards.json, districts.json
 ```
 
-**The Logic/ and Scripts/ relationship:** `Logic/` contains extracted copies of all game logic files with `GD.Print` replaced by `TestLogger.Log`. `Scripts/` retains the originals with live Godot calls. When logic changes, **both copies must be updated**. See §Testing Suite for details.
-
-### Key Singletons (Godot layer)
-| Singleton | File | Role |
-|---|---|---|
-| `GameSession` (Autoload) | `Scripts/GameSession.cs` | Persistent campaign state: Roster, SelectedDeck, SelectedDistrictId, match result, full Hunt state |
-| `CardDatabase` | `Scripts/Core/CardDatabase.cs` | Loads `Data/Cards/cards.json` once; `_loaded` guard prevents double-load |
-| `DistrictDatabase` | `Scripts/Core/DistrictDatabase.cs` | Loads `Data/Districts/districts.json` once; same guard |
-| `DistrictManager` | `Scripts/Core/DistrictManager.cs` | Control meters, district selection, MatchConfig building, Spreading Rule |
-
-### Namespaces
-- `TripsAndTriads.Core` — game logic (BoardState, CardData, CardInstance, GameManager, StepUpPromoter, etc.)
-- `TripsAndTriads.Rules` — rules engine (CaptureResolver, DomainResolver, BondResolver, protocols, abilities)
-- `TripsAndTriads.UI` — visual nodes (CardNode, CellNode, HandNode)
-- No namespace — top-level scene scripts (GameBoard, PreMatchScreen, PostMatchScreen, MainMenu, GameSession)
+**Logic/ ↔ Scripts/ sync:** Logic/ is a Godot-free copy. When Scripts/ logic changes, Logic/ must be updated manually. The key difference: `GD.Print` → `TestLogger.Log`.
 
 ---
 
@@ -67,237 +67,198 @@ trips-and-triads/
 ```
 Scripts/
   Core/
-    BoardState.cs         — 3×3 grid, PlaceCard, GetCard, IsEmpty, GetNeighbor, GetScore, IsFull
-    CardData.cs           — Template: Faction, Tier, DomainType, AbilityType enums + stat fields
-    CardDatabase.cs       — Singleton, loads cards.json, _loaded guard
-    CardInstance.cs       — In-play card: OwnerId (mutable), OriginalOwnerId (locked), edge overrides,
-                            domain/bond bonuses, behavioral flags
-    CrewGenerator.cs      — Generate(7 cards) + SelectBestFive + GenerateAIHand(db)
-    DistrictData.cs       — District template model
-    DistrictDatabase.cs   — Singleton, loads districts.json, _loaded guard
-    DistrictManager.cs    — Control meters, SelectDistrict, BuildMatchConfig, ApplySpreading
-    GameManager.cs        — Turn manager, VesnaStartingCap=7, DealHands, PlayCard,
-                            ApplyTurnEndAbilities, ResolveDecayCaptures
-    NameGenerator.cs      — Syllable tables, hero titles, usedFirstNames dedup
-    SaveManager.cs        — Save/load campaign state to user://savegame.json
-    StepUpPromoter.cs     — promotes highest-stat non-hero card to Hero tier (systems.md §7.5)
+    BoardState, CardData, CardInstance, GameManager
+    CardDatabase, DistrictDatabase, DistrictManager
+    CrewGenerator, NameGenerator, SaveManager, StepUpPromoter
   Rules/
-    ICardAbility.cs / IProtocol.cs
-    CaptureResolver.cs    — Base capture, Rivalry, Breach chain, protocol passes, Cascade, Listener
-    DomainResolver.cs     — AegisProtocol, Killzone, LateralGrid, Sprawl
-    BondResolver.cs       — All 7 bonds; ContaminationEnabled=false (disabled until campaign layer)
-    MatchConfig.cs        — Active protocols + flags + factory methods
-    HandshakeProtocol.cs / TallyProtocol.cs / WallSignatureProtocol.cs
-    VesnaAbility.cs / SumiAbility.cs / LetheAbility.cs
-  GameBoard.cs            — Match runner; full stake resolution; Hunt AI injection; hero capture detection
-  GameSession.cs          — Autoload: Roster, SelectedDeck, full Hunt state, StepUp(), ReclaimHero()
-  MainMenu.cs
-  PreMatch/
-    PreMatchScreen.cs     — District picker, deck builder, Hunt panel (Reclaim / Buyout stub / Step Up)
-  PostMatch/
-    PostMatchScreen.cs    — Result + Hunt outcome annotation, CardsWon/Lost grids
-  UI/
-    CardNode.cs / CellNode.cs / HandNode.cs
+    ICardAbility, IProtocol, MatchConfig
+    CaptureResolver, DomainResolver, BondResolver
+    HandshakeProtocol, TallyProtocol, WallSignatureProtocol
+    VesnaAbility, SumiAbility, LetheAbility
+  GameBoard, GameSession, MainMenu
+  PreMatch/PreMatchScreen
+  PostMatch/PostMatchScreen
+  UI/CardNode, CellNode, HandNode
 
-Logic/                              ← Godot-free extractions for testing
-  TripsAndTriads.Logic.csproj
-  TestLogger.cs                     — GD.Print shim; captures log messages for assertions
-  Core/   (CardData, CardInstance, BoardState, GameManager)
-  Rules/  (all resolvers, protocols, abilities, interfaces)
+Logic/                              ← Godot-free extractions
+  Core/  BoardState, CardData, CardInstance, GameManager,
+         CrewGenerator, NameGenerator, StepUpPromoter
+  Rules/ all resolvers, protocols, abilities
 
 Tests/
-  TripsAndTriads.Tests.csproj
-  Helpers/
-    CardFactory.cs                  — fluent card builder; named shortcuts for every hero
-    BoardBuilder.cs                 — fluent board setup; resolves domains/bonds after placement
-    GameSimulator.cs                — full mock games; Random/Greedy strategies; BatchResult + Summary()
-  Capture/
-    BaseCaptureTests.cs             — 10 unit tests: edge comparison, geometry, named hero shapes
-    ProtocolTests.cs                — 9 tests: Handshake, Tally, Wall Signature, stacking
-    ChainTests.cs                   — 7 tests: The Breach, Cascade, The Listener
-  Simulation/
-    WinRateTests.cs                 — hero matrix, district protocol impact, 1000-game Monte Carlo
-
-Data/
-  Cards/cards.json
-  Districts/districts.json
+  Helpers/  CardFactory, BoardBuilder, GameSimulator
+  Capture/  BaseCaptureTests, ProtocolTests, ChainTests
+  Math/     EdgeValueArithmetic, CaptureBoundary, HeroAbilityProgression,
+            DomainStacking, ScoreInvariant, ProtocolArithmetic,
+            BondTests, StepUpPromoterTests
+  Integration/ GameManagerIntegrationTests, CrewGeneratorTests,
+               MatchConfigFactoryTests
+  Simulation/  WinRateTests, ProceduralBalanceTests, StatScaleTests,
+               Scale20PrototypeTests, Scale20ExtendedTests,
+               Scale20PathATests
 ```
 
 ---
 
 ## What Is Built and Confirmed Working
 
-### Core Duel Loop
-- 3×3 board, alternating turns, 5-card hands, capture by edge comparison, score at fill
-- AI greedy capture simulation
-- End panel overlay → PostMatchScreen → PreMatchScreen
+### Core Duel + Card Systems (Phases 1–7)
+Full game loop, all 29 named cards, all hero mechanics, domains, bonds, protocols, districts, campaign loop, Hunt system, save states.
 
-### Card Systems (Phases 1–4)
-- 29 named cards, all hero mechanics (Vesna decay, Sumi compound, Lethe copy — base value fix applied)
-- Domain system, all 7 bonds
+### Testing Suite (~246 tests, all passing)
+Three-layer structure: unit (Capture/Math), integration, simulation.
 
-### Protocols (Phase 5)
-Handshake, The Tally, Wall Signature, Cascade, Intercept, Conscription, Standoff
-
-### Districts (Phase 6)
-8 districts, DistrictManager control meters, Spreading Rule, MatchConfig factory methods, VesnaStartingCap
-
-### Procedural Crew Generation
-Player 7-card crew (Hero + Pro + 5 Street), AI fixed hand (Vesna + Verity + 3 Streets), NameGenerator
-
-### Campaign Loop (Phase 7 — complete)
-All 4 stakes, run-over condition, full Hunt system (capture → Headless → Step Up → Reclaim → Reunion)
-
-### Save States (Phase 8a — confirmed working)
-Full persistence via `SaveManager`. Roster, Hunt state, district meters, active district ID all survive sessions.
-
-### Board Layout (Session 6 — confirmed working)
-Classic Triple Triad layout: hands on left (AI) and right (Player) sides of the board.
-- `HandNode` uses `VBoxContainer` — cards stack vertically
-- `mouse_filter = 2` (Ignore) on container nodes — bounding box does not block board clicks
-- `SetInteractive(false)` strips click buttons from AI hand cards
-
-### AI Hand Always Visible (Session 6)
-`AIHandNode` wired to `[Export] public HandNode AIHand` in `GameBoard.cs`. Populated via `RefreshAIHand()` after `DealHands`. Cards removed from display in `RunAI()` as the AI plays. Non-interactive.
-
-### Lethe Base-Value Fix (Session 6)
-`LetheAbility.OnPlaced` uses `GetBaseValue()` — copies stat numbers only, not transient domain/bond bonuses. Applied in both `Scripts/Rules/LetheAbility.cs` and `Logic/Rules/LetheAbility.cs`.
-
-### New Run → MainMenu (Session 6)
-`PreMatchScreen.OnNewRun` routes to `MainMenu.tscn`. Player always hits the main menu between runs.
+**Bugs found and fixed by the test suite:**
+- `LetheAbility` copying buffed values instead of base values
+- `StepUpPromoter` index collision on equal-edge cards (no A generated)
+- `CardFactory.SisterGrin` missing Killzone domain type
+- Lacquer hero soft edge could reach 5 (should cap at 4)
+- `Scripts/Core/CrewGenerator.cs` had `GenerateAIHand`/`CloneCard` accidentally stripped
 
 ---
 
-## Testing Suite (Session 6)
+## Scale-20 Balance Changes — CONFIRMED IN TEST, NOT YET IN PRODUCTION
 
-### Architecture
-The suite lives entirely outside Godot. `Logic/` is a pure .NET 8 class library — an exact copy of all game logic files with `GD.Print` replaced by `TestLogger.Log`. `Tests/` is an xUnit project referencing `Logic/` only.
+All of the following are prototyped and validated in `Logic/` and `Tests/`. They need porting to `Scripts/` in the next session.
 
-**`TestLogger`** — the shim. `TestLogger.Log(msg)` buffers to `Messages` list; `TestLogger.Clear()` resets between tests. Set `WriteToConsole = true` to see output during debugging.
+### Stat Scale
 
-**`CardFactory`** — fluent builder. Named shortcuts (`SeraphYune()`, `SisterGrin()`, etc.) use exact lore.md stat lines. Generic `Street(name, t, r, b, l)` fills boards without affecting the system under test.
+| Constant | Scale-10 (current prod) | Scale-20 (confirmed) |
+|---|---|---|
+| A (max stat) | 10 | **20** |
+| Street total | 10–14, edges 2–5 | **20–28, edges 4–10** |
+| Pro total | 16–22, edges 2–9 | **32–44, edges 4–18** |
+| Hero soft edge | 1–3 | **4–8** |
+| Hero mid edge | 4–8 | **10–16** |
+| HollowChoir mid | 7–9 | **14–18** |
+| Vesna start | 10/10/10/10 (capped 7 in prod) | **20/20/20/20 (no cap)** |
+| Vesna decay | -1/turn | **-2/turn** |
+| Verity | 7/9/7/9 | **14/18/14/18** |
 
-**`BoardBuilder`** — fluent board setup. Calls `DomainResolver.Apply` and `BondResolver.Apply` after all placements so tests start in game-accurate state.
+### Protocol Scaling (Path A v2)
 
-**`GameSimulator`** — runs full mock games. Two strategies: `Random` (Monte Carlo baseline) and `Greedy` (mirrors production AI). `RunBatch(p1Factory, p2Factory, games)` returns a `BatchResult` with win rates, score margins, capture averages, and a `Summary()` string.
+| Protocol | Scale-10 | Scale-20 Path A |
+|---|---|---|
+| HandshakeProtocol | `tolerance=0` | **`tolerance=2`** |
+| TallyProtocol | `sumTolerance=0` | **`sumTolerance=2`** |
+| WallSignatureProtocol | `wallValue=10` | **`wallValue=20, sumTolerance=2`** |
 
-### Keeping Logic/ in sync
-When any game logic file in `Scripts/` changes, the matching file in `Logic/` must be updated to match — only difference is `GD.Print` → `TestLogger.Log`. This is a manual step. A future session could automate this with a source generator or shared project reference.
+`WallSignatureProtocol` in Logic already has `sumTolerance` param. Scripts version needs it added.
 
-### Running
-```
-dotnet test Tests/ --verbosity normal
-```
-The simulation tests (`WinRateTests`) print full output including the hero matchup matrix and protocol impact table. They assert only sanity ranges (win rates between 30–85%) — the interesting data is in the output, not the pass/fail.
+### Domain Bonuses
 
-### Extending the suite
-- **New card:** add a named shortcut to `CardFactory` and a deck factory method in `WinRateTests`.
-- **New protocol:** add a class in `Logic/Rules/`, add it to `MatchConfig`, write tests in `ProtocolTests.cs`.
-- **New bond/ability:** add to `Logic/Rules/`, write tests in a new `Tests/Abilities/` folder.
-- **New system (Hollowing, Payroll, etc.):** add a new test file under `Tests/` in the appropriate folder.
+`DomainResolver.BonusMultiplier = 2` doubles all domain bonuses. Currently implemented in `Logic/Rules/DomainResolver.cs`. Needs porting to `Scripts/Rules/DomainResolver.cs`. Decision pending: use multiplier=2 (marginal, 2–3% domain lift) or multiplier=3 (crosses "meaningful" threshold). Data supports either.
+
+### Balance Results (10,000 games each)
+
+| Metric | Scale-10 prod | Scale-20 Path A |
+|---|---|---|
+| Player win rate vs AI | 19.4% | **48.2%** |
+| Handshake fire rate | 0.085 | **0.081** ✓ |
+| Tally fire rate | 0.173 | **0.145** ✓ |
+| Wall Signature fire rate | 0.470 | **0.631** ✓ |
+| Cascade fire rate | 0.111 | **0.127** ✓ |
+
+6 of 8 districts in 40–65% target. Killfloor (31.5%) and Sprawl Market (32.8%) both use Conscription — deliberately risky, accepted.
+
+---
+
+## Priority Task List for Next Session
+
+**1. Full code review + math verification**
+Run a thorough review of the repo, focusing on:
+- Test suite correctness — verify the math tests actually test what they claim
+- Logic/ ↔ Scripts/ sync — confirm all Logic/ changes are reflected in Scripts/
+- Known issues list below
+
+**2. Port Scale-20 balance changes to production**
+Files to update in `Scripts/`:
+- `Core/CrewGenerator.cs` — double all stat constants
+- `Core/GameManager.cs` — remove VesnaStartingCap kludge (default to 10, no-op)
+- `Rules/VesnaAbility.cs` — decay -2/turn (already done in Scripts from earlier session)
+- `Rules/HandshakeProtocol.cs` — add `tolerance` param
+- `Rules/TallyProtocol.cs` — add `sumTolerance` param
+- `Rules/WallSignatureProtocol.cs` — add `sumTolerance` param (wallValue already exists if added)
+- `Rules/DomainResolver.cs` — add `BonusMultiplier`
+- `Data/Cards/cards.json` — update Vesna and Verity stats
+- `Core/DistrictManager.cs` — update MatchConfig factory calls to use new protocol params
+
+**3. AI card play delay**
+Add a configurable delay (suggested 0.5–1.0s) before the AI places each card. Should feel like the AI is "thinking." Implement in `Scripts/GameBoard.cs` using `await ToSignal(GetTree().CreateTimer(delay), "timeout")` or equivalent Godot timer pattern.
+
+**4. Card flip animation**
+When a card is captured (OwnerId changes), it should physically flip over and change to the capturing player's color. Implement in `Scripts/UI/CardNode.cs`. Suggested: scale X to 0 (half-flip), swap color/sprite, scale X back to 1. Use Godot `Tween`.
+
+**5. Drag-to-play input**
+Replace click-to-play with drag-and-drop:
+- Player drags a card from hand to a board cell
+- AI mimics this with an animated card movement from its hand position to the board
+- Implement in `Scripts/UI/CardNode.cs` (drag source) and `Scripts/UI/CellNode.cs` (drop target)
+
+**6. Fix save system for distributed builds**
+`SaveManager.cs` currently uses `user://savegame.json`. This works in editor but may fail in distributed builds if the path isn't resolved correctly. Investigate `OS.GetUserDataDir()` and ensure the path works across platforms. Also audit for any hardcoded paths.
 
 ---
 
 ## Known Issues / Tech Debt
 
-### Logic/ sync is manual
-When `Scripts/` logic changes, `Logic/` must be updated by hand. No automation yet.
+### Contamination disabled
+`BondResolver.ContaminationEnabled = false`. Re-enable per district when Hollowing system is built.
 
-### Contamination Disabled
-`BondResolver.ContaminationEnabled = false` — re-enable per district when campaign layer is live:
-```csharp
-BondResolver.ContaminationEnabled = district.Controller == "HollowChoir";
-```
-
-### The Rivalry — double log
-`BondResolver.Apply` called twice in `GameManager.PlayCard`. Cosmetic only.
-
-### Conscription pool
-AI always uses its fixed hand under Conscription — no roster to draw from.
-
-### Shaken mechanic not implemented
-Per `systems.md §5.1` — cards joining roster by capture should arrive Shaken (lowest edge = 0 for first match). Not yet built.
-
-### Buyout not implemented
-Hunt panel shows disabled Buyout button. Requires scrip economy (Phase 9).
-
-### Hunt matches currently run district protocols
-`systems.md §7.3` specifies base-capture-only for Hunt matches. Fix: one `if (session.IsHuntMatch)` branch in `GameBoard._Ready` before `BuildMatchConfig()`. Deferred to Phase 9.
+### Hunt matches run district protocols
+Should be base-capture only per `systems.md §7.3`. Fix: `if (session.IsHuntMatch)` branch before `BuildMatchConfig()` in `GameBoard._Ready`.
 
 ### Multi-Hunt not implemented
-Only one Hunt active at a time. Second hero capture while Headless is silently dropped.
+Second hero capture while Headless is silently dropped.
 
-### Captured Sumi never benefits P1
-`OriginalOwnerId` guard prevents a won Sumi from firing Compound for P1. Revisit when cross-origin heroes are common.
+### Shaken mechanic not implemented
+Per `systems.md §5.1`.
+
+### Conscription AI
+AI uses a fixed hand under Conscription — no roster to draw from.
+
+### Bondresolver.cs filename casing
+Lowercase `r` — Linux build risk.
+
+### Logic/ sync is manual
+No automation. When Scripts/ changes, Logic/ must be updated by hand.
 
 ### `_selectedHandIndex` dead field / `SelectCardFromHand()` dead method
-Safe to remove in any cleanup pass.
+Safe to remove.
 
-### `DistrictLabel` export unwired
-`GameBoard.cs` exports `DistrictLabel`; no matching node in scene. Wire or remove.
-
-### `Bondresolver.cs` filename casing
-Lowercase `r` — safe on Windows, risk on Linux builds. Rename to `BondResolver.cs`.
+### `DistrictLabel` export unwired in GameBoard.cs
 
 ---
 
-## Balance Constants
+## Balance Constants (Scale-20, Logic — not yet in Scripts)
 
-| Constant | Location | Value | Notes |
-|---|---|---|---|
-| `VesnaStartingCap` | `GameManager.cs` line 24 | 7 | AI Vesna enters at 7/7/7/7 in The Stub |
-| `StreetMin/Max` | `CrewGenerator.cs` line 14 | 10–14 | Street total, min edge 2 |
-| `ProMin/Max` | `CrewGenerator.cs` line 15 | 16–22 | Pro total |
-| `AbilityWeights` | `CrewGenerator.cs` line 19 | None=75%, Compound=15%, Copy=10% | Player hero ability pool |
-| `ContaminationEnabled` | `BondResolver.cs` line 13 | false | Off until campaign districts |
-| Reclaim attempts | `GameSession.SetCapturedHero` | 2 | Hard cap per `systems.md §7.3` |
-| Step Up soft edge cap | `StepUpPromoter.Promote` | 3 | Max value for promoted hero's soft side |
+| Constant | Location | Value |
+|---|---|---|
+| StreetMin/Max | `CrewGenerator.cs` | 20–28 |
+| StreetEdgeMin/Max | `CrewGenerator.cs` | 4–10 |
+| ProMin/Max | `CrewGenerator.cs` | 32–44 |
+| ProEdgeMin/Max | `CrewGenerator.cs` | 4–18 |
+| A (hero max) | `CrewGenerator.cs` | 20 |
+| SoftMin/Max | `CrewGenerator.cs` | 4–8 |
+| MidMin/Max | `CrewGenerator.cs` | 10–16 |
+| VesnaStartingCap | `GameManager.cs` | 10 (no-op) |
+| Vesna decay | `VesnaAbility.cs` | -2/turn |
+| BonusMultiplier | `DomainResolver.cs` | 2 |
+| Handshake tolerance | `MatchConfig factories` | 2 |
+| Tally sumTolerance | `MatchConfig factories` | 2 |
+| WallSig wallValue | `MatchConfig factories` | 20 |
+| WallSig sumTolerance | `MatchConfig factories` | 2 |
 
 ---
 
-## What's Next (Priority Order)
+## Phases Not Yet Built
 
-### Immediate — run the test suite
-```
-dotnet test Tests/ --verbosity normal
-```
-Review the hero matchup matrix and protocol impact table. Flag any win rate outside 40–60% on the balanced mirror match as a balance concern.
-
-### Phase 8b — Street Cred (`systems.md §8`)
-Single broad campaign stat (Nameless → Known → Named → Notorious → Legend). Affects:
-- Razorkin buyout refusal probability (floor 15–20%, scales with cred)
-- Ransom prices across all factions
-- Contract payouts (income multiplier)
-- District control shift speed
-- Talent attraction (better free agents at higher cred)
-
-### Phase 9 — Economy & Fixers (`systems.md §9`)
-- Scrip as campaign currency (enables Buyout in the Hunt panel)
-- 5 Fixers: Della, Vig, Atlas, Mrs. Oba, The Tailor
-- Contract system as curated duels with scrip payouts
-- Free agent Meet → Audition → Sign flow
-- **Hunt protocol fix** (see Known Issues)
-
-### Phase 7c — Multi-Hunt (deferred)
-Multiple simultaneous Hunts, Hunt cap of 3, oldest-Hunt expiry.
-
-### Phase 10 — The Hollowing (`systems.md §10`)
-Dead Line contracts → Touched → Fading → Claimed affliction track.
-
-### Phase 11 — Payroll & Debt (`systems.md §11`)
-Upkeep per overworld turn. Debt → Collectors → escalating ladder. Mutual Aid vs Lacquer debt.
-
-### Phase 12 — Prestige & Skyline (`systems.md §12`)
-Prestige condition (Legend cred + take The Vault). Skyline rival system. Two endings.
-
-### Near-term cleanup (any session)
-- Shaken mechanic (`systems.md §5.1`)
-- Contamination re-enable
-- Conscription AI roster
-- Faction-specific AI decks (Phase 8b+)
-- Dead code: `_selectedHandIndex`, `SelectCardFromHand()`, `DistrictLabel`
-- `Bondresolver.cs` → `BondResolver.cs`
-- `Logic/` sync automation
+- **Phase 8b** — Street Cred (`systems.md §8`)
+- **Phase 9** — Economy & Fixers (`systems.md §9`)
+- **Phase 7c** — Multi-Hunt
+- **Phase 10** — The Hollowing (`systems.md §10`)
+- **Phase 11** — Payroll & Debt (`systems.md §11`)
+- **Phase 12** — Prestige & Skyline (`systems.md §12`)
 
 ---
 

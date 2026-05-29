@@ -40,19 +40,19 @@ offset_top = 104.0
 offset_right = 880.0
 offset_bottom = 146.0
 
-[node name="LabelP1" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111002]
+[node name="LabelP2" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111003]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 0.5
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.29, 0.565, 0.851, 1)
+theme_override_colors/font_color = Color(0.851, 0.29, 0.29, 1)
 theme_override_font_sizes/font_size = 22
-text = "P1  5"
+text = "P2  5"
 vertical_alignment = 1
 
-[node name="LabelP2" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111003]
+[node name="LabelP1" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111002]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
@@ -60,19 +60,24 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.851, 0.29, 0.29, 1)
+theme_override_colors/font_color = Color(0.29, 0.565, 0.851, 1)
 theme_override_font_sizes/font_size = 22
-text = "5  P2"
+text = "5  P1"
 horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="DistrictLabel" type="Label" parent="CanvasLayer/ScoreBar" unique_id=206052375]
-layout_mode = 0
-offset_left = 111.99999
-offset_top = -7.9999995
-offset_right = 152.0
-offset_bottom = 15.0
-scale = Vector2(5.96, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 16
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
 layout_mode = 3
@@ -84,33 +89,36 @@ offset_bottom = 744.0
 mouse_filter = 1
 
 [node name="AIHandContainer" type="Control" parent="CanvasLayer" unique_id=40941502]
-custom_minimum_size = Vector2(760, 192)
 layout_mode = 3
 anchors_preset = 0
-offset_left = -184.0
-offset_top = 390.0
-offset_right = 576.0
-offset_bottom = 582.0
-rotation = -6.2831855
+offset_left = 254.0
+offset_top = 168.0
+offset_right = 404.0
+offset_bottom = 744.0
+mouse_filter = 1
 
 [node name="AIHandNode" parent="CanvasLayer/AIHandContainer" unique_id=1094449165 instance=ExtResource("2_l414y")]
 layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
-custom_minimum_size = Vector2(760, 192)
 layout_mode = 3
 anchors_preset = 0
-offset_left = 260.0
-offset_top = 680.0
-offset_right = 1020.0
-offset_bottom = 872.0
+offset_left = 900.0
+offset_top = 168.0
+offset_right = 1050.0
+offset_bottom = 744.0
+mouse_filter = 1
 
 [node name="HandNode" parent="CanvasLayer/HandContainer" unique_id=1094449164 instance=ExtResource("2_l414y")]
 layout_mode = 1
-offset_left = 452.0
-offset_top = -296.0
-offset_right = 452.0
-offset_bottom = -296.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="GameOverPanel" type="Panel" parent="CanvasLayer" unique_id=333333001]
 visible = false

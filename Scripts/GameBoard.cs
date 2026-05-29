@@ -155,28 +155,20 @@ public partial class GameBoard : Node2D
 
 	private void SizeHandContainers()
 	{
-		// The containers must:
-		//   1. Be exactly wide enough for one card (120 px) + small padding.
-		//   2. NOT intercept mouse events in the board area.
-		//
-		// Root cause of the cell dead-zone: Control nodes default to
-		// MouseFilter = Stop, so any container whose rect overlaps a board cell
-		// will swallow clicks before CellNode can receive them. Setting the
-		// filter to Ignore lets all events pass through to whatever is below.
-		//
-		// Sizing is done in code so the scene-editor bounding boxes don't matter.
+		float boardH     = BoardState.Size * CellHeight;
+		var   handSz     = new Vector2(150f, boardH);
+		var   boardPos   = BoardContainer?.GlobalPosition ?? Vector2.Zero;
+		float boardRight = boardPos.X + BoardState.Size * CellWidth;
 
-		float boardH  = BoardState.Size * CellHeight; // 3 × 192 = 576
-		var   handSz  = new Vector2(150f, boardH);
-		var   boardPos = BoardContainer?.GlobalPosition ?? Vector2.Zero;
-
+		// Player hand on the RIGHT, AI hand on the LEFT.
+		// 90 px gap between board edge and each hand container.
 		if (HandContainer != null)
 		{
 			HandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
 			HandContainer.CustomMinimumSize = handSz;
 			HandContainer.Size              = handSz;
-			HandContainer.GlobalPosition    = new Vector2(boardPos.X - 160f, boardPos.Y);
-			GD.Print($"HandContainer: size={handSz}, globalPos={HandContainer.GlobalPosition}");
+			HandContainer.GlobalPosition    = new Vector2(boardRight + 90f, boardPos.Y);
+			GD.Print($"HandContainer (player): pos={HandContainer.GlobalPosition}");
 		}
 
 		if (AIHandContainer != null)
@@ -184,9 +176,8 @@ public partial class GameBoard : Node2D
 			AIHandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
 			AIHandContainer.CustomMinimumSize = handSz;
 			AIHandContainer.Size              = handSz;
-			float boardRight = boardPos.X + BoardState.Size * CellWidth;
-			AIHandContainer.GlobalPosition = new Vector2(boardRight + 10f, boardPos.Y);
-			GD.Print($"AIHandContainer: size={handSz}, globalPos={AIHandContainer.GlobalPosition}");
+			AIHandContainer.GlobalPosition    = new Vector2(boardPos.X - 240f, boardPos.Y);
+			GD.Print($"AIHandContainer: pos={AIHandContainer.GlobalPosition}");
 		}
 	}
 

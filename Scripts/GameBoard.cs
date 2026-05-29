@@ -179,8 +179,8 @@ public partial class GameBoard : Node2D
 			float boardBottom = boardPos.Y + BoardState.Size * CellHeight;
 
 			_killFeed.GlobalPosition    = new Vector2(boardPos.X, boardBottom + 12f);
-			_killFeed.CustomMinimumSize = new Vector2(boardW, 40f);
-			_killFeed.Size              = new Vector2(boardW, 40f);
+			_killFeed.CustomMinimumSize = new Vector2(boardW, 120f);
+			_killFeed.Size              = new Vector2(boardW, 120f);
 
 			// Add to CanvasLayer if found, else to GameBoard itself
 			var canvas = GetNodeOrNull<CanvasLayer>("CanvasLayer");

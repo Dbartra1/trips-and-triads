@@ -556,9 +556,151 @@ public partial class PreMatchScreen : Control
 		GetTree().ChangeSceneToFile("res://Scenes/MainMenu.tscn");
 	}
 
+	// ── Hunt reminder popup ───────────────────────────────────────────────────
+	// Shown when the player hits Start while a Hunt is still open.
+
+	private Control _huntPopup = null;
+
+	private void ShowHuntReminderPopup()
+	{
+		if (_huntPopup != null) return; // already showing
+
+		var session = GameSession.Instance;
+		var hero    = session?.CapturedHero;
+
+		// Full-screen dim overlay
+		_huntPopup = new Control();
+		_huntPopup.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		_huntPopup.MouseFilter = MouseFilterEnum.Stop; // block clicks behind it
+
+		var overlay = new Panel();
+		overlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		var overlayStyle   = new StyleBoxFlat();
+		overlayStyle.BgColor = new Color(0f, 0f, 0f, 0.72f);
+		overlay.AddThemeStyleboxOverride("panel", overlayStyle);
+		overlay.MouseFilter = MouseFilterEnum.Ignore;
+		_huntPopup.AddChild(overlay);
+
+		// Centered dialog box
+		var dialog = new PanelContainer();
+		dialog.CustomMinimumSize = new Vector2(480, 0);
+		dialog.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
+		var dialogStyle = new StyleBoxFlat();
+		dialogStyle.BgColor           = new Color(0.08f, 0.06f, 0.12f, 1f);
+		dialogStyle.BorderWidthLeft   = 2;
+		dialogStyle.BorderWidthTop    = 2;
+		dialogStyle.BorderWidthRight  = 2;
+		dialogStyle.BorderWidthBottom = 2;
+		dialogStyle.BorderColor       = new Color(0.7f, 0.2f, 0.2f, 0.9f);
+		dialogStyle.SetCornerRadiusAll(6);
+		dialog.AddThemeStyleboxOverride("panel", dialogStyle);
+		_huntPopup.AddChild(dialog);
+
+		var box = new VBoxContainer();
+		box.AddThemeConstantOverride("separation", 14);
+		dialog.AddChild(box);
+
+		// Padding inside the box
+		var padBox = new MarginContainer();
+		padBox.AddThemeConstantOverride("margin_left",   24);
+		padBox.AddThemeConstantOverride("margin_right",  24);
+		padBox.AddThemeConstantOverride("margin_top",    24);
+		padBox.AddThemeConstantOverride("margin_bottom", 24);
+		box.AddChild(padBox);
+
+		var innerBox = new VBoxContainer();
+		innerBox.AddThemeConstantOverride("separation", 14);
+		padBox.AddChild(innerBox);
+
+		// Title
+		var titleLbl = new Label();
+		titleLbl.Text = "⚠  YOUR HERO IS STILL OUT THERE";
+		titleLbl.AddThemeColorOverride("font_color", new Color(0.9f, 0.3f, 0.3f, 1f));
+		titleLbl.AddThemeFontSizeOverride("font_size", 20);
+		titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
+		innerBox.AddChild(titleLbl);
+
+		// Body
+		var bodyLbl = new Label();
+		string heroName    = hero?.Name ?? "your hero";
+		string faction     = session?.CapturingFaction.ToString() ?? "unknown";
+		string attemptsStr = session?.ReclamationAttemptsLeft > 0
+			? $"{session.ReclamationAttemptsLeft} reclaim attempt(s) remaining"
+			: "reclaim window is closed";
+		bodyLbl.Text = $"{heroName} was captured by {faction}.\n" +
+		               $"{attemptsStr}.\n\n" +
+		               "Would you like to reclaim them before this match?";
+		bodyLbl.AutowrapMode        = TextServer.AutowrapMode.WordSmart;
+		bodyLbl.HorizontalAlignment = HorizontalAlignment.Center;
+		bodyLbl.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f, 1f));
+		bodyLbl.AddThemeFontSizeOverride("font_size", 15);
+		innerBox.AddChild(bodyLbl);
+
+		// Buttons
+		var btnRow = new HBoxContainer();
+		btnRow.Alignment = BoxContainer.AlignmentMode.Center;
+		btnRow.AddThemeConstantOverride("separation", 20);
+		innerBox.AddChild(btnRow);
+
+		// Reclaim button — only if attempts remain and interim is ready
+		bool canReclaim = session?.HasInterim == true && session?.ReclamationAttemptsLeft > 0;
+
+		var reclaimBtn = new Button();
+		reclaimBtn.Text              = $"⚔  Reclaim {heroName}";
+		reclaimBtn.CustomMinimumSize = new Vector2(200, 46);
+		reclaimBtn.Disabled          = !canReclaim;
+		reclaimBtn.TooltipText       = canReclaim
+			? "Fight to win your hero back before this match."
+			: "Step Up an interim hero first to unlock Reclaim.";
+		reclaimBtn.Pressed += () =>
+		{
+			DismissHuntPopup();
+			OnHuntReclaimPressed();
+		};
+		btnRow.AddChild(reclaimBtn);
+
+		var continueBtn = new Button();
+		continueBtn.Text              = "Continue without them →";
+		continueBtn.CustomMinimumSize = new Vector2(200, 46);
+		continueBtn.Pressed += () =>
+		{
+			DismissHuntPopup();
+			LaunchMatch();
+		};
+		btnRow.AddChild(continueBtn);
+
+		AddChild(_huntPopup);
+	}
+
+	private void DismissHuntPopup()
+	{
+		_huntPopup?.QueueFree();
+		_huntPopup = null;
+	}
+
 	// ── Start match ───────────────────────────────────────────────────────────
 
 	private void OnStartPressed()
+	{
+		if (_selectedDeck.Count != MaxDeckSize)
+		{
+			GD.Print("PreMatch: need exactly 5 cards to start.");
+			return;
+		}
+
+		var session = GameSession.Instance;
+
+		// If a Hunt is active and reclaim window is still open, prompt the player.
+		if (session != null && session.IsHeadless && session.ReclamationAttemptsLeft > 0)
+		{
+			ShowHuntReminderPopup();
+			return;
+		}
+
+		LaunchMatch();
+	}
+
+	private void LaunchMatch()
 	{
 		if (_selectedDeck.Count != MaxDeckSize)
 		{

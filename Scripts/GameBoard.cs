@@ -108,7 +108,11 @@ public partial class GameBoard : Node2D
 		GD.Print($"Active protocols: {string.Join(", ", _matchConfig.Protocols.ConvertAll(p => p.Name))}");
 
 		if (DistrictLabel != null)
-			DistrictLabel.Text = district?.Name ?? "";
+		{
+			bool isHunt       = session?.IsHuntMatch == true;
+			string stakeName  = isHunt ? "As Flipped (Reclaim)" : (district?.Stake ?? "");
+			DistrictLabel.Text = $"{district?.Name ?? ""}  ·  {stakeName}";
+		}
 
 		// ── AI hand ───────────────────────────────────────────────────────────
 		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
@@ -356,8 +360,6 @@ public partial class GameBoard : Node2D
 		// hero reclaim is handled separately in EndMatchAndTransition.
 		if (wasHuntMatch || stake == "AsFlipped")
 		{
-			// Player keeps every AI-original card they now control.
-			// Player loses every player-original card the AI now controls.
 			session.CardsWon.Clear();
 			session.CardsLost.Clear();
 			for (int r = 0; r < BoardState.Size; r++)
@@ -368,7 +370,7 @@ public partial class GameBoard : Node2D
 					if (card.OriginalOwnerId == 2 && card.OwnerId == 1)
 						session.CardsWon.Add(card.Data);
 					else if (card.OriginalOwnerId == 1 && card.OwnerId == 2)
-						TryLoseCard(session, card.Data);
+						TryLoseCard(session, card.Data, wasHuntMatch);
 				}
 			return;
 		}
@@ -379,8 +381,6 @@ public partial class GameBoard : Node2D
 		switch (stake)
 		{
 			case "OneJob":
-				// Winner's choice: one card from the loser's on-board cards.
-				// Prefers non-hero, but heroes are now fully capturable.
 				if (playerWon)
 				{
 					var won = GetFirstBoardCard(originalOwnerId: 2);
@@ -389,12 +389,11 @@ public partial class GameBoard : Node2D
 				else
 				{
 					var lost = GetFirstBoardCard(originalOwnerId: 1);
-					if (lost != null) TryLoseCard(session, lost);
+					if (lost != null) TryLoseCard(session, lost, wasHuntMatch);
 				}
 				break;
 
 			case "TheSpread":
-				// Winner takes N cards equal to the margin (winner score − loser score).
 				int margin = System.Math.Abs(session.P1FinalScore - session.P2FinalScore);
 				if (playerWon)
 				{
@@ -406,12 +405,11 @@ public partial class GameBoard : Node2D
 				{
 					var p1Cards = GetAllBoardCards(originalOwnerId: 1);
 					for (int i = 0; i < margin && i < p1Cards.Count; i++)
-						TryLoseCard(session, p1Cards[i]);
+						TryLoseCard(session, p1Cards[i], wasHuntMatch);
 				}
 				break;
 
 			case "Everything":
-				// Winner takes the loser's entire played hand.
 				if (playerWon)
 				{
 					session.CardsWon.AddRange(GetAllBoardCards(originalOwnerId: 2));
@@ -419,7 +417,7 @@ public partial class GameBoard : Node2D
 				else
 				{
 					foreach (var c in GetAllBoardCards(originalOwnerId: 1))
-						TryLoseCard(session, c);
+						TryLoseCard(session, c, wasHuntMatch);
 				}
 				break;
 
@@ -430,12 +428,24 @@ public partial class GameBoard : Node2D
 	}
 
 	/// <summary>
+	/// <summary>
 	/// Lose a card: add to CardsLost, and if it's the player's hero trigger the Hunt.
 	/// Only opens a new Hunt if one is not already active — losing a second hero
 	/// while Headless doesn't chain Hunts; the card is simply lost.
+	///
+	/// Option A immunity: during a Hunt match, heroes are never capturable.
+	/// The reclaim duel is a sanctioned engagement — hero stakes are not on the table.
+	/// This prevents the reclaim→interim-capture→new-Hunt loop.
 	/// </summary>
-	private void TryLoseCard(GameSession session, CardData card)
+	private void TryLoseCard(GameSession session, CardData card, bool isHuntMatch = false)
 	{
+		// Option A: heroes are immune to capture during Hunt matches
+		if (isHuntMatch && card.Tier == Tier.Hero)
+		{
+			GD.Print($"GameBoard: Hunt match — hero {card.Name} immune to capture (Option A).");
+			return;
+		}
+
 		session.CardsLost.Add(card);
 
 		if (card.Tier == Tier.Hero && session != null && !session.IsHeadless)

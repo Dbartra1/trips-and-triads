@@ -130,6 +130,13 @@ public partial class PreMatchScreen : Control
 			cardNode.Initialize(new CardInstance(card, ownerId: 1));
 			cardNode.CustomMinimumSize = new Vector2(120, 160);
 
+			// Dim cards already in the deck so the player can see at a glance
+			// what's selected. Full opacity when removed.
+			bool alreadySelected = _selectedDeck.Contains(card);
+			cardNode.Modulate = alreadySelected
+				? new Color(1f, 1f, 1f, 0.35f)
+				: Colors.White;
+
 			var cardRef = card; // closure-safe copy
 			if (_stepUpMode)
 			{
@@ -169,13 +176,15 @@ public partial class PreMatchScreen : Control
 			else
 			{
 				var btn = new Button();
-				btn.Text              = $"+ {card.Name}";
+				btn.Text              = alreadySelected ? $"✓ {card.Name}" : $"+ {card.Name}";
 				btn.ClipText          = true;
+				btn.Disabled          = alreadySelected;
 				btn.CustomMinimumSize = new Vector2(120, 30);
 				btn.Pressed += () =>
 				{
 					AddToDeck(cardRef);
 					RefreshDeckDisplay();
+					RefreshRoster();
 				};
 				wrapper.AddChild(btn);
 			}
@@ -189,7 +198,15 @@ public partial class PreMatchScreen : Control
 		foreach (var child in DeckGrid.GetChildren())
 			child.QueueFree();
 
-		foreach (var card in _selectedDeck)
+		// Enforce Hero → Pro → Street display order
+		var ordered = new List<CardData>(_selectedDeck);
+		ordered.Sort((a, b) =>
+		{
+			int Rank(Tier t) => t switch { Tier.Hero => 0, Tier.Pro => 1, _ => 2 };
+			return Rank(a.Tier).CompareTo(Rank(b.Tier));
+		});
+
+		foreach (var card in ordered)
 		{
 			var wrapper = new VBoxContainer();
 			wrapper.CustomMinimumSize = new Vector2(100, 0);
@@ -208,6 +225,7 @@ public partial class PreMatchScreen : Control
 			{
 				RemoveFromDeck(captured);
 				RefreshDeckDisplay();
+				RefreshRoster(); // re-brighten the card in the roster
 			};
 			wrapper.AddChild(btn);
 		}
@@ -581,20 +599,10 @@ public partial class PreMatchScreen : Control
 		overlay.MouseFilter = MouseFilterEnum.Ignore;
 		_huntPopup.AddChild(overlay);
 
-		// Centered dialog — anchor all four sides to 0.5 (center of parent)
-		// and grow outward in both directions from that point.
+		// Centered dialog box
 		var dialog = new PanelContainer();
-		dialog.CustomMinimumSize  = new Vector2(480, 0);
-		dialog.AnchorLeft         = 0.5f;
-		dialog.AnchorTop          = 0.5f;
-		dialog.AnchorRight        = 0.5f;
-		dialog.AnchorBottom       = 0.5f;
-		dialog.GrowHorizontal     = Control.GrowDirection.Both;
-		dialog.GrowVertical       = Control.GrowDirection.Both;
-		dialog.OffsetLeft         = -240f;
-		dialog.OffsetRight        = 240f;
-		dialog.OffsetTop          = -170f;
-		dialog.OffsetBottom       = 170f;
+		dialog.CustomMinimumSize = new Vector2(480, 0);
+		dialog.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
 		var dialogStyle = new StyleBoxFlat();
 		dialogStyle.BgColor           = new Color(0.08f, 0.06f, 0.12f, 1f);
 		dialogStyle.BorderWidthLeft   = 2;

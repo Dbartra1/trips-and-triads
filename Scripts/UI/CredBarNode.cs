@@ -172,8 +172,14 @@ namespace TripsAndTriads.UI
 
 				if (i < tierIdx)
 				{
-					// Completed tier — solid glow
-					_colRects[i].Color   = ColDone;
+					// Completed tier — restore to full height and solid color
+					float fullH       = ColHeightForIndex(i);
+					float baseBottomY = PanelPad + 28 + ColMaxH;
+					float x           = PanelPad + i * (ColWidth + ColGap);
+					_colRects[i].Position = new Vector2(x, baseBottomY - fullH);
+					_colRects[i].Size     = new Vector2(ColWidth, fullH);
+					_colRects[i].Color    = ColDone;
+					_colRects[i].Modulate = Colors.White; // clear any pulse residue
 					_tierLabels[i].AddThemeColorOverride("font_color", LabelDone);
 				}
 				else if (i == tierIdx)

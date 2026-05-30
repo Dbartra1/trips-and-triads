@@ -70,7 +70,15 @@ public partial class GameBoard : Node2D
 			session.SelectedDeck.RemoveAll(c => !session.Roster.Contains(c));
 		}
 
-		if (session != null && session.SelectedDeck.Count == 5)
+		if (session != null && session.HasStandoffHands)
+		{
+			// Standoff rematch — use the board-state hands saved before the reload.
+			districtId = session.SelectedDistrictId;
+			p1Cards    = session.StandoffP1Hand;
+			session.ClearStandoffHands();
+			GD.Print($"GameBoard: Standoff rematch — P1 hand has {p1Cards.Count} cards.");
+		}
+		else if (session != null && session.SelectedDeck.Count == 5)
 		{
 			districtId = session.SelectedDistrictId;
 			bool isConscription = DistrictDatabase.Instance
@@ -224,6 +232,30 @@ public partial class GameBoard : Node2D
 			AIHandContainer.GlobalPosition    = new Vector2(boardPos.X - 240f, boardPos.Y);
 			GD.Print($"AIHandContainer: pos={AIHandContainer.GlobalPosition}");
 		}
+	}
+
+	private void SaveStandoffHands()
+	{
+		// Collect each player's board-controlled cards + any unplayed hand card.
+		// These become the hands for the rematch, as per systems.md §3.7.
+		var p1 = new List<CardData>();
+		var p2 = new List<CardData>();
+
+		for (int r = 0; r < BoardState.Size; r++)
+			for (int c = 0; c < BoardState.Size; c++)
+			{
+				var card = _game.Board.GetCard(r, c);
+				if (card == null) continue;
+				if (card.OwnerId == 1) p1.Add(card.Data);
+				else                   p2.Add(card.Data);
+			}
+
+		// Include unplayed hand card (the one card not yet placed)
+		foreach (var c in _game.GetHand(1)) p1.Add(c.Data);
+		foreach (var c in _game.GetHand(2)) p2.Add(c.Data);
+
+		GameSession.Instance?.SetStandoffHands(p1, p2);
+		GD.Print($"Standoff: saved P1={p1.Count} cards, P2={p2.Count} cards for rematch.");
 	}
 
 	private void SpawnGrid()
@@ -413,14 +445,23 @@ public partial class GameBoard : Node2D
 				break;
 
 			case "Everything":
+				// Winner takes ALL of the loser's cards — board cards AND the one
+				// unplayed card still in hand. The board only has 9 cards; the 10th
+				// belongs to whoever didn't play last.
 				if (playerWon)
 				{
 					session.CardsWon.AddRange(GetAllBoardCards(originalOwnerId: 2));
+					// Add any AI card still in hand (unplayed)
+					foreach (var c in _game.GetHand(2))
+						session.CardsWon.Add(c.Data);
 				}
 				else
 				{
 					foreach (var c in GetAllBoardCards(originalOwnerId: 1))
 						TryLoseCard(session, c, wasHuntMatch);
+					// Add any player card still in hand (unplayed)
+					foreach (var c in _game.GetHand(1))
+						TryLoseCard(session, c.Data, wasHuntMatch);
 				}
 				break;
 
@@ -582,7 +623,13 @@ public partial class GameBoard : Node2D
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
 		if (_game.StandoffTriggered)
-		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
+		
+		{
+			GD.Print("Standoff — saving board hands and restarting.");
+			SaveStandoffHands();
+			GetTree().ReloadCurrentScene();
+			return;
+		}
 		if (_game.GameOver) { EndMatchAndTransition(); return; }
 
 		// AI turn begins after a thinking delay
@@ -676,7 +723,13 @@ public partial class GameBoard : Node2D
 		GD.Print($"P1: {_game.Board.GetScore(1)} | P2: {_game.Board.GetScore(2)}");
 
 		if (_game.StandoffTriggered)
-		{ GD.Print("Standoff — restarting."); GetTree().ReloadCurrentScene(); return; }
+		
+		{
+			GD.Print("Standoff — saving board hands and restarting.");
+			SaveStandoffHands();
+			GetTree().ReloadCurrentScene();
+			return;
+		}
 		if (_game.GameOver) EndMatchAndTransition();
 	}
 

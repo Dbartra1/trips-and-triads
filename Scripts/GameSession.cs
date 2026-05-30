@@ -165,6 +165,29 @@ public partial class GameSession : Node
 	/// <summary>Clear grace period alerts after PreMatchScreen has displayed them.</summary>
 	public void ClearGracePeriodAlerts() => NewGracePeriodAlerts.Clear();
 
+	// ── Standoff rematch state ────────────────────────────────────────────────
+	/// <summary>
+	/// When a Standoff triggers, GameBoard saves the board-state hands here
+	/// before reloading the scene. _Ready picks these up on the rematch and
+	/// uses them instead of drawing from the roster/deck again.
+	/// Cleared after use.
+	/// </summary>
+	public List<CardData> StandoffP1Hand { get; private set; } = null;
+	public List<CardData> StandoffP2Hand { get; private set; } = null;
+	public bool           HasStandoffHands => StandoffP1Hand != null;
+
+	public void SetStandoffHands(List<CardData> p1, List<CardData> p2)
+	{
+		StandoffP1Hand = new List<CardData>(p1);
+		StandoffP2Hand = new List<CardData>(p2);
+	}
+
+	public void ClearStandoffHands()
+	{
+		StandoffP1Hand = null;
+		StandoffP2Hand = null;
+	}
+
 	public override void _Ready()
 	{
 		_instance = this;

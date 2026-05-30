@@ -136,9 +136,9 @@ namespace TripsAndTriads.Core
 		// ── Protocol factory ──────────────────────────────────────────────────────
 		private static IProtocol BuildProtocol(string name) => name switch
 		{
-			"Handshake"     => new HandshakeProtocol(),
-			"Tally"         => new TallyProtocol(),
-			"WallSignature" => new WallSignatureProtocol(),
+			"Handshake"     => new HandshakeProtocol(tolerance: 2),
+			"Tally"         => new TallyProtocol(sumTolerance: 2),
+			"WallSignature" => new WallSignatureProtocol(wallValue: 20, sumTolerance: 2),
 			_               => throw new System.ArgumentException($"Unknown protocol: {name}")
 		};
 	}

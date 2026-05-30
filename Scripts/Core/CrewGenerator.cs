@@ -190,24 +190,100 @@ namespace TripsAndTriads.Core
 		/// <summary>
 		/// Generate the AI's 5-card hand: fixed hero + fixed TopTier + 3 generated Streets.
 		/// </summary>
-		public static System.Collections.Generic.List<CardData> GenerateAIHand(
-			CardDatabase db, Random? rng = null)
+		/// <summary>
+		/// Generates an AI hand matched to the district's controlling faction.
+		/// Structure: Hero (named) + 1–2 named Top-Tier + generated Streets to fill 5.
+		///
+		/// Each faction fields their own hero and signature operatives so every
+		/// district feels like fighting a different crew. Neutral/Contested districts
+		/// pick a random faction. Unrecognised controllers fall back to a random faction.
+		/// </summary>
+		public static List<CardData> GenerateFactionHand(
+			CardDatabase db, string controller, Random? rng = null)
 		{
 			rng ??= new Random();
-			var usedFirstNames = new HashSet<string>();
-			var hand = new System.Collections.Generic.List<CardData>();
+			var hand          = new List<CardData>();
+			var usedNames     = new HashSet<string>();
 
-			var vesna = db.GetCard("hch_hero_vesna");
-			if (vesna != null) hand.Add(CloneCard(vesna));
+			// Map controller string → faction-specific named cards
+			switch (controller)
+			{
+				case "Ascendant":
+					AddNamed(db, hand, "asc_hero_seraph_yune");
+					AddNamed(db, hand, rng.Next(2) == 0 ? "asc_top_cassia_vane" : "asc_top_proxy");
+					break;
 
-			var verity = db.GetCard("eff_top_verity");
-			if (verity != null) hand.Add(CloneCard(verity));
+				case "Razorkin":
+					AddNamed(db, hand, "rzk_hero_sister_grin");
+					AddNamed(db, hand, rng.Next(2) == 0 ? "rzk_top_gristle" : "rzk_top_twitch");
+					break;
 
-			for (int i = 0; i < 3; i++)
-				hand.Add(GenerateStreet(rng, usedFirstNames));
+				case "Ghostwire":
+					AddNamed(db, hand, "gwi_hero_riven");
+					AddNamed(db, hand, rng.Next(2) == 0 ? "gwi_top_echo" : "gwi_top_wren");
+					break;
+
+				case "Commons":
+					AddNamed(db, hand, "com_hero_mara_kane");
+					AddNamed(db, hand, rng.Next(2) == 0 ? "com_top_auntie_sol" : "com_top_patch");
+					break;
+
+				case "Effigy":
+					AddNamed(db, hand, "eff_hero_lethe");
+					// Effigy fields two Top-Tier — mirroring their identity theme
+					AddNamed(db, hand, rng.Next(2) == 0 ? "eff_top_verity" : "eff_top_the_smile");
+					AddNamed(db, hand, "eff_top_cousin");
+					break;
+
+				case "Lacquer":
+					AddNamed(db, hand, "lac_hero_madame_sumi");
+					AddNamed(db, hand, rng.Next(2) == 0 ? "lac_top_aoi" : "lac_top_the_heir");
+					break;
+
+				case "HollowChoir":
+					AddNamed(db, hand, "hch_hero_vesna");
+					// Choir adds two named cards — the Wall sends more than one warden
+					var choirTopTier = new[] { "hch_top_threnody", "hch_top_antiphon", "hch_top_lamb" };
+					var choirIdx     = rng.Next(3);
+					AddNamed(db, hand, choirTopTier[choirIdx]);
+					AddNamed(db, hand, choirTopTier[(choirIdx + 1) % 3]);
+					break;
+
+				default:
+					// Neutral / Contested / unknown — pick a random faction
+					var factions = new[] {
+						"Ascendant","Razorkin","Ghostwire","Commons","Lacquer","HollowChoir"
+					};
+					return GenerateFactionHand(db, factions[rng.Next(factions.Length)], rng);
+			}
+
+			// Track used names so generated Streets don't collide
+			foreach (var c in hand) usedNames.Add(c.Name);
+
+			// Fill remaining slots with generated Streets
+			while (hand.Count < 5)
+				hand.Add(GenerateStreet(rng, usedNames));
 
 			return hand;
 		}
+
+		/// <summary>
+		/// Add a named card from the database to the hand.
+		/// Silently skips if the card isn't found (handles missing data gracefully).
+		/// </summary>
+		private static void AddNamed(CardDatabase db, List<CardData> hand, string id)
+		{
+			var card = db.GetCard(id);
+			if (card != null) hand.Add(CloneCard(card));
+			// silently skip if not found — Streets fill the gap
+		}
+
+		/// <summary>
+		/// Legacy method — kept for compatibility. Calls GenerateFactionHand
+		/// with a random faction (same behaviour as before).
+		/// </summary>
+		public static List<CardData> GenerateAIHand(CardDatabase db, Random? rng = null)
+			=> GenerateFactionHand(db, "Neutral", rng);
 
 		/// <summary>Shallow clone of a CardData — all fields copied, new reference.</summary>
 		private static CardData CloneCard(CardData src) => new CardData

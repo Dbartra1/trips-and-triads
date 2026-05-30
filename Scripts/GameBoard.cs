@@ -114,24 +114,27 @@ public partial class GameBoard : Node2D
 			DistrictLabel.Text = $"{district?.Name ?? ""}  ·  {stakeName}";
 		}
 
-		// ── AI hand ───────────────────────────────────────────────────────────
-		var p2Cards = CrewGenerator.GenerateAIHand(CardDatabase.Instance);
+		// ── AI hand — faction-matched to district controller ──────────────────
+		string controller = district?.Controller ?? "Neutral";
+		var p2Cards = CrewGenerator.GenerateFactionHand(
+			CardDatabase.Instance, controller, new System.Random());
 
-		// Hunt match — the captured hero is the centrepiece; Vesna is replaced with
-		// a generated Pro. Lore: apex faction leaders don't run errands — this is
-		// foot-soldier work. Verity stays (face-level operative, plausible for the job).
+		// Set Vesna's starting cap for this district.
+		// In The Hush (home district) she enters near full strength.
+		// Neutral/Stub districts cap her low. She doesn't appear outside HollowChoir.
+		_game.VesnaStartingCap = controller switch
+		{
+			"HollowChoir" => 20,   // The Hush — full threat
+			_             => 14,   // anywhere else she's just a street-level ghost
+		};
+
+		// Hunt match — replace the AI's hero slot with the captured hero.
+		// The faction crew guards the prize; the captured hero is the centrepiece.
 		if (session?.IsHuntMatch == true && session.CapturedHero != null)
 		{
-			// Swap Vesna (index 0) for a generated Pro-tier card
-			var rng       = new System.Random();
-			var usedNames = new System.Collections.Generic.HashSet<string>(
-				p2Cards.ConvertAll(c => c.Name));
-			var proCard   = CrewGenerator.GeneratePro(rng, usedNames);
-			p2Cards[0]    = proCard;
-
-			// Replace the last Street with the captured hero
 			GD.Print($"GameBoard: Hunt match — inserting {session.CapturedHero.Name} into AI hand.");
-			p2Cards[p2Cards.Count - 1] = session.CapturedHero;
+			// Hero is always index 0 in faction hands
+			p2Cards[0] = session.CapturedHero;
 		}
 
 		GD.Print("=== AI Hand ===");

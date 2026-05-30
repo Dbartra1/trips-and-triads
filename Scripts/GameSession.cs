@@ -89,6 +89,14 @@ public partial class GameSession : Node
 	// ── Session state ─────────────────────────────────────────────────────────
 	public bool IsInitialized { get; private set; } = false;
 
+	// ── Street Cred ───────────────────────────────────────────────────────────
+	/// <summary>
+	/// The crew's Street Cred. Persists across matches within a run.
+	/// Fires events via Cred.ApplyEvents() in PostMatchScreen.
+	/// Resets to Known floor (20) on Step Up.
+	/// </summary>
+	public CredManager Cred { get; private set; } = new CredManager();
+
 	public override void _Ready()
 	{
 		_instance = this;
@@ -149,6 +157,7 @@ public partial class GameSession : Node
 		SelectedDeck       = new List<CardData>();
 		SelectedDistrictId = "the_stub";
 		IsInitialized      = true;
+		Cred               = new CredManager(); // fresh run starts at Nameless
 
 		ClearHunt();
 
@@ -337,6 +346,9 @@ public partial class GameSession : Node
 
 		// Record as interim — the Hunt stays open so the player can still Reclaim.
 		InterimHero = promoted;
+
+		// Step Up resets cred to Known floor (systems.md §8.5)
+		Cred.StepUpReset();
 
 		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to interim Hero " +
 		         $"| {promoted.Top}/{promoted.Right}/{promoted.Bottom}/{promoted.Left} " +

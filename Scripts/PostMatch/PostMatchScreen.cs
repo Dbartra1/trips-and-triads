@@ -81,8 +81,56 @@ public partial class PostMatchScreen : Control
 
 		PopulateCardGrid(CardsLostGrid, session.CardsLost);
 
+		// ── Street Cred ───────────────────────────────────────────────────────
+		ApplyCredEvents(session);
+
 		// Apply to roster
 		session.ApplyStakeResult();
+	}
+
+	private void ApplyCredEvents(GameSession session)
+	{
+		if (session?.Cred == null) return;
+
+		var events = new System.Collections.Generic.List<CredEvent>();
+
+		// Base win/loss
+		if (session.PlayerWon)
+		{
+			events.Add(CredEvent.WinMatch);
+
+			// Dangerous district bonus
+			var districtId = session.SelectedDistrictId;
+			if (districtId == "the_hush" || districtId == "the_vault")
+				events.Add(CredEvent.WinDangerousDistrict);
+
+			// Razorkin district win
+			var district = DistrictDatabase.Instance.GetDistrict(districtId);
+			if (district?.Controller == "Razorkin")
+				events.Add(CredEvent.WinVsRazorkin);
+
+			// Hunt reclaim by duel (not buyout)
+			if (session.HeroReclaimed)
+				events.Add(CredEvent.HuntReclaimByDuel);
+		}
+		else
+		{
+			events.Add(CredEvent.LoseMatch);
+		}
+
+		int credBefore = session.Cred.Cred;
+		CredTier tierBefore = session.Cred.Tier;
+
+		session.Cred.ApplyEvents(events.ToArray());
+
+		int credAfter = session.Cred.Cred;
+		CredTier tierAfter = session.Cred.Tier;
+		int delta = credAfter - credBefore;
+
+		GD.Print($"Street Cred: {credBefore} → {credAfter} ({(delta >= 0 ? "+" : "")}{delta}) | Tier: {tierAfter}");
+
+		if (tierAfter != tierBefore)
+			GD.Print($"  ▶ Tier crossed: {tierBefore} → {tierAfter}");
 	}
 
 	private void PopulateCardGrid(GridContainer grid, List<CardData> cards)

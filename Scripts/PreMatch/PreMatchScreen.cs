@@ -21,10 +21,11 @@ public partial class PreMatchScreen : Control
 	private List<CardData> _selectedDeck = new();
 	private const int MaxDeckSize = 5;
 	private bool _isRunOver = false;
-	private VBoxContainer _huntPanel = null; // injected when Hunt is active
-	private bool _stepUpMode = false;        // true while player is choosing who to promote
-	private Button _stepUpToggleBtn = null;  // reference so we can relabel it on toggle
-	private Button _reclaimBtn = null;       // reference so deck changes can enable/disable it
+	private VBoxContainer _huntPanel = null;
+	private bool _stepUpMode = false;
+	private Button _stepUpToggleBtn = null;
+	private Button _reclaimBtn = null;
+	private CredBarNode _credBar = null; // Street Cred signal meter
 
 	public override void _Ready()
 	{
@@ -45,12 +46,11 @@ public partial class PreMatchScreen : Control
 			StartButton.Pressed += OnStartPressed;
 
 		BuildDistrictButtons();
-		// Check run-over BEFORE building roster — avoids rendering + buttons
-		// that would need to be torn down immediately after.
 		if (!CheckRunOver())
 			RefreshRoster();
 		BuildHuntPanel();
 		BuildReunionBanner();
+		BuildCredBar();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -58,6 +58,25 @@ public partial class PreMatchScreen : Control
 	}
 
 	// ── District selection ────────────────────────────────────────────────────
+
+	private void BuildCredBar()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		// Inject into the Left column, between the district section and deck section.
+		var left = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Left");
+		if (left == null) return;
+
+		_credBar = new CredBarNode();
+		_credBar.CustomMinimumSize = new Vector2(0, 90);
+
+		// Place it between DistrictSection (index 0) and DeckSection (index 1)
+		left.AddChild(_credBar);
+		left.MoveChild(_credBar, 1);
+
+		_credBar.Refresh(session.Cred);
+	}
 
 	private void BuildDistrictButtons()
 	{

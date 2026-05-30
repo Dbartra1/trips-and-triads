@@ -92,7 +92,14 @@ namespace TripsAndTriads.Core
 		{
 			if (!_controlMeters.ContainsKey(districtId)) return;
 
-			int shift = playerWon ? -10 : +10; // negative = more player control
+			// Base shift scaled by the player's cred tier (systems.md §6.4, §8.4).
+			// A Legend crew's wins move the meter twice as fast as a Nameless crew's.
+			float mult  = GameSession.Instance?.Cred != null
+				? CredEffects.ControlShiftMultiplier(GameSession.Instance.Cred.Tier)
+				: 1.0f;
+			int baseShift = playerWon ? -10 : +10;
+			int shift     = (int)System.Math.Round(baseShift * mult);
+
 			_controlMeters[districtId] = System.Math.Clamp(
 				_controlMeters[districtId] + shift, 0, 100);
 

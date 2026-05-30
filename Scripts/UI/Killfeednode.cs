@@ -87,11 +87,12 @@ namespace TripsAndTriads.UI
 		private void AppendLine(string text, float alpha)
 		{
 			var lbl = new Label();
-			lbl.Text          = text;
-			lbl.Modulate      = new Color(0.55f, 0.95f, 0.75f, alpha);
+			lbl.Text                   = text;
+			lbl.Modulate               = new Color(0.55f, 0.95f, 0.75f, alpha);
 			lbl.AddThemeFontSizeOverride("font_size", 13);
-			lbl.MouseFilter   = Control.MouseFilterEnum.Ignore;
-			lbl.AutowrapMode  = TextServer.AutowrapMode.Off;
+			lbl.MouseFilter            = Control.MouseFilterEnum.Ignore;
+			lbl.AutowrapMode           = TextServer.AutowrapMode.WordSmart;
+			lbl.SizeFlagsHorizontal    = Control.SizeFlags.ExpandFill;
 			_linesBox.AddChild(lbl);
 		}
 

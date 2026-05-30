@@ -209,6 +209,10 @@ public partial class PreMatchScreen : Control
 			wrapper.AddChild(cardNode);
 			cardNode.Initialize(new CardInstance(card, ownerId: 1));
 			cardNode.CustomMinimumSize = new Vector2(120, 160);
+			// Roster cards must not block mouse events — buttons sit in the same
+			// wrapper and need to receive clicks. SetDraggable(false) sets
+			// MouseFilter = Ignore which is exactly what we need here.
+			cardNode.SetDraggable(false);
 
 			// Dim cards already in the deck so the player can see at a glance
 			// what's selected. Full opacity when removed.

@@ -429,8 +429,10 @@ public partial class GameSession : Node
 		// Record as interim — the Hunt stays open so the player can still Reclaim.
 		InterimHero = promoted;
 
-		// Step Up resets cred to Known floor (systems.md §8.5)
-		Cred.StepUpReset();
+		// Cred is preserved through succession — the surviving crew carries the
+		// old reputation forward unchanged. (Spec flavor "not from nothing, but
+		// from a rumor" describes the lore, not a cred floor reset.)
+		GD.Print($"GameSession: Step Up — cred preserved at {Cred.Cred} ({Cred.Tier}).");
 
 		GD.Print($"GameSession: Step Up — {promoted.Name} promoted to interim Hero " +
 		         $"| {promoted.Top}/{promoted.Right}/{promoted.Bottom}/{promoted.Left} " +

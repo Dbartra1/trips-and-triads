@@ -137,16 +137,25 @@ public partial class GameSession : Node
 			bool meets = DistrictAccess.MeetsTierRequirement(districtId, Cred.Tier);
 			if (meets)
 			{
+				// Back above threshold — clear grace state entirely.
+				// Next time cred drops, ContainsKey = false → fresh grace period starts.
 				DistrictGracePeriods.Remove(districtId);
 			}
 			else if (!DistrictGracePeriods.ContainsKey(districtId))
 			{
+				// Truly newly dropped below threshold (was accessible, now isn't).
 				DistrictGracePeriods[districtId] = DistrictAccess.GraceMatches;
 				NewGracePeriodAlerts.Add(districtId);
 				GD.Print($"Grace period started: {districtId} — {DistrictAccess.GraceMatches} matches remaining.");
 			}
+			else if (DistrictGracePeriods[districtId] == 0)
+			{
+				// Pre-marked at run start as never-accessible — do nothing.
+				// No warning, no countdown. Just stay locked.
+			}
 			else
 			{
+				// Active grace period — decrement countdown.
 				DistrictGracePeriods[districtId] = System.Math.Max(0, DistrictGracePeriods[districtId] - 1);
 				GD.Print($"Grace period tick: {districtId} — {DistrictGracePeriods[districtId]} matches remaining.");
 			}
@@ -219,6 +228,18 @@ public partial class GameSession : Node
 		Cred               = new CredManager(); // fresh run starts at Nameless
 		DistrictGracePeriods.Clear();
 		NewGracePeriodAlerts.Clear();
+
+		// Pre-mark every hard-lock district the crew can't reach at run start.
+		// TickGracePeriods uses ContainsKey to distinguish "newly dropped below
+		// threshold" (not in dict → grace starts) from "was always below"
+		// (in dict with value 0 → no grace warning). Without this, the first
+		// match loss would incorrectly trigger grace periods for districts the
+		// player has never had access to.
+		foreach (var districtId in DistrictAccess.HardLockIds())
+		{
+			if (!DistrictAccess.MeetsTierRequirement(districtId, Cred.Tier))
+				DistrictGracePeriods[districtId] = 0;
+		}
 
 		ClearHunt();
 

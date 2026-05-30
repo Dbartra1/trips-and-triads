@@ -71,6 +71,14 @@ public static class SaveManager
         sess["reunionOriginalKey"]  = CardKey(session.ReunionOriginal);
         sess["reunionInterimKey"]   = CardKey(session.ReunionInterim);
 
+        // ── Street Cred & district access ─────────────────────────────────────
+        sess["cred"] = session.Cred.Cred;
+
+        var gracePeriods = new JsonObject();
+        foreach (var kvp in session.DistrictGracePeriods)
+            gracePeriods[kvp.Key] = kvp.Value;
+        sess["gracePeriods"] = gracePeriods;
+
         root["session"] = sess;
 
         // ── Districts ─────────────────────────────────────────────────────────
@@ -160,6 +168,15 @@ public static class SaveManager
                 session.LoadReunionState(origCard, interCard);
         }
 
+        // ── Street Cred & district access ─────────────────────────────────────
+        int savedCred = (int)(sess["cred"] ?? 0);
+        session.Cred.Apply(savedCred); // Apply from 0 to the saved value
+
+        var savedGrace = sess["gracePeriods"]?.AsObject();
+        if (savedGrace != null)
+            foreach (var kvp in savedGrace)
+                session.DistrictGracePeriods[kvp.Key] = (int)(kvp.Value ?? 0);
+
         // ── Districts ─────────────────────────────────────────────────────────
         var dists = root["districts"];
         if (dists != null)
@@ -173,7 +190,8 @@ public static class SaveManager
                     dm.SetMeter(kvp.Key, (int)(kvp.Value ?? 50));
         }
 
-        GD.Print($"SaveManager: game loaded. Roster: {session.Roster.Count} cards.");
+        GD.Print($"SaveManager: game loaded. Roster: {session.Roster.Count} cards. " +
+                 $"Cred: {session.Cred.Cred} ({session.Cred.Tier}).");
         return true;
     }
 

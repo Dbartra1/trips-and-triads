@@ -26,6 +26,7 @@ public partial class PreMatchScreen : Control
 	private Button _stepUpToggleBtn = null;
 	private Button _reclaimBtn = null;
 	private CredBarNode _credBar = null; // Street Cred signal meter
+	private Label _scripLabel = null;   // scrip balance display
 
 	public override void _Ready()
 	{
@@ -51,6 +52,7 @@ public partial class PreMatchScreen : Control
 		BuildHuntPanel();
 		BuildReunionBanner();
 		BuildCredBar();
+		BuildScripLabel();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -76,6 +78,33 @@ public partial class PreMatchScreen : Control
 		left.MoveChild(_credBar, 1);
 
 		_credBar.Refresh(session.Cred);
+	}
+
+	private void BuildScripLabel()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		var left = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Left");
+		if (left == null) return;
+
+		_scripLabel = new Label();
+		_scripLabel.CustomMinimumSize = new Vector2(0, 28);
+		_scripLabel.AddThemeColorOverride("font_color", new Color("f0c040")); // gold
+
+		left.AddChild(_scripLabel);
+		// Place right after the CredBarNode (index 2 = after District=0, Cred=1)
+		left.MoveChild(_scripLabel, 2);
+
+		RefreshScripLabel();
+	}
+
+	private void RefreshScripLabel()
+	{
+		if (_scripLabel == null) return;
+		var session = GameSession.Instance;
+		int scrip = session?.Scrip ?? 0;
+		_scripLabel.Text = $"💵  Scrip:  {scrip}";
 	}
 
 	private void BuildDistrictButtons()
@@ -290,6 +319,9 @@ public partial class PreMatchScreen : Control
 		// Keep Reclaim enabled only when a full deck is selected
 		if (_reclaimBtn != null)
 			_reclaimBtn.Disabled = (_selectedDeck.Count != MaxDeckSize);
+
+		// Keep scrip display current
+		RefreshScripLabel();
 	}
 
 	private void AddToDeck(CardData card)
@@ -472,21 +504,48 @@ public partial class PreMatchScreen : Control
 			btnRow.AddChild(_reclaimBtn);
 		}
 
-		// Buyout — Phase 9; Choir never sells
-		if (session.CapturingFaction != Faction.HollowChoir)
-		{
-			var buyoutBtn = new Button();
-			buyoutBtn.Text              = "💳  Buyout  (Phase 9)";
-			buyoutBtn.CustomMinimumSize = new Vector2(180, 40);
-			buyoutBtn.Disabled          = true;
-			btnRow.AddChild(buyoutBtn);
-		}
-		else
+		// Buyout — enabled for all factions except HollowChoir (they never sell).
+		// Razorkin may refuse; button click rolls the refusal check first.
+		if (session.CapturingFaction == Faction.HollowChoir)
 		{
 			var noSellLbl = new Label();
 			noSellLbl.Text = "The Choir do not sell.";
 			noSellLbl.AddThemeColorOverride("font_color", new Color("8888cc"));
 			btnRow.AddChild(noSellLbl);
+		}
+		else
+		{
+			int failedAttempts = 2 - session.ReclamationAttemptsLeft;
+			int cost = BuyoutPricing.ComputeCost(
+				session.CapturingFaction,
+				session.Cred.Tier,
+				failedAttempts);
+			bool canAfford = (cost >= 0) && (session.Scrip >= cost);
+
+			var buyoutBtn = new Button();
+			buyoutBtn.ClipText          = false;
+			buyoutBtn.CustomMinimumSize = new Vector2(180, 40);
+
+			if (session.CapturingFaction == Faction.Razorkin)
+				buyoutBtn.Text = $"💳  Razorkin buyout — {cost} scrip\n(may refuse)";
+			else
+				buyoutBtn.Text = $"💳  Buyout — {cost} scrip";
+
+			if (!canAfford)
+			{
+				buyoutBtn.Disabled    = true;
+				buyoutBtn.TooltipText = cost < 0
+					? "No buyout available."
+					: $"Need {cost - session.Scrip} more scrip.";
+			}
+			else
+			{
+				var captorFaction = session.CapturingFaction;
+				var capturedHero  = session.CapturedHero;
+				buyoutBtn.Pressed += () => OnBuyoutPressed(captorFaction, capturedHero, cost);
+			}
+
+			btnRow.AddChild(buyoutBtn);
 		}
 
 		// Step Up toggle — always available so player can pick or change interim
@@ -529,6 +588,215 @@ public partial class PreMatchScreen : Control
 		         $"{session.ReclamationAttemptsLeft - 1}.");
 
 		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
+	}
+
+	// ── Buyout flow ───────────────────────────────────────────────────────────
+	// 1. Razorkin: roll refusal check first → show refusal banner OR proceed.
+	// 2. All other factions (once Razorkin clears): show confirm dialog.
+	// 3. On confirm: spend scrip, reclaim hero, apply BuyoutHero cred event.
+
+	private Control _buyoutPopup = null;
+
+	private void OnBuyoutPressed(Faction captor, CardData hero, int cost)
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		// Razorkin refusal check
+		if (captor == Faction.Razorkin)
+		{
+			bool refused = RazorkinRefusal.IsRefused(session.Cred.Tier);
+			GD.Print($"PreMatch: Razorkin buyout roll — refused={refused} " +
+			         $"(chance={RazorkinRefusal.RefusalChance(session.Cred.Tier):P0}).");
+
+			if (refused)
+			{
+				ShowBuyoutRefusedBanner();
+				return;
+			}
+		}
+
+		ShowBuyoutConfirmDialog(hero, captor, cost);
+	}
+
+	private void ShowBuyoutRefusedBanner()
+	{
+		if (_buyoutPopup != null) return;
+
+		// Small non-blocking banner above the hunt panel
+		var banner = new PanelContainer();
+		banner.CustomMinimumSize = new Vector2(380, 0);
+		var style = new StyleBoxFlat();
+		style.BgColor    = new Color(0.4f, 0.15f, 0.1f, 0.95f);
+		style.SetCornerRadiusAll(4);
+		banner.AddThemeStyleboxOverride("panel", style);
+
+		var innerBox = new VBoxContainer();
+		innerBox.AddThemeConstantOverride("margin_left",   16);
+		innerBox.AddThemeConstantOverride("margin_right",  16);
+		innerBox.AddThemeConstantOverride("margin_top",    12);
+		innerBox.AddThemeConstantOverride("margin_bottom", 12);
+		banner.AddChild(innerBox);
+
+		var msg = new Label();
+		msg.Text = "Refused.\nThey want the fight. Try again or duel for it.";
+		msg.AddThemeColorOverride("font_color", new Color("fd7a50"));
+		msg.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		innerBox.AddChild(msg);
+
+		var dismissBtn = new Button();
+		dismissBtn.Text              = "Dismiss";
+		dismissBtn.CustomMinimumSize = new Vector2(100, 30);
+		dismissBtn.Pressed          += () =>
+		{
+			_buyoutPopup?.QueueFree();
+			_buyoutPopup = null;
+		};
+		innerBox.AddChild(dismissBtn);
+
+		_buyoutPopup = banner;
+
+		// Inject into Right column above hunt panel
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right")
+		         ?? GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		right?.AddChild(banner);
+		right?.MoveChild(banner, 0);
+	}
+
+	private void ShowBuyoutConfirmDialog(CardData hero, Faction captor, int cost)
+	{
+		if (_buyoutPopup != null) return;
+
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		// Full-screen dim overlay (same pattern as hunt reminder popup)
+		_buyoutPopup = new Control();
+		_buyoutPopup.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		_buyoutPopup.MouseFilter = MouseFilterEnum.Stop;
+
+		var overlay = new Panel();
+		overlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		var overlayStyle = new StyleBoxFlat();
+		overlayStyle.BgColor = new Color(0f, 0f, 0f, 0.72f);
+		overlay.AddThemeStyleboxOverride("panel", overlayStyle);
+		overlay.MouseFilter = MouseFilterEnum.Ignore;
+		_buyoutPopup.AddChild(overlay);
+
+		var dialog = new PanelContainer();
+		dialog.CustomMinimumSize = new Vector2(440, 0);
+		dialog.AnchorLeft        = 0.5f;
+		dialog.AnchorTop         = 0.5f;
+		dialog.AnchorRight       = 0.5f;
+		dialog.AnchorBottom      = 0.5f;
+		dialog.GrowHorizontal    = Control.GrowDirection.Both;
+		dialog.GrowVertical      = Control.GrowDirection.Both;
+		dialog.OffsetLeft        = -220f;
+		dialog.OffsetRight       =  220f;
+		dialog.OffsetTop         = -120f;
+		dialog.OffsetBottom      =  120f;
+		var dialogStyle = new StyleBoxFlat();
+		dialogStyle.BgColor           = new Color(0.06f, 0.07f, 0.10f, 1f);
+		dialogStyle.BorderWidthLeft   = 2; dialogStyle.BorderWidthTop    = 2;
+		dialogStyle.BorderWidthRight  = 2; dialogStyle.BorderWidthBottom = 2;
+		dialogStyle.BorderColor       = new Color("f0c040");
+		dialogStyle.SetCornerRadiusAll(6);
+		dialog.AddThemeStyleboxOverride("panel", dialogStyle);
+		_buyoutPopup.AddChild(dialog);
+
+		var padBox = new MarginContainer();
+		padBox.AddThemeConstantOverride("margin_left",   24);
+		padBox.AddThemeConstantOverride("margin_right",  24);
+		padBox.AddThemeConstantOverride("margin_top",    20);
+		padBox.AddThemeConstantOverride("margin_bottom", 20);
+		dialog.AddChild(padBox);
+
+		var inner = new VBoxContainer();
+		inner.AddThemeConstantOverride("separation", 12);
+		padBox.AddChild(inner);
+
+		var titleLbl = new Label();
+		titleLbl.Text = $"💳  Buyout {hero.Name}?";
+		titleLbl.AddThemeColorOverride("font_color", new Color("f0c040"));
+		titleLbl.AddThemeFontSizeOverride("font_size", 18);
+		titleLbl.HorizontalAlignment = HorizontalAlignment.Center;
+		inner.AddChild(titleLbl);
+
+		var bodyLbl = new Label();
+		bodyLbl.Text = $"Pay {cost} scrip to {captor} to ransom your hero.\n" +
+		               $"Balance after: {session.Scrip - cost} scrip.\n\n" +
+		               "This does not consume a Reclaim attempt.";
+		bodyLbl.AutowrapMode        = TextServer.AutowrapMode.WordSmart;
+		bodyLbl.HorizontalAlignment = HorizontalAlignment.Center;
+		bodyLbl.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.85f, 1f));
+		inner.AddChild(bodyLbl);
+
+		var btnRow = new HBoxContainer();
+		btnRow.Alignment = BoxContainer.AlignmentMode.Center;
+		btnRow.AddThemeConstantOverride("separation", 16);
+		inner.AddChild(btnRow);
+
+		var confirmBtn = new Button();
+		confirmBtn.Text              = $"Pay {cost} scrip";
+		confirmBtn.CustomMinimumSize = new Vector2(160, 42);
+		confirmBtn.Pressed          += () =>
+		{
+			DismissBuyoutPopup();
+			ExecuteBuyout(cost);
+		};
+		btnRow.AddChild(confirmBtn);
+
+		var cancelBtn = new Button();
+		cancelBtn.Text              = "Cancel";
+		cancelBtn.CustomMinimumSize = new Vector2(100, 42);
+		cancelBtn.Pressed          += () => DismissBuyoutPopup();
+		btnRow.AddChild(cancelBtn);
+
+		AddChild(_buyoutPopup);
+	}
+
+	private void DismissBuyoutPopup()
+	{
+		_buyoutPopup?.QueueFree();
+		_buyoutPopup = null;
+	}
+
+	private void ExecuteBuyout(int cost)
+	{
+		var session = GameSession.Instance;
+		if (session == null || !session.IsHeadless) return;
+
+		if (!session.SpendScrip(cost))
+		{
+			GD.PrintErr($"PreMatch: buyout — could not spend {cost} scrip.");
+			return;
+		}
+
+		GD.Print($"PreMatch: buyout confirmed — paying {cost} scrip, reclaiming {session.CapturedHero.Name}.");
+
+		// Reclaim hero (clears Hunt window)
+		session.ReclaimHero();
+
+		// Buyout carries a −4 cred hit (systems.md §8.4)
+		session.Cred.ApplyEvents(CredEvent.BuyoutHero);
+		GD.Print($"Cred after buyout: {session.Cred.Cred} ({session.Cred.Tier}).");
+
+		// Persist the new state
+		SaveManager.SaveGame();
+
+		// Rebuild UI — Hunt panel is gone, cred bar and scrip label need refresh
+		if (_huntPanel != null) { _huntPanel.QueueFree(); _huntPanel = null; }
+		if (_credBar  != null) _credBar.Refresh(session.Cred);
+		RefreshScripLabel();
+
+		// If Reunion pending (interim hero exists), banner needs building
+		BuildReunionBanner();
+
+		if (!CheckRunOver())
+			RefreshRoster();
+
+		RefreshDeckDisplay();
+		GD.Print("PreMatch: buyout complete — roster rebuilt.");
 	}
 
 	private void OnStepUpTogglePressed()

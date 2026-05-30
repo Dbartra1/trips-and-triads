@@ -108,7 +108,15 @@ public partial class GameBoard : Node2D
 		}
 
 		DistrictManager.Instance.SelectDistrict(districtId);
-		_matchConfig = DistrictManager.Instance.BuildMatchConfig();
+
+		// Hunt (Reclaim) matches run base-capture only — no district protocols.
+		// systems.md §7.3 specifies only "AsFlipped, hero-stake rule" for Reclaim.
+		// Injecting Cascade / Wall Signature etc. was unintentional (Known Issues).
+		if (session?.IsHuntMatch == true)
+			_matchConfig = new MatchConfig();
+		else
+			_matchConfig = DistrictManager.Instance.BuildMatchConfig();
+
 		_game = new GameManager(_matchConfig);
 
 		var district = DistrictManager.Instance.ActiveDistrict;

@@ -89,6 +89,40 @@ public partial class GameSession : Node
 	// ── Session state ─────────────────────────────────────────────────────────
 	public bool IsInitialized { get; private set; } = false;
 
+	// ── Scrip ─────────────────────────────────────────────────────────────────
+	/// <summary>
+	/// The crew's current scrip balance. Earned from contract payouts (§9),
+	/// spent on buyouts (§7.4) and, later, free-agent signings and Payroll (§11).
+	/// Floored at zero — cannot go negative.
+	/// </summary>
+	public int Scrip { get; private set; } = 0;
+
+	/// <summary>Add scrip (amount may be negative to subtract).</summary>
+	public void AddScrip(int amount)
+	{
+		Scrip = System.Math.Max(0, Scrip + amount);
+		GD.Print($"GameSession: scrip {(amount >= 0 ? "+" : "")}{amount} → {Scrip}.");
+	}
+
+	/// <summary>
+	/// Deduct scrip. Returns true and deducts if the balance is sufficient;
+	/// returns false and does not deduct if the crew can't afford it.
+	/// </summary>
+	public bool SpendScrip(int amount)
+	{
+		if (Scrip < amount)
+		{
+			GD.PrintErr($"GameSession: SpendScrip({amount}) failed — only {Scrip} available.");
+			return false;
+		}
+		Scrip -= amount;
+		GD.Print($"GameSession: spent {amount} scrip → {Scrip} remaining.");
+		return true;
+	}
+
+	/// <summary>Called exclusively by SaveManager.</summary>
+	public void LoadScrip(int scrip) => Scrip = System.Math.Max(0, scrip);
+
 	// ── Street Cred ───────────────────────────────────────────────────────────
 	/// <summary>
 	/// The crew's Street Cred. Persists across matches within a run.
@@ -248,6 +282,7 @@ public partial class GameSession : Node
 		SelectedDeck       = new List<CardData>();
 		SelectedDistrictId = "the_stub";
 		IsInitialized      = true;
+		Scrip              = 0;
 		Cred               = new CredManager(); // fresh run starts at Nameless
 		DistrictGracePeriods.Clear();
 		NewGracePeriodAlerts.Clear();

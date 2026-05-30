@@ -72,7 +72,8 @@ public static class SaveManager
         sess["reunionInterimKey"]   = CardKey(session.ReunionInterim);
 
         // ── Street Cred & district access ─────────────────────────────────────
-        sess["cred"] = session.Cred.Cred;
+        sess["cred"]  = session.Cred.Cred;
+        sess["scrip"] = session.Scrip;
 
         var gracePeriods = new JsonObject();
         foreach (var kvp in session.DistrictGracePeriods)
@@ -171,6 +172,9 @@ public static class SaveManager
         // ── Street Cred & district access ─────────────────────────────────────
         int savedCred = (int)(sess["cred"] ?? 0);
         session.Cred.Apply(savedCred); // Apply from 0 to the saved value
+
+        int savedScrip = (int)(sess["scrip"] ?? 0);
+        session.LoadScrip(savedScrip);
 
         var savedGrace = sess["gracePeriods"]?.AsObject();
         if (savedGrace != null)

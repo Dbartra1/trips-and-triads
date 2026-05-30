@@ -12,6 +12,7 @@ public partial class PostMatchScreen : Control
 	[Export] public Label         ResultLabel     { get; set; }
 	[Export] public Label         ScoreLabel      { get; set; }
 	[Export] public Label         StakeLabel      { get; set; }
+	[Export] public Label         ScripEarnedLabel{ get; set; }  // optional — shows "+ X scrip"
 	[Export] public GridContainer CardsWonGrid    { get; set; }
 	[Export] public GridContainer CardsLostGrid   { get; set; }
 	[Export] public Label         CardsWonLabel   { get; set; }
@@ -85,8 +86,43 @@ public partial class PostMatchScreen : Control
 		ApplyCredEvents(session);
 		session.TickGracePeriods(); // start/tick grace periods based on new cred tier
 
+		// ── Scrip payout (Phase 9) ───────────────────────────────────────────
+		ApplyScripPayout(session);
+
 		// Apply to roster
 		session.ApplyStakeResult();
+	}
+
+	private void ApplyScripPayout(GameSession session)
+	{
+		if (session == null) return;
+
+		int payout = ScripPayoutCalculator.Calculate(
+			session.SelectedDistrictId,
+			session.PlayerWon,
+			session.Cred.Tier);
+
+		if (payout > 0)
+		{
+			session.AddScrip(payout);
+			GD.Print($"Scrip payout: +{payout} (total: {session.Scrip}).");
+		}
+
+		// Update optional label (may not exist in scene — safe to skip)
+		if (ScripEarnedLabel != null)
+		{
+			ScripEarnedLabel.Visible = true;
+			if (payout > 0)
+			{
+				ScripEarnedLabel.Text = $"+ {payout} scrip";
+				ScripEarnedLabel.AddThemeColorOverride("font_color", new Color("f0c040"));
+			}
+			else
+			{
+				ScripEarnedLabel.Text = "No payout";
+				ScripEarnedLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 1f));
+			}
+		}
 	}
 
 	private void ApplyCredEvents(GameSession session)

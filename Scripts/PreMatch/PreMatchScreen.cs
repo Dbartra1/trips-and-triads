@@ -330,7 +330,8 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		if (session == null || !session.ReunionPending) return;
 
-		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right");
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right")
+		         ?? GetNodeOrNull<VBoxContainer>("HSplit/Right");
 		if (right == null) return;
 
 		_reunionPanel = new VBoxContainer();
@@ -403,8 +404,17 @@ public partial class PreMatchScreen : Control
 		if (session == null || !session.IsHeadless) return;
 
 		var hero  = session.CapturedHero;
-		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right");
-		if (right == null) return;
+
+		// Try both paths — the scene may or may not have the Margin wrapper
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right")
+		         ?? GetNodeOrNull<VBoxContainer>("HSplit/Right");
+
+		if (right == null)
+		{
+			GD.PrintErr("BuildHuntPanel: could not find Right VBoxContainer. " +
+			            "Hunt panel will not display.");
+			return;
+		}
 
 		_huntPanel = new VBoxContainer();
 

@@ -223,12 +223,11 @@ namespace TripsAndTriads.Core
 					if (card == null) continue;
 					if (card.Data.AbilityType != AbilityType.Decay) continue;
 
-					// Decay flip-checks only run on the card owner's turn.
-					// On P1's turn Vesna (P2) should not be re-evaluated — she decayed
-					// at the end of P2's turn; neighboring cards that now beat her will
-					// get their chance to capture her when P1 places a card adjacent to her,
-					// via normal base capture, not this extra pass.
-					if (card.OwnerId != CurrentPlayerId) continue;
+					// Decay flip-checks only run on the card's ORIGINAL owner's turn.
+					// Vesna starts owned by P2. If she's been flipped to P1, she should
+					// still only decay-check on P2's turns (the owner who placed her).
+					// Using OwnerId would cause her to fire on P1's turn once flipped.
+					if (card.OriginalOwnerId != CurrentPlayerId) continue;
 
 					foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 					{

@@ -177,6 +177,15 @@ public static class SaveManager
             foreach (var kvp in savedGrace)
                 session.DistrictGracePeriods[kvp.Key] = (int)(kvp.Value ?? 0);
 
+        // Pre-seed any hard-lock districts missing from the save file.
+        // Covers: saves created before grace period support was added, and any
+        // newly added districts. Without this, a missing entry looks "newly
+        // dropped below threshold" to TickGracePeriods and fires a false warning.
+        foreach (var districtId in DistrictAccess.HardLockIds())
+            if (!session.DistrictGracePeriods.ContainsKey(districtId))
+                if (!DistrictAccess.MeetsTierRequirement(districtId, session.Cred.Tier))
+                    session.DistrictGracePeriods[districtId] = 0;
+
         // ── Districts ─────────────────────────────────────────────────────────
         var dists = root["districts"];
         if (dists != null)

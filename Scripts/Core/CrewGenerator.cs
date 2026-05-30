@@ -250,11 +250,20 @@ namespace TripsAndTriads.Core
 					break;
 
 				default:
-					// Neutral / Contested / unknown — pick a random faction
-					var factions = new[] {
-						"Ascendant","Razorkin","Ghostwire","Commons","Lacquer","HollowChoir"
-					};
-					return GenerateFactionHand(db, factions[rng.Next(factions.Length)], rng);
+					// Neutral / Contested / The Stub — fully procedural crew.
+					// Named heroes and top-tier cards only appear in their home district.
+					// The Vault (Contested) is an exception — see below.
+					if (controller == "Contested")
+					{
+						// The Vault: pick a random apex faction for a true all-comers fight
+						var factions = new[] {
+							"Ascendant","Razorkin","Ghostwire","Commons","Lacquer","HollowChoir"
+						};
+						return GenerateFactionHand(db, factions[rng.Next(factions.Length)], rng);
+					}
+					// Every other neutral district: generated hero + streets, no named cards
+					hand.Add(GenerateHero(rng, new HashSet<string>()));
+					break;
 			}
 
 			// Track used names so generated Streets don't collide

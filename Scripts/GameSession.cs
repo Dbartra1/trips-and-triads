@@ -97,6 +97,65 @@ public partial class GameSession : Node
 	/// </summary>
 	public CredManager Cred { get; private set; } = new CredManager();
 
+	// ── District access & grace periods ──────────────────────────────────────
+	/// <summary>
+	/// Matches remaining in each district's grace period before it locks.
+	/// Key = districtId. Only present while a grace period is active (> 0).
+	/// Decremented by TickGracePeriods() in PostMatchScreen after each match.
+	/// </summary>
+	public Dictionary<string, int> DistrictGracePeriods { get; private set; } = new();
+
+	/// <summary>
+	/// Districts that newly entered grace period this match — read and cleared
+	/// by PreMatchScreen to show the warning popup exactly once per event.
+	/// </summary>
+	public List<string> NewGracePeriodAlerts { get; private set; } = new();
+
+	/// <summary>
+	/// True if the player can currently enter the given district.
+	/// Combines cred tier requirement with active grace periods.
+	/// </summary>
+	public bool IsDistrictAccessible(string districtId)
+	{
+		int graceLeft = DistrictGracePeriods.TryGetValue(districtId, out var g) ? g : 0;
+		return DistrictAccess.IsAccessible(districtId, Cred.Tier, graceLeft);
+	}
+
+	public int GetGraceMatchesRemaining(string districtId)
+		=> DistrictGracePeriods.TryGetValue(districtId, out var g) ? g : 0;
+
+	/// <summary>
+	/// Called by PostMatchScreen after cred events are applied.
+	/// Starts grace periods for newly-below districts, decrements existing ones,
+	/// and populates NewGracePeriodAlerts for PreMatchScreen to display.
+	/// </summary>
+	public void TickGracePeriods()
+	{
+		NewGracePeriodAlerts.Clear();
+		foreach (var districtId in DistrictAccess.HardLockIds())
+		{
+			bool meets = DistrictAccess.MeetsTierRequirement(districtId, Cred.Tier);
+			if (meets)
+			{
+				DistrictGracePeriods.Remove(districtId);
+			}
+			else if (!DistrictGracePeriods.ContainsKey(districtId))
+			{
+				DistrictGracePeriods[districtId] = DistrictAccess.GraceMatches;
+				NewGracePeriodAlerts.Add(districtId);
+				GD.Print($"Grace period started: {districtId} — {DistrictAccess.GraceMatches} matches remaining.");
+			}
+			else
+			{
+				DistrictGracePeriods[districtId] = System.Math.Max(0, DistrictGracePeriods[districtId] - 1);
+				GD.Print($"Grace period tick: {districtId} — {DistrictGracePeriods[districtId]} matches remaining.");
+			}
+		}
+	}
+
+	/// <summary>Clear grace period alerts after PreMatchScreen has displayed them.</summary>
+	public void ClearGracePeriodAlerts() => NewGracePeriodAlerts.Clear();
+
 	public override void _Ready()
 	{
 		_instance = this;
@@ -158,6 +217,8 @@ public partial class GameSession : Node
 		SelectedDistrictId = "the_stub";
 		IsInitialized      = true;
 		Cred               = new CredManager(); // fresh run starts at Nameless
+		DistrictGracePeriods.Clear();
+		NewGracePeriodAlerts.Clear();
 
 		ClearHunt();
 

@@ -220,10 +220,15 @@ namespace TripsAndTriads.Core
 				for (int c = 0; c < BoardState.Size; c++)
 				{
 					var card = Board.GetCard(r, c);
-					// Only check cards with Decay ability — Compound/Copy heroes grow
-					// their overrides too, but they should never be flipped by this pass.
 					if (card == null) continue;
 					if (card.Data.AbilityType != AbilityType.Decay) continue;
+
+					// Decay flip-checks only run on the card owner's turn.
+					// On P1's turn Vesna (P2) should not be re-evaluated — she decayed
+					// at the end of P2's turn; neighboring cards that now beat her will
+					// get their chance to capture her when P1 places a card adjacent to her,
+					// via normal base capture, not this extra pass.
+					if (card.OwnerId != CurrentPlayerId) continue;
 
 					foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
 					{

@@ -85,16 +85,48 @@ public partial class PreMatchScreen : Control
 		foreach (var child in DistrictGrid.GetChildren())
 			child.QueueFree();
 
+		var session   = GameSession.Instance;
 		var districts = DistrictDatabase.Instance.GetAllDistricts();
+
 		foreach (var district in districts)
 		{
-			var btn = new Button();
-			btn.Text              = district.Name;
-			btn.Disabled          = district.IsLocked;
-			btn.CustomMinimumSize = new Vector2(160, 40);
+			bool accessible = session?.IsDistrictAccessible(district.Id) ?? true;
+			int  graceLeft  = session?.GetGraceMatchesRemaining(district.Id) ?? 0;
+			bool inGrace    = graceLeft > 0;
+			var  gate       = DistrictAccess.GetGate(district.Id);
 
-			var id = district.Id;
-			btn.Pressed += () => SelectDistrict(id);
+			var btn = new Button();
+			btn.CustomMinimumSize = new Vector2(160, 44);
+
+			if (!accessible && !inGrace)
+			{
+				// Hard locked — greyed, lock icon, full reason in tooltip
+				btn.Text        = $"\U0001F512  {district.Name}";
+				btn.Disabled    = true;
+				btn.TooltipText = $"Requires {gate.MinTier} reputation.\n\n{gate.LockReason}";
+				btn.Modulate    = new Color(0.55f, 0.55f, 0.6f, 1f);
+			}
+			else if (inGrace)
+			{
+				// Grace period — amber tint, countdown in button text, reason in tooltip
+				btn.Text        = $"\u26A0  {district.Name}  ({graceLeft})";
+				btn.Modulate    = new Color(1.0f, 0.72f, 0.28f, 1f);
+				btn.TooltipText = $"Losing access in {graceLeft} match{(graceLeft == 1 ? "" : "es")}.\n\n{gate.LockReason}";
+				var id = district.Id;
+				btn.Pressed += () => SelectDistrict(id);
+			}
+			else
+			{
+				// Normal access
+				btn.Text     = district.Name;
+				btn.Disabled = district.IsLocked;
+				if (!district.IsLocked)
+				{
+					var id = district.Id;
+					btn.Pressed += () => SelectDistrict(id);
+				}
+			}
+
 			DistrictGrid.AddChild(btn);
 		}
 	}
@@ -298,7 +330,7 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		if (session == null || !session.ReunionPending) return;
 
-		var right = GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right");
 		if (right == null) return;
 
 		_reunionPanel = new VBoxContainer();
@@ -371,7 +403,7 @@ public partial class PreMatchScreen : Control
 		if (session == null || !session.IsHeadless) return;
 
 		var hero  = session.CapturedHero;
-		var right = GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right");
 		if (right == null) return;
 
 		_huntPanel = new VBoxContainer();

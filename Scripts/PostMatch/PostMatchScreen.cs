@@ -83,6 +83,7 @@ public partial class PostMatchScreen : Control
 
 		// ── Street Cred ───────────────────────────────────────────────────────
 		ApplyCredEvents(session);
+		session.TickGracePeriods(); // start/tick grace periods based on new cred tier
 
 		// Apply to roster
 		session.ApplyStakeResult();

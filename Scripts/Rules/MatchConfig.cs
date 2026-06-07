@@ -94,7 +94,7 @@ namespace TripsAndTriads.Rules
 			Intercept    = Intercept,
 			Conscription = Conscription,
 			Standoff     = Standoff,
-			Overflow      = district.Overflow,
+			Overflow      = Overflow,
 		};
 	}
 }

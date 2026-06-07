@@ -20,7 +20,7 @@ namespace TripsAndTriads.Rules
 		public bool            Intercept    { get; set; } = false;
 		public bool            Conscription { get; set; } = false;
 		public bool            Standoff     { get; set; } = false;
-		public bool            Cascade      { get; set; } = false;
+		public bool            Overflow      { get; set; } = false;
 
 		// ── Factory helpers ────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ namespace TripsAndTriads.Rules
 		public static MatchConfig DeadChannel() => new MatchConfig
 		{
 			Intercept = true,
-			Cascade   = true
+			Overflow   = true
 		};
 
 		public static MatchConfig SprawlMarket() => new MatchConfig
@@ -64,7 +64,7 @@ namespace TripsAndTriads.Rules
 
 		public static MatchConfig TheHush() => new MatchConfig
 		{
-			Cascade   = true,
+			Overflow   = true,
 			Protocols = new List<IProtocol>
 			{
 				new WallSignatureProtocol(wallValue: 20, sumTolerance: 2),
@@ -77,7 +77,7 @@ namespace TripsAndTriads.Rules
 			Intercept    = true,
 			Conscription = true,
 			Standoff     = true,
-			Cascade      = true,
+			Overflow      = true,
 			Protocols    = new List<IProtocol>
 			{
 				new HandshakeProtocol(tolerance: 2),
@@ -94,7 +94,7 @@ namespace TripsAndTriads.Rules
 			Intercept    = Intercept,
 			Conscription = Conscription,
 			Standoff     = Standoff,
-			Cascade      = Cascade,
+			Overflow      = district.Overflow,
 		};
 	}
 }

@@ -79,7 +79,7 @@ namespace TripsAndTriads.Core
 				Intercept    = district.Intercept,
 				Conscription = district.Conscription,
 				Standoff     = district.Standoff,
-				Cascade      = district.Cascade
+				Overflow      = district.Overflow
 			};
 		}
 

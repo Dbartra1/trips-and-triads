@@ -44,12 +44,12 @@ namespace TripsAndTriads.Rules
 				}
 			}
 
-			// ── Cascade ───────────────────────────────────────────────────────────
-			if (_config.Cascade && protocolCaptured.Count > 0)
+			// ── Overflow ───────────────────────────────────────────────────────────
+			if (_config.Overflow && protocolCaptured.Count > 0)
 			{
 				foreach (var (cr, cc) in protocolCaptured)
 				{
-					TestLogger.Log($"Cascade triggered from protocol capture at ({cr},{cc}).");
+					TestLogger.Log($"Overflow triggered from protocol capture at ({cr},{cc}).");
 					ResolveChain(board, cr, cc, allCaptured, visited);
 				}
 			}
@@ -106,7 +106,7 @@ namespace TripsAndTriads.Rules
 			}
 		}
 
-		// ── Chain resolver (The Breach / Cascade) ─────────────────────────────────
+		// ── Chain resolver (The Breach / Overflow) ─────────────────────────────────
 		private void ResolveChain(
 			BoardState board, int row, int col,
 			List<(int, int)> allCaptured, HashSet<(int, int)> visited)

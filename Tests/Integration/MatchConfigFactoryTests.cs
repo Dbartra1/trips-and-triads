@@ -12,11 +12,11 @@ namespace TripsAndTriads.Tests.Integration
     ///   BaseRules       — no protocols, no flags
     ///   GlassSpire      — Intercept + WallSignature + Handshake
     ///   Killfloor       — Conscription + Standoff
-    ///   DeadChannel     — Intercept + Cascade
+    ///   DeadChannel     — Intercept + Overflow
     ///   SprawlMarket    — Conscription
     ///   PowderRoom      — Tally + Handshake
-    ///   TheHush         — Cascade + WallSignature + Handshake
-    ///   TheVault        — ALL: Intercept + Conscription + Standoff + Cascade
+    ///   TheHush         — Overflow + WallSignature + Handshake
+    ///   TheVault        — ALL: Intercept + Conscription + Standoff + Overflow
     ///                          + Handshake + Tally + WallSignature
     /// </summary>
     public class MatchConfigFactoryTests
@@ -37,7 +37,7 @@ namespace TripsAndTriads.Tests.Integration
             Assert.False(config.Intercept);
             Assert.False(config.Conscription);
             Assert.False(config.Standoff);
-            Assert.False(config.Cascade);
+            Assert.False(config.Overflow);
         }
 
         // ── Glass Spire (Ascendant) ───────────────────────────────────────────
@@ -53,13 +53,13 @@ namespace TripsAndTriads.Tests.Integration
         }
 
         [Fact]
-        public void GlassSpire_NoConscription_NoStandoff_NoCascade()
+        public void GlassSpire_NoConscription_NoStandoff_NoOverflow()
         {
             var config = MatchConfig.GlassSpire();
 
             Assert.False(config.Conscription);
             Assert.False(config.Standoff);
-            Assert.False(config.Cascade);
+            Assert.False(config.Overflow);
         }
 
         // ── Killfloor (Razorkin) ──────────────────────────────────────────────
@@ -74,24 +74,24 @@ namespace TripsAndTriads.Tests.Integration
         }
 
         [Fact]
-        public void Killfloor_NoProtocolObjects_NoInterceptNoCascade()
+        public void Killfloor_NoProtocolObjects_NoInterceptNoOverflow()
         {
             var config = MatchConfig.Killfloor();
 
             Assert.Empty(config.Protocols);
             Assert.False(config.Intercept);
-            Assert.False(config.Cascade);
+            Assert.False(config.Overflow);
         }
 
         // ── Dead Channel (Ghostwire) ──────────────────────────────────────────
 
         [Fact]
-        public void DeadChannel_HasInterceptAndCascade()
+        public void DeadChannel_HasInterceptAndOverflow()
         {
             var config = MatchConfig.DeadChannel();
 
             Assert.True(config.Intercept);
-            Assert.True(config.Cascade);
+            Assert.True(config.Overflow);
         }
 
         [Fact]
@@ -115,7 +115,7 @@ namespace TripsAndTriads.Tests.Integration
             Assert.Empty(config.Protocols);
             Assert.False(config.Intercept);
             Assert.False(config.Standoff);
-            Assert.False(config.Cascade);
+            Assert.False(config.Overflow);
         }
 
         // ── Powder Room (Lacquer) ─────────────────────────────────────────────
@@ -137,17 +137,17 @@ namespace TripsAndTriads.Tests.Integration
             Assert.False(config.Intercept);
             Assert.False(config.Conscription);
             Assert.False(config.Standoff);
-            Assert.False(config.Cascade);
+            Assert.False(config.Overflow);
         }
 
         // ── The Hush (Hollow Choir) ───────────────────────────────────────────
 
         [Fact]
-        public void TheHush_HasCascadeAndWallSignatureAndHandshake()
+        public void TheHush_HasOverflowAndWallSignatureAndHandshake()
         {
             var config = MatchConfig.TheHush();
 
-            Assert.True(config.Cascade);
+            Assert.True(config.Overflow);
             Assert.True(HasProtocol<WallSignatureProtocol>(config));
             Assert.True(HasProtocol<HandshakeProtocol>(config));
         }
@@ -182,7 +182,7 @@ namespace TripsAndTriads.Tests.Integration
             Assert.True(config.Intercept);
             Assert.True(config.Conscription);
             Assert.True(config.Standoff);
-            Assert.True(config.Cascade);
+            Assert.True(config.Overflow);
         }
 
         // ── Protocol uniqueness ───────────────────────────────────────────────

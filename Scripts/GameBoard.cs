@@ -111,7 +111,7 @@ public partial class GameBoard : Node2D
 
 		// Hunt (Reclaim) matches run base-capture only — no district protocols.
 		// systems.md §7.3 specifies only "AsFlipped, hero-stake rule" for Reclaim.
-		// Injecting Cascade / Wall Signature etc. was unintentional (Known Issues).
+		// Injecting Overflow / Wall Signature etc. was unintentional (Known Issues).
 		if (session?.IsHuntMatch == true)
 			_matchConfig = new MatchConfig();
 		else

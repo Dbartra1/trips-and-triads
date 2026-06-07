@@ -176,7 +176,7 @@ namespace TripsAndTriads.Tests.Simulation
                 ("Handshake",      new MatchConfig { Protocols = new List<IProtocol> { new HandshakeProtocol() } }),
                 ("Tally",          new MatchConfig { Protocols = new List<IProtocol> { new TallyProtocol() } }),
                 ("Wall Signature", new MatchConfig { Protocols = new List<IProtocol> { new WallSignatureProtocol(), new HandshakeProtocol() } }),
-                ("Cascade",        new MatchConfig { Cascade = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } }),
+                ("Overflow",        new MatchConfig { Overflow = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } }),
             };
 
             foreach (var (name, config) in protocols)
@@ -309,7 +309,7 @@ namespace TripsAndTriads.Tests.Simulation
         public void Scale20_DomainRelevance_AcrossDistricts()
         {
             // Does domain advantage vary by district?
-            // Some districts (Cascade, The Hush) amplify captures, which
+            // Some districts (Overflow, The Hush) amplify captures, which
             // could make domain bonuses more or less meaningful.
 
             int games = 5000;

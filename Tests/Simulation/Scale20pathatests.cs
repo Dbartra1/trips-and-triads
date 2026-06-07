@@ -59,7 +59,7 @@ namespace TripsAndTriads.Tests.Simulation
         private static MatchConfig PathA_Killfloor() => new MatchConfig
             { Conscription = true, Standoff = true };
         private static MatchConfig PathA_DeadChannel() => new MatchConfig
-            { Intercept = true, Cascade = true };
+            { Intercept = true, Overflow = true };
         private static MatchConfig PathA_SprawlMarket() => new MatchConfig
             { Conscription = true };
         private static MatchConfig PathA_PowderRoom() => new MatchConfig
@@ -72,7 +72,7 @@ namespace TripsAndTriads.Tests.Simulation
         };
         private static MatchConfig PathA_TheHush() => new MatchConfig
         {
-            Cascade = true,
+            Overflow = true,
             Protocols = new List<IProtocol>
             {
                 new WallSignatureProtocol(wallValue: 20, sumTolerance: 2),
@@ -81,7 +81,7 @@ namespace TripsAndTriads.Tests.Simulation
         };
         private static MatchConfig PathA_TheVault() => new MatchConfig
         {
-            Intercept = true, Conscription = true, Standoff = true, Cascade = true,
+            Intercept = true, Conscription = true, Standoff = true, Overflow = true,
             Protocols = new List<IProtocol>
             {
                 new HandshakeProtocol(tolerance: 2),
@@ -118,20 +118,20 @@ namespace TripsAndTriads.Tests.Simulation
                 ("Wall Signature",
                     new MatchConfig { Protocols = new List<IProtocol> { new WallSignatureProtocol(), new HandshakeProtocol() } },
                     new MatchConfig { Protocols = new List<IProtocol> { new WallSignatureProtocol(wallValue: 20, sumTolerance: 2), new HandshakeProtocol(tolerance: 2) } }),
-                ("Cascade",
-                    new MatchConfig { Cascade = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } },
-                    new MatchConfig { Cascade = true, Protocols = new List<IProtocol> { new HandshakeProtocol(tolerance: 2) } }),
+                ("Overflow",
+                    new MatchConfig { Overflow = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } },
+                    new MatchConfig { Overflow = true, Protocols = new List<IProtocol> { new HandshakeProtocol(tolerance: 2) } }),
             };
 
             // Known Scale-20 baseline fire rates from Scale20ExtendedTests
             // Path A uses: Handshake tolerance=2, Tally sumTolerance=2,
-            //              WallSignature wallValue=20+sumTolerance=2, Cascade with Handshake tolerance=2
+            //              WallSignature wallValue=20+sumTolerance=2, Overflow with Handshake tolerance=2
             var scale20Baseline = new Dictionary<string, double>
             {
                 { "Handshake",      0.000 },
                 { "Tally",          0.035 },
                 { "Wall Signature", 0.157 },
-                { "Cascade",        0.000 },
+                { "Overflow",        0.000 },
             };
 
             foreach (var (name, s10Config, pathAConfig) in protocolConfigs)

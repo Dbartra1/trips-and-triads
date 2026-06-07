@@ -46,6 +46,19 @@ public partial class PreMatchScreen : Control
 		if (StartButton != null)
 			StartButton.Pressed += OnStartPressed;
 
+		// Always-visible New Run button — players can restart at any time,
+		// regardless of roster size. Separate from the run-over flow.
+		var left = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Left");
+		if (left != null)
+		{
+			var newRunBtn = new Button();
+			newRunBtn.Text              = "↺  New Run";
+			newRunBtn.CustomMinimumSize = new Vector2(200, 36);
+			newRunBtn.TooltipText       = "Abandon this run and start fresh.";
+			newRunBtn.Pressed          += OnNewRun;
+			left.AddChild(newRunBtn);
+		}
+
 		BuildDistrictButtons();
 		if (!CheckRunOver())
 			RefreshRoster();
@@ -173,7 +186,7 @@ public partial class PreMatchScreen : Control
 		var protocols = new List<string>(district.Protocols);
 		if (district.Intercept)    protocols.Add("Intercept");
 		if (district.Conscription) protocols.Add("Conscription");
-		if (district.Cascade)      protocols.Add("Cascade");
+		if (district.Overflow)      protocols.Add("Overflow");
 		if (district.Standoff)     protocols.Add("Standoff");
 
 		if (DistrictProtocolLabel != null)
@@ -196,6 +209,21 @@ public partial class PreMatchScreen : Control
 
 		foreach (var child in RosterGrid.GetChildren())
 			child.QueueFree();
+
+		// Step Up mode — show a prominent header so the player knows they're
+		// selecting an interim, not adding cards to their deck.
+		if (_stepUpMode)
+		{
+			RosterGrid.Columns = 1;
+			var banner = new Label();
+			banner.Text = "⚠  SELECTING INTERIM HERO — Click a card below to promote it.\n" +
+			              "Click ✕ Cancel in the panel above to return to deck building.";
+			banner.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			banner.AddThemeColorOverride("font_color", new Color(1f, 0.72f, 0.28f, 1f));
+			banner.AddThemeFontSizeOverride("font_size", 13);
+			RosterGrid.AddChild(banner);
+			RosterGrid.Columns = 4;
+		}
 
 		foreach (var card in GameSession.Instance.Roster)
 		{
@@ -807,7 +835,9 @@ public partial class PreMatchScreen : Control
 	{
 		_stepUpMode = !_stepUpMode;
 		if (_stepUpToggleBtn != null)
-			_stepUpToggleBtn.Text = _stepUpMode ? "✕  Cancel Step Up" : "↑  Step Up";
+			_stepUpToggleBtn.Text = _stepUpMode
+				? "✕  Cancel"
+				: (GameSession.Instance?.HasInterim == true ? "↑  Change Interim" : "↑  Step Up");
 		RefreshRoster();
 	}
 

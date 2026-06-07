@@ -87,14 +87,14 @@ namespace TripsAndTriads.Tests.Capture
         // ══════════════════════════════════════════════════════════════════════
 
         [Fact]
-        public void Cascade_ProtocolCaptureChains()
+        public void Overflow_ProtocolCaptureChains()
         {
-            // Cascade active. Attacker at (1,0) ties with EnemyA (right) and
+            // Overflow active. Attacker at (1,0) ties with EnemyA (right) and
             // TieHelper (bottom) — two ties → Handshake fires, both captured.
             // EnemyA (now P1) has Right=9, captures EnemyB Left=2 at (1,2).
             var config = new MatchConfig
             {
-                Cascade   = true,
+                Overflow   = true,
                 Protocols = new List<IProtocol> { new HandshakeProtocol() }
             };
             var resolver = new CaptureResolver(config);
@@ -113,16 +113,16 @@ namespace TripsAndTriads.Tests.Capture
 
             Assert.Contains((1, 1), captures); // EnemyA via Handshake
             Assert.Contains((2, 0), captures); // TieHelper via Handshake
-            Assert.Contains((1, 2), captures); // EnemyB via Cascade chain from EnemyA
+            Assert.Contains((1, 2), captures); // EnemyB via Overflow chain from EnemyA
         }
 
         [Fact]
-        public void Cascade_Inactive_ProtocolCaptureDoesNotChain()
+        public void Overflow_Inactive_ProtocolCaptureDoesNotChain()
         {
-            // Same layout but Cascade=false — EnemyB must NOT be captured.
+            // Same layout but Overflow=false — EnemyB must NOT be captured.
             var config = new MatchConfig
             {
-                Cascade   = false,
+                Overflow   = false,
                 Protocols = new List<IProtocol> { new HandshakeProtocol() }
             };
             var resolver = new CaptureResolver(config);
@@ -140,17 +140,17 @@ namespace TripsAndTriads.Tests.Capture
 
             Assert.Contains((1, 1), captures);   // EnemyA via Handshake
             Assert.Contains((2, 0), captures);   // TieHelper via Handshake
-            Assert.DoesNotContain((1, 2), captures); // EnemyB — no Cascade
+            Assert.DoesNotContain((1, 2), captures); // EnemyB — no Overflow
         }
 
         [Fact]
-        public void Cascade_ChainDepth_MultipleLinks()
+        public void Overflow_ChainDepth_MultipleLinks()
         {
             // Three-link chain: Handshake gets Card1 → Card1 Bottom=9 takes Card2
             // → Card2 Bottom=9 takes Card3.
             var config = new MatchConfig
             {
-                Cascade   = true,
+                Overflow   = true,
                 Protocols = new List<IProtocol> { new HandshakeProtocol() }
             };
             var resolver = new CaptureResolver(config);
@@ -170,8 +170,8 @@ namespace TripsAndTriads.Tests.Capture
 
             Assert.Contains((0, 0), captures); // TieHelper via Handshake
             Assert.Contains((0, 2), captures); // Card1 via Handshake
-            Assert.Contains((1, 2), captures); // Card2 via Cascade from Card1 (Bottom=9 > Top=3)
-            Assert.Contains((2, 2), captures); // Card3 via Cascade from Card2 (Bottom=9 > Top=2)
+            Assert.Contains((1, 2), captures); // Card2 via Overflow from Card1 (Bottom=9 > Top=3)
+            Assert.Contains((2, 2), captures); // Card3 via Overflow from Card2 (Bottom=9 > Top=2)
         }
 
         // ══════════════════════════════════════════════════════════════════════

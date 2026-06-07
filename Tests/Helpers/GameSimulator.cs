@@ -313,7 +313,7 @@ namespace TripsAndTriads.Tests.Helpers
             Intercept    = src.Intercept,
             Conscription = src.Conscription,
             Standoff     = src.Standoff,
-            Cascade      = src.Cascade,
+            Overflow      = src.Overflow,
         };
     }
 }

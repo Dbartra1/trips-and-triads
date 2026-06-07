@@ -16,7 +16,7 @@ namespace TripsAndTriads.Core
 		public bool         Intercept    { get; set; } = false;
 		public bool         Conscription { get; set; } = false;
 		public bool         Standoff     { get; set; } = false;
-		public bool         Cascade      { get; set; } = false;
+		public bool         Overflow     { get; set; } = false;
 		public string       Hazard       { get; set; } = null; // optional hazard name
 		public string       Description  { get; set; }  // flavour text
 		public bool         IsLocked     { get; set; } = false; // unlocked by cred later

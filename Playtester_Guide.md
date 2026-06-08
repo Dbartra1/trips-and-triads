@@ -51,4 +51,27 @@ Want to expand your roster? Use the **Recruitment** tab to scout Free Agents.
 - *The recruitment board refreshes with new agents after every standard District Match.*
 
 ---
+
+## 🗺️ District Modifiers Quick Reference
+Each district applies unique rules to the match. Here is what to expect:
+
+| Modifier | What it Does |
+| :--- | :--- |
+| **Intercept** | You can see the AI's hand before the match begins. |
+| **Conscription** | You do *not* pick your deck. The game randomly selects 5 cards from your roster for you. |
+| **Standoff** | If the match ends in a tie, it immediately restarts using the current board state (no deck redraw). |
+| **Overflow** | Capturing a card via a Protocol triggers a chain reaction, allowing you to capture adjacent enemy cards with your newly captured card. |
+| **Protocols** | Special capture rules: <br>• **Handshake**: Captures if adjacent stats are nearly equal.<br>• **Tally**: Captures if the sum of adjacent stats matches.<br>• **Wall Signature**: Captures if a specific high-stat "wall" is present. |
+
+### District Rule Breakdown
+- **The Stub**: Base rules only. (Tutorial district)
+- **Glass Spire**: Intercept + Protocols (Wall Signature, Handshake)
+- **The Killfloor**: Conscription + Standoff
+- **Dead Channel**: Intercept + Overflow
+- **The Sprawl-Market**: Conscription
+- **The Powder Room**: Protocols (Tally, Handshake)
+- **The Hush**: Overflow + Protocols (Wall Signature, Handshake)
+- **The Vault**: Intercept + Conscription + Standoff + Overflow + All Protocols *(The ultimate challenge)*
+
+---
 *Good luck out there. Watch your back, and don't let the Wall take your best operators.*

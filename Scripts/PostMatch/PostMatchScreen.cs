@@ -86,6 +86,10 @@ public partial class PostMatchScreen : Control
 		ApplyCredEvents(session);
 		session.TickGracePeriods(); // start/tick grace periods based on new cred tier
 
+		// Refresh free agents after a standard district match
+		if (!session.IsDellaMatch)
+			session.RefreshFreeAgents();
+
 		// ── Scrip payout (Phase 9) ───────────────────────────────────────────
 		if (session.IsDellaMatch)
 		{

@@ -97,6 +97,59 @@ public partial class GameSession : Node
 	/// </summary>
 	public int Scrip { get; private set; } = 0;
 
+	// ── Free Agents (Recruitment) ─────────────────────────────────────────────
+	public List<FreeAgent> CurrentFreeAgents { get; private set; } = new();
+
+	public void RefreshFreeAgents()
+	{
+		CurrentFreeAgents = FreeAgentGenerator.Generate(3, Cred.Tier, new System.Random());
+		GD.Print("GameSession: Free agent board refreshed.");
+	}
+
+	public bool MeetAgent(int index, out string error)
+	{
+		error = "";
+		if (index < 0 || index >= CurrentFreeAgents.Count) { error = "Invalid agent."; return false; }
+		var agent = CurrentFreeAgents[index];
+		if (agent.IsMet || agent.IsSigned) { error = "Already met or signed."; return false; }
+		if (!SpendScrip(5)) { error = "Not enough scrip to meet."; return false; }
+		
+		agent.IsMet = true;
+		GD.Print($"GameSession: Met free agent {agent.Data.Name}.");
+		return true;
+	}
+
+	public bool AuditionAgent(int index, out string error)
+	{
+		error = "";
+		if (index < 0 || index >= CurrentFreeAgents.Count) { error = "Invalid agent."; return false; }
+		var agent = CurrentFreeAgents[index];
+		if (!agent.IsMet || agent.IsAuditioned || agent.IsSigned) { error = "Cannot audition."; return false; }
+		if (!SpendScrip(10)) { error = "Not enough scrip to audition."; return false; }
+
+		agent.IsAuditioned = true;
+		// 10% chance to fail
+		agent.AuditionPassed = new System.Random().Next(100) >= 10;
+		
+		GD.Print($"GameSession: {agent.Data.Name} {(agent.AuditionPassed ? "passed" : "failed")} the audition.");
+		return true;
+	}
+
+	public bool SignAgent(int index, out string error)
+	{
+		error = "";
+		if (index < 0 || index >= CurrentFreeAgents.Count) { error = "Invalid agent."; return false; }
+		var agent = CurrentFreeAgents[index];
+		if (!agent.IsAuditioned || !agent.AuditionPassed || agent.IsSigned) { error = "Cannot sign."; return false; }
+		if (!SpendScrip(15)) { error = "Not enough scrip to sign."; return false; }
+
+		agent.IsSigned = true;
+		if (!Roster.Contains(agent.Data)) Roster.Add(agent.Data);
+		
+		GD.Print($"GameSession: Signed {agent.Data.Name} to the roster.");
+		return true;
+	}
+
 	// ── Della / Standing Work (Phase 9) ───────────────────────────────────────
 	/// <summary>
 	/// Number of Standing Work contracts available from Della. 
@@ -317,6 +370,7 @@ public partial class GameSession : Node
 		IsInitialized      = true;
 		Scrip              = 0;
 		DellaContractsAvailable = MaxDellaContracts; // Reset Della's board on a fresh run
+		RefreshFreeAgents(); // Get a fresh batch of recruits
 		Cred               = new CredManager(); // fresh run starts at Nameless
 		DistrictGracePeriods.Clear();
 		NewGracePeriodAlerts.Clear();

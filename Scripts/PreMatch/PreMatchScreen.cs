@@ -71,7 +71,7 @@ public partial class PreMatchScreen : Control
 		BuildReunionBanner();
 		BuildCredBar();
 		BuildScripLabel();
-		BuildDellaPanel();
+		BuildFixerTabs();
 		BuildRosterScanner();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
@@ -221,59 +221,82 @@ public partial class PreMatchScreen : Control
 		_scripLabel.Text = $"💵  Scrip:  {scrip}";
 	}
 
-	private VBoxContainer _dellaPanel = null;
+	private TabContainer _fixerTabs = null;
 	private Label _dellaStatusLabel = null;
 	private Button _dellaActionBtn = null;
+	private VBoxContainer _agentList = null;
+	private Control _recruitmentPopup = null;
 
-	private void BuildDellaPanel()
+	private void BuildFixerTabs()
 	{
-		var session = GameSession.Instance;
-		if (session == null) return;
-
 		var left = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Left");
 		if (left == null) return;
 
-		_dellaPanel = new VBoxContainer();
-		_dellaPanel.AddThemeConstantOverride("separation", 8);
+		_fixerTabs = new TabContainer();
+		_fixerTabs.CustomMinimumSize = new Vector2(0, 110); // Much more compact
+		
+		// Tab 1: Della
+		var dellaTab = new VBoxContainer();
+		dellaTab.Name = "Della";
+		_fixerTabs.AddChild(dellaTab);
+		BuildCompactDellaPanel(dellaTab);
 
-		// Header
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 8);
-		var title = new Label();
-		title.Text = "🛠️  DELLA (The Commons)";
-		title.AddThemeColorOverride("font_color", new Color("4a90d9"));
-		title.AddThemeFontSizeOverride("font_size", 14);
-		header.AddChild(title);
-		_dellaPanel.AddChild(header);
+		// Tab 2: Recruitment
+		var recruitTab = new VBoxContainer();
+		recruitTab.Name = "Recruitment";
+		_fixerTabs.AddChild(recruitTab);
+		BuildCompactRecruitmentPanel(recruitTab);
 
-		// Description
-		var desc = new Label();
-		desc.Text = "Standing Work: A simple duel to keep the block running.";
-		desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		desc.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f, 1f));
-		desc.AddThemeFontSizeOverride("font_size", 12);
-		_dellaPanel.AddChild(desc);
+		left.AddChild(_fixerTabs);
+		left.MoveChild(_fixerTabs, 3); // After Scrip label
+	}
 
-		// Status / Reward
+	private void BuildCompactDellaPanel(VBoxContainer parent)
+	{
+		parent.AddThemeConstantOverride("separation", 8);
+		parent.AddThemeConstantOverride("margin_left", 8); // Add left padding for better alignment
+		
 		_dellaStatusLabel = new Label();
-		_dellaStatusLabel.AddThemeFontSizeOverride("font_size", 12);
-		_dellaPanel.AddChild(_dellaStatusLabel);
+		_dellaStatusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		_dellaStatusLabel.HorizontalAlignment = HorizontalAlignment.Center; // Center the text
+		parent.AddChild(_dellaStatusLabel);
 
-		// Action Button
 		_dellaActionBtn = new Button();
 		_dellaActionBtn.CustomMinimumSize = new Vector2(0, 36);
 		_dellaActionBtn.Pressed += OnDellaContractPressed;
-		_dellaPanel.AddChild(_dellaActionBtn);
-
-		left.AddChild(_dellaPanel);
-		left.MoveChild(_dellaPanel, 3); // After Scrip label (index 2)
+		parent.AddChild(_dellaActionBtn);
 
 		RefreshDellaPanel();
 	}
 
+	private void BuildCompactRecruitmentPanel(VBoxContainer parent)
+	{
+		parent.AddThemeConstantOverride("separation", 8);
+		
+		// Use MarginContainer for reliable left padding in Godot 4
+		var margin = new MarginContainer();
+		margin.AddThemeConstantOverride("margin_left", 8);
+		parent.AddChild(margin);
+
+		var innerBox = new VBoxContainer();
+		innerBox.AddThemeConstantOverride("separation", 8);
+		margin.AddChild(innerBox);
+
+		var desc = new Label();
+		desc.Text = "Scout free agents to expand your roster.";
+		desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		innerBox.AddChild(desc);
+
+		var openBtn = new Button();
+		openBtn.Text = "Open Recruitment Board";
+		openBtn.CustomMinimumSize = new Vector2(0, 36);
+		openBtn.Pressed += ShowRecruitmentPopup;
+		innerBox.AddChild(openBtn);
+	}
+
 	private void RefreshDellaPanel()
 	{
-		if (_dellaPanel == null || _dellaStatusLabel == null || _dellaActionBtn == null) return;
+		if (_dellaStatusLabel == null || _dellaActionBtn == null) return;
 		var session = GameSession.Instance;
 		if (session == null) return;
 
@@ -283,19 +306,233 @@ public partial class PreMatchScreen : Control
 
 		if (available > 0)
 		{
-			_dellaStatusLabel.Text = $"Available: {available}/{GameSession.MaxDellaContracts}  |  Reward: {payout} scrip";
+			_dellaStatusLabel.Text = $"Available: {available}/{GameSession.MaxDellaContracts}\nReward: {payout} scrip";
 			_dellaStatusLabel.AddThemeColorOverride("font_color", new Color("f0c040"));
-			_dellaActionBtn.Text = $"Accept Standing Work ({payout} scrip)";
+			_dellaActionBtn.Text = "Accept Standing Work";
 			_dellaActionBtn.Disabled = false;
-			_dellaActionBtn.TooltipText = "Play a low-risk match against a basic crew.";
 		}
 		else
 		{
-			_dellaStatusLabel.Text = "Contracts exhausted.";
+			_dellaStatusLabel.Text = "Contracts exhausted.\nRefresh by playing a district match.";
 			_dellaStatusLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 1f));
-			_dellaActionBtn.Text = "Refresh by playing a district match";
+			_dellaActionBtn.Text = "Exhausted";
 			_dellaActionBtn.Disabled = true;
-			_dellaActionBtn.TooltipText = "Complete any standard district match to refresh Della's board.";
+		}
+	}
+
+	private void ShowRecruitmentPopup()
+	{
+		if (_recruitmentPopup != null) return;
+
+		_recruitmentPopup = new Control();
+		_recruitmentPopup.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		_recruitmentPopup.MouseFilter = Control.MouseFilterEnum.Stop;
+
+		var overlay = new Panel();
+		overlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		var overlayStyle = new StyleBoxFlat();
+		overlayStyle.BgColor = new Color(0f, 0f, 0f, 0.7f);
+		overlay.AddThemeStyleboxOverride("panel", overlayStyle);
+		overlay.MouseFilter = Control.MouseFilterEnum.Ignore;
+		_recruitmentPopup.AddChild(overlay);
+
+		var dialog = new PanelContainer();
+		dialog.CustomMinimumSize = new Vector2(600, 400);
+		dialog.AnchorLeft = 0.5f; dialog.AnchorTop = 0.5f;
+		dialog.AnchorRight = 0.5f; dialog.AnchorBottom = 0.5f;
+		dialog.GrowHorizontal = Control.GrowDirection.Both;
+		dialog.GrowVertical = Control.GrowDirection.Both;
+		dialog.OffsetLeft = -300f; dialog.OffsetRight = 300f;
+		dialog.OffsetTop = -200f; dialog.OffsetBottom = 200f;
+		
+		var dialogStyle = new StyleBoxFlat();
+		dialogStyle.BgColor = new Color(0.06f, 0.07f, 0.10f, 1f);
+		dialogStyle.BorderWidthLeft = 2; dialogStyle.BorderWidthTop = 2;
+		dialogStyle.BorderWidthRight = 2; dialogStyle.BorderWidthBottom = 2;
+		dialogStyle.BorderColor = new Color("3ecdef");
+		dialogStyle.SetCornerRadiusAll(6);
+		dialog.AddThemeStyleboxOverride("panel", dialogStyle);
+		_recruitmentPopup.AddChild(dialog);
+
+		var mainVBox = new VBoxContainer();
+		mainVBox.AddThemeConstantOverride("margin_left", 16);
+		mainVBox.AddThemeConstantOverride("margin_right", 16);
+		mainVBox.AddThemeConstantOverride("margin_top", 16);
+		mainVBox.AddThemeConstantOverride("margin_bottom", 16);
+		mainVBox.AddThemeConstantOverride("separation", 12);
+		dialog.AddChild(mainVBox);
+
+		var header = new Label();
+		header.Text = "Recruitment Board";
+		header.AddThemeFontSizeOverride("font_size", 18);
+		header.AddThemeColorOverride("font_color", new Color("3ecdef"));
+		mainVBox.AddChild(header);
+
+		var scroll = new ScrollContainer();
+		scroll.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		mainVBox.AddChild(scroll);
+
+		// Use MarginContainer for reliable left padding in Godot 4
+		var listMargin = new MarginContainer();
+		listMargin.AddThemeConstantOverride("margin_left", 16);
+		listMargin.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		scroll.AddChild(listMargin);
+
+		_agentList = new VBoxContainer();
+		_agentList.AddThemeConstantOverride("separation", 12);
+		listMargin.AddChild(_agentList);
+
+		var closeBtn = new Button();
+		closeBtn.Text = "Close";
+		closeBtn.CustomMinimumSize = new Vector2(100, 36);
+		closeBtn.Pressed += () => {
+			_recruitmentPopup?.QueueFree();
+			_recruitmentPopup = null;
+			_agentList = null;
+		};
+		
+		var btnBox = new HBoxContainer();
+		btnBox.Alignment = BoxContainer.AlignmentMode.End;
+		btnBox.AddChild(closeBtn);
+		mainVBox.AddChild(btnBox);
+
+		AddChild(_recruitmentPopup);
+		RefreshRecruitmentPanel();
+	}
+
+	private void RefreshRecruitmentPanel()
+	{
+		if (_agentList == null) return;
+		foreach (var child in _agentList.GetChildren()) child.QueueFree();
+
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		foreach (var agent in session.CurrentFreeAgents)
+		{
+			if (agent.IsSigned) continue;
+
+			var cardBox = new HBoxContainer();
+			cardBox.AddThemeConstantOverride("separation", 12);
+
+			// Left: Compact Card Visual
+			var cardVisual = new PanelContainer();
+			cardVisual.CustomMinimumSize = new Vector2(140, 180); // ~40% bigger for better readability
+			// Force the card to keep its shape and not stretch vertically/horizontally
+			cardVisual.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+			cardVisual.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+			
+			var style = new StyleBoxFlat();
+			style.BgColor = new Color(0.1f, 0.15f, 0.2f, 1f);
+			style.BorderWidthLeft = 2; style.BorderWidthTop = 2;
+			style.BorderWidthRight = 2; style.BorderWidthBottom = 2;
+			style.BorderColor = agent.Data.Tier == Tier.Pro ? new Color("f0c040") : new Color("3ecdef");
+			cardVisual.AddThemeStyleboxOverride("panel", style);
+
+			var cardInner = new VBoxContainer();
+			cardInner.AddThemeConstantOverride("margin_left", 10);
+			cardInner.AddThemeConstantOverride("margin_right", 10);
+			cardInner.AddThemeConstantOverride("margin_top", 10);
+			cardInner.AddThemeConstantOverride("margin_bottom", 10);
+			cardInner.AddThemeConstantOverride("separation", 8); // More separation between elements
+			cardVisual.AddChild(cardInner);
+
+			// Top
+			var lblTop = new Label();
+			lblTop.Text = agent.IsMet ? agent.Data.Top.ToString() : "?";
+			lblTop.HorizontalAlignment = HorizontalAlignment.Center;
+			lblTop.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
+			cardInner.AddChild(lblTop);
+
+			// Middle Row
+			var midRow = new HBoxContainer();
+			midRow.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+			var lblLeft = new Label();
+			lblLeft.Text = agent.IsMet ? agent.Data.Left.ToString() : "?";
+			lblLeft.VerticalAlignment = VerticalAlignment.Center;
+			lblLeft.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+			lblLeft.AddThemeFontSizeOverride("font_size", 16);
+			midRow.AddChild(lblLeft);
+
+			var spacer1 = new Control();
+			spacer1.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			midRow.AddChild(spacer1);
+
+			var centerBox = new VBoxContainer();
+			centerBox.Alignment = BoxContainer.AlignmentMode.Center;
+			var lblName = new Label();
+			lblName.Text = agent.IsMet ? agent.Data.Name : "?";
+			lblName.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
+			lblName.HorizontalAlignment = HorizontalAlignment.Center;
+			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart; // Allow wrapping for long names
+			centerBox.AddChild(lblName);
+			midRow.AddChild(centerBox);
+
+			var spacer2 = new Control();
+			spacer2.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			midRow.AddChild(spacer2);
+
+			var lblRight = new Label();
+			lblRight.Text = agent.IsMet ? agent.Data.Right.ToString() : "?";
+			lblRight.VerticalAlignment = VerticalAlignment.Center;
+			lblRight.HorizontalAlignment = HorizontalAlignment.Right;
+			lblRight.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+			lblRight.AddThemeFontSizeOverride("font_size", 16);
+			midRow.AddChild(lblRight);
+
+			cardInner.AddChild(midRow);
+
+			// Bottom
+			var lblBottom = new Label();
+			lblBottom.Text = agent.IsMet ? agent.Data.Bottom.ToString() : "?";
+			lblBottom.HorizontalAlignment = HorizontalAlignment.Center;
+			lblBottom.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
+			cardInner.AddChild(lblBottom);
+
+			cardBox.AddChild(cardVisual);
+
+			// Right: Actions
+			var actionBox = new VBoxContainer();
+			actionBox.AddThemeConstantOverride("separation", 6);
+			actionBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+			var infoLbl = new Label();
+			infoLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			var actionBtn = new Button();
+			actionBtn.CustomMinimumSize = new Vector2(140, 32);
+
+			if (!agent.IsMet)
+			{
+				infoLbl.Text = $"Faction: {agent.Data.Faction}\nTier: {agent.Data.Tier}\n\nCost to Meet: 5 scrip";
+				actionBtn.Text = "Meet (5 scrip)";
+				actionBtn.Pressed += () => OnAgentAction(agent, "meet");
+			}
+			else if (!agent.IsAuditioned)
+			{
+				infoLbl.Text = $"{agent.Data.Name}\nStats: {agent.Data.Top}/{agent.Data.Right}/{agent.Data.Bottom}/{agent.Data.Left}\n\nCost to Audition: 10 scrip";
+				actionBtn.Text = "Audition (10 scrip)";
+				actionBtn.Pressed += () => OnAgentAction(agent, "audition");
+			}
+			else if (!agent.AuditionPassed)
+			{
+				infoLbl.Text = $"{agent.Data.Name}\n\n❌ Failed Audition.";
+				infoLbl.AddThemeColorOverride("font_color", new Color("fd1d75"));
+				actionBtn.Text = "Failed";
+				actionBtn.Disabled = true;
+			}
+			else
+			{
+				infoLbl.Text = $"{agent.Data.Name}\n\n✅ Passed Audition!\nCost to Sign: 15 scrip";
+				infoLbl.AddThemeColorOverride("font_color", new Color("4ade80"));
+				actionBtn.Text = "Sign (15 scrip)";
+				actionBtn.Pressed += () => OnAgentAction(agent, "sign");
+			}
+
+			actionBox.AddChild(infoLbl);
+			actionBox.AddChild(actionBtn);
+			cardBox.AddChild(actionBox);
+			_agentList.AddChild(cardBox);
 		}
 	}
 
@@ -316,6 +553,13 @@ public partial class PreMatchScreen : Control
 			GD.Print("PreMatch: Della — must select a full 5-card deck first.");
 			// Refund the contract since they can't start the match
 			session.DellaContractsAvailable++; 
+			
+			// Show visible prompt to the player
+			if (DeckCountLabel != null)
+			{
+				DeckCountLabel.Text = "⚠ Must select 5 cards first!";
+				DeckCountLabel.AddThemeColorOverride("font_color", new Color("fd1d75")); // Bright red/pink
+			}
 			return;
 		}
 
@@ -326,6 +570,37 @@ public partial class PreMatchScreen : Control
 
 		GD.Print("PreMatch: launching Della Standing Work match.");
 		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
+	}
+
+	private void OnAgentAction(FreeAgent agent, string action)
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		int index = session.CurrentFreeAgents.IndexOf(agent);
+		if (index < 0) return;
+
+		string error = "";
+		bool success = action switch
+		{
+			"meet" => session.MeetAgent(index, out error),
+			"audition" => session.AuditionAgent(index, out error),
+			"sign" => session.SignAgent(index, out error),
+			_ => false
+		};
+
+		if (!success && !string.IsNullOrEmpty(error))
+			GD.PrintErr($"Recruitment: {error}");
+		else if (success)
+		{
+			if (action == "sign")
+			{
+				SaveManager.SaveGame(); // Persist the newly signed card
+			}
+			RefreshRecruitmentPanel();
+			RefreshScripLabel();
+			RefreshRoster(); // Immediately update the roster UI to show the new card
+		}
 	}
 
 	private void BuildDistrictButtons()
@@ -521,6 +796,10 @@ public partial class PreMatchScreen : Control
 	{
 		if (DeckGrid == null) return;
 
+		// Force the grid to reserve space for 5 cards to prevent the left panel 
+		// from shrinking and pushing the "New Run" button off-screen.
+		DeckGrid.CustomMinimumSize = new Vector2(540, 0);
+
 		foreach (var child in DeckGrid.GetChildren())
 			child.QueueFree();
 
@@ -557,7 +836,10 @@ public partial class PreMatchScreen : Control
 		}
 
 		if (DeckCountLabel != null)
+		{
 			DeckCountLabel.Text = $"{_selectedDeck.Count} / {MaxDeckSize}";
+			DeckCountLabel.RemoveThemeColorOverride("font_color"); // Reset color when deck changes
+		}
 
 		if (StartButton != null && !_isRunOver)
 			StartButton.Disabled = _selectedDeck.Count != MaxDeckSize;

@@ -81,6 +81,20 @@ public static class SaveManager
             gracePeriods[kvp.Key] = kvp.Value;
         sess["gracePeriods"] = gracePeriods;
 
+        // Free Agents
+        var agentsArr = new JsonArray();
+        foreach (var agent in session.CurrentFreeAgents)
+        {
+            var obj = new JsonObject();
+            obj["data"] = SerializeCard(agent.Data);
+            obj["isMet"] = agent.IsMet;
+            obj["isAuditioned"] = agent.IsAuditioned;
+            obj["auditionPassed"] = agent.AuditionPassed;
+            obj["isSigned"] = agent.IsSigned;
+            agentsArr.Add(obj);
+        }
+        sess["freeAgents"] = agentsArr;
+
         root["session"] = sess;
 
         // ── Districts ─────────────────────────────────────────────────────────
@@ -184,6 +198,30 @@ public static class SaveManager
         if (savedGrace != null)
             foreach (var kvp in savedGrace)
                 session.DistrictGracePeriods[kvp.Key] = (int)(kvp.Value ?? 0);
+
+        // Free Agents
+        var savedAgents = sess["freeAgents"]?.AsArray();
+        if (savedAgents != null)
+        {
+            foreach (var node in savedAgents)
+            {
+                if (node is JsonObject obj)
+                {
+                    session.CurrentFreeAgents.Add(new FreeAgent
+                    {
+                        Data = DeserializeSingleCard(obj["data"]),
+                        IsMet = (bool)(obj["isMet"] ?? false),
+                        IsAuditioned = (bool)(obj["isAuditioned"] ?? false),
+                        AuditionPassed = (bool)(obj["auditionPassed"] ?? false),
+                        IsSigned = (bool)(obj["isSigned"] ?? false)
+                    });
+                }
+            }
+        }
+        else
+        {
+            session.RefreshFreeAgents(); // Fallback for old saves
+        }
 
         // Pre-seed any hard-lock districts missing from the save file.
         // Covers: saves created before grace period support was added, and any

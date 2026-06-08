@@ -161,16 +161,6 @@ Persists: Roster, Hunt state, Reunion state, district meters, active district, c
 BondResolver.ContaminationEnabled = district.Controller == "HollowChoir";
 ```
 
-### Hunt Matches Inherit District Protocols (deferred)
-Hunt (Reclaim) matches should run base-capture only. One-line fix:
-```csharp
-// In GameBoard._Ready(), before BuildMatchConfig():
-if (session?.IsHuntMatch == true)
-    _matchConfig = new MatchConfig();
-else
-    _matchConfig = DistrictManager.Instance.BuildMatchConfig();
-```
-
 ### Multi-Hunt Not Implemented
 Only one hero Hunt active at a time. Second capture while Headless silently drops. Needs `List<HuntEntry>` + cap + expiry + selector UI.
 
@@ -180,8 +170,8 @@ Only one hero Hunt active at a time. Second capture while Headless silently drop
 ### Conscription AI Has No Roster
 AI always uses its generated hand under Conscription. Needs persistent AI roster.
 
-### Scale20prototypetests.cs Warning
-CS0219: unused variable `totalProtocolCaptures` at line 149. Remove `var totalProtocolCaptures = 0;`.
+### Minor Test Warning
+`Scale20prototypetests.cs` line 149: CS0219 unused variable `totalProtocolCaptures`. (Cosmetic, does not affect gameplay).
 
 ### DistrictAccess Lore Open Threads (marked in DistrictAccess.cs)
 - Glass Spire: what does Ascendant "verified identity" look like mechanically?
@@ -212,36 +202,36 @@ CS0219: unused variable `totalProtocolCaptures` at line 149. Remove `var totalPr
 
 ## What's Next (Priority Order)
 
-### Immediate — Hunt protocol fix (1 line, deferred from Phase 7)
-In `GameBoard._Ready()`, before `BuildMatchConfig()` — see Known Issues above.
+### Phase 9 — Economy & Fixers (`systems.md §9`) ✅ *Partially Complete*
+**Completed:**
+- ✅ Scrip persistence and display.
+- ✅ Post-match payout calculation (Cred × Danger multiplier).
+- ✅ Buyout integration (Hunt panel, Razorkin refusal logic).
+- ✅ Della Standing Work contracts (3-match limit, refreshes on district match).
+- ✅ Free Agent Recruitment flow (Meet → Audition → Sign, with popup UI).
 
-### Phase 9 — Economy & Fixers (`systems.md §9`)
-Recommended build order:
-1. **Scrip** — add int to `GameSession`, persist in `SaveManager`, display in PreMatchScreen
-2. **Post-match payout** — `PostMatchScreen` awards scrip using `CredEffects.IncomeMultiplier(tier)` × district danger multiplier
-3. **Buyout** — enables the disabled Buyout button already in the Hunt panel (currently labelled "Phase 9")
-4. **Della (Standing Work)** — simplest Fixer; rotating contracts, flat scrip; also the Mutual Aid safety net
-5. **Remaining Fixers** — Vig (Wagers), Atlas (Intel/Hunt location), Mrs. Oba (Long Account/debt), The Tailor (Ghost Contracts)
-6. **Free agent Meet → Audition → Sign flow**
+**Remaining:**
+1. **Additional Fixers** — Vig (Wagers), Atlas (Intel/Hunt location), Mrs. Oba (Long Account/debt), The Tailor (Ghost Contracts). *Note: The TabContainer UI is already built to easily accommodate these.*
+2. **Mutual Aid / Obligation** — Wire Della's safety net to the Phase 11 debt system.
+
+### Phase 11 — Payroll & Debt (High Priority Next)
+- Upkeep per overworld turn. 
+- Debt → Collectors → escalating ladder. 
+- Mutual Aid (Della) vs Lacquer debt resolution.
 
 ### Phase 7c — Multi-Hunt
-Multiple simultaneous Hunts, cap of 3, oldest-Hunt expiry.
+- Multiple simultaneous Hunts, cap of 3, oldest-Hunt expiry.
 
 ### Phase 10 — The Hollowing
-Dead Line contracts → Touched → Fading → Claimed affliction track.
-
-### Phase 11 — Payroll & Debt
-Upkeep per overworld turn. Debt → Collectors → escalating ladder. Mutual Aid vs Lacquer debt.
+- Dead Line contracts → Touched → Fading → Claimed affliction track.
 
 ### Phase 12 — Prestige & Skyline
-Prestige condition (Legend cred + take The Vault). Skyline rival system. Two endings.
+- Prestige condition (Legend cred + take The Vault). Skyline rival system. Two endings.
 
 ### Near-term cleanup
 - Shaken mechanic (`systems.md §5.1`)
 - Contamination re-enable (wire to district controller check)
-- Conscription AI roster
-- Hunt protocol fix
-- Remove unused `totalProtocolCaptures` variable warning
+- Conscription AI persistent roster
 
 ---
 

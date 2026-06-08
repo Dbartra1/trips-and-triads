@@ -97,6 +97,39 @@ public partial class GameSession : Node
 	/// </summary>
 	public int Scrip { get; private set; } = 0;
 
+	// ── Della / Standing Work (Phase 9) ───────────────────────────────────────
+	/// <summary>
+	/// Number of Standing Work contracts available from Della. 
+	/// Refreshes after completing any standard district match.
+	/// TODO (Phase 11): Consider adding "Obligation" mechanic here for deeper flavor 
+	/// (e.g., taking a contract adds Obligation, clearing it requires more Standing Work).
+	/// </summary>
+	public int DellaContractsAvailable { get; set; } = 3;
+	public const int MaxDellaContracts = 3;
+
+	/// <summary>True if the current/upcoming match is a Della Standing Work contract.</summary>
+	public bool IsDellaMatch { get; set; } = false;
+
+	/// <summary>Attempts to consume a Della contract. Returns true if successful.</summary>
+	public bool TryConsumeDellaContract()
+	{
+		if (DellaContractsAvailable > 0)
+		{
+			DellaContractsAvailable--;
+			GD.Print($"GameSession: Della contract consumed. {DellaContractsAvailable} remaining.");
+			return true;
+		}
+		GD.Print("GameSession: Della contracts exhausted. Play a district match to refresh.");
+		return false;
+	}
+
+	/// <summary>Refreshes Della's board to max contracts. Called after a district match.</summary>
+	public void RefreshDellaContracts()
+	{
+		DellaContractsAvailable = MaxDellaContracts;
+		GD.Print("GameSession: Della contracts refreshed.");
+	}
+
 	/// <summary>Add scrip (amount may be negative to subtract).</summary>
 	public void AddScrip(int amount)
 	{

@@ -95,7 +95,7 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void ScoreInvariant_HoldsAfterChainCapture()
         {
-            var config   = new MatchConfig { Cascade = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } };
+            var config   = new MatchConfig { Overflow = true, Protocols = new List<IProtocol> { new HandshakeProtocol() } };
             var resolver = new CaptureResolver(config);
 
             // 3 P2 cards placed; P1 plays one card that chains and captures all 3

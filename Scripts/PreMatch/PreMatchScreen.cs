@@ -25,7 +25,12 @@ public partial class PreMatchScreen : Control
 	private bool _stepUpMode = false;
 	private Button _stepUpToggleBtn = null;
 	private Button _reclaimBtn = null;
-	private CredBarNode _credBar = null; // Street Cred signal meter
+	private CredBarNode _credBar = null;
+
+	// ── Roster scanner filter ─────────────────────────────────────────────────
+	private enum RosterFilter { All, Hero, Pro, Street }
+	private RosterFilter _rosterFilter = RosterFilter.All;
+	private readonly Dictionary<RosterFilter, Button> _scannerBtns = new(); // Street Cred signal meter
 	private Label _scripLabel = null;   // scrip balance display
 
 	public override void _Ready()
@@ -66,6 +71,8 @@ public partial class PreMatchScreen : Control
 		BuildReunionBanner();
 		BuildCredBar();
 		BuildScripLabel();
+		BuildDellaPanel();
+		BuildRosterScanner();
 		RefreshDeckDisplay();
 		SelectDistrict("the_stub");
 
@@ -73,6 +80,100 @@ public partial class PreMatchScreen : Control
 	}
 
 	// ── District selection ────────────────────────────────────────────────────
+
+	private void BuildRosterScanner()
+	{
+		// Find the Right column — scanner sits above the roster scroll area.
+		var right = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Right")
+		         ?? GetNodeOrNull<VBoxContainer>("HSplit/Right");
+		if (right == null) return;
+
+		// ── Outer panel ───────────────────────────────────────────────────────
+		var panel = new Panel();
+		var style = new StyleBoxFlat();
+		style.BgColor        = new Color(0.03f, 0.03f, 0.06f, 0.88f);
+		style.BorderWidthBottom = 1;
+		style.BorderColor    = new Color(0.15f, 0.6f, 0.5f, 0.5f);
+		panel.AddThemeStyleboxOverride("panel", style);
+		panel.CustomMinimumSize = new Vector2(0, 44);
+		panel.MouseFilter       = Control.MouseFilterEnum.Ignore;
+
+		// ── Inner HBox ────────────────────────────────────────────────────────
+		var hbox = new HBoxContainer();
+		hbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		hbox.OffsetLeft  = 10;
+		hbox.OffsetRight = -10;
+		hbox.AddThemeConstantOverride("separation", 6);
+		hbox.MouseFilter = Control.MouseFilterEnum.Ignore;
+		panel.AddChild(hbox);
+
+		// Label
+		var lbl = new Label();
+		lbl.Text = "◈ SCANNER";
+		lbl.AddThemeColorOverride("font_color", new Color(0.4f, 0.7f, 0.6f, 0.8f));
+		lbl.AddThemeFontSizeOverride("font_size", 11);
+		lbl.VerticalAlignment = VerticalAlignment.Center;
+		lbl.MouseFilter       = Control.MouseFilterEnum.Ignore;
+		hbox.AddChild(lbl);
+
+		// Spacer
+		var spacer = new Control();
+		spacer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		spacer.MouseFilter         = Control.MouseFilterEnum.Ignore;
+		hbox.AddChild(spacer);
+
+		// ── Filter tabs ───────────────────────────────────────────────────────
+		// Hero tab is slightly taller (via custom min-size) to mirror CITY SIGNAL
+		// column height scaling — the rarest tier gets the most visual weight.
+		var tabs = new (RosterFilter filter, string label, float height)[]
+		{
+			(RosterFilter.All,    "ALL",    28f),
+			(RosterFilter.Hero,   "◈ HERO", 38f),
+			(RosterFilter.Pro,    "PRO",    32f),
+			(RosterFilter.Street, "STREET", 28f),
+		};
+
+		_scannerBtns.Clear();
+		foreach (var (filter, label, height) in tabs)
+		{
+			var btn = new Button();
+			btn.Text              = label;
+			btn.CustomMinimumSize = new Vector2(64, height);
+			btn.TooltipText       = filter == RosterFilter.All
+				? "Show all cards" : $"Show {filter} cards only";
+
+			var captured = filter;
+			btn.Pressed += () =>
+			{
+				_rosterFilter = captured;
+				RefreshScannerHighlight();
+				RefreshRoster();
+			};
+
+			_scannerBtns[filter] = btn;
+			hbox.AddChild(btn);
+		}
+
+		// Insert above RosterSection (index 0 in the Right VBox)
+		right.AddChild(panel);
+		right.MoveChild(panel, 0);
+
+		RefreshScannerHighlight();
+	}
+
+	private static readonly Color ScannerActive   = new Color("3ecdef");
+	private static readonly Color ScannerInactive = new Color(0.25f, 0.25f, 0.3f, 1f);
+
+	private void RefreshScannerHighlight()
+	{
+		foreach (var (filter, btn) in _scannerBtns)
+		{
+			bool active = filter == _rosterFilter;
+			btn.Modulate = active ? Colors.White : new Color(0.6f, 0.6f, 0.65f, 1f);
+			// Add/remove bottom highlight line via font color (cheap visual cue)
+			btn.AddThemeColorOverride("font_color", active ? ScannerActive : ScannerInactive);
+		}
+	}
 
 	private void BuildCredBar()
 	{
@@ -118,6 +219,113 @@ public partial class PreMatchScreen : Control
 		var session = GameSession.Instance;
 		int scrip = session?.Scrip ?? 0;
 		_scripLabel.Text = $"💵  Scrip:  {scrip}";
+	}
+
+	private VBoxContainer _dellaPanel = null;
+	private Label _dellaStatusLabel = null;
+	private Button _dellaActionBtn = null;
+
+	private void BuildDellaPanel()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		var left = GetNodeOrNull<VBoxContainer>("Margin/HSplit/Left");
+		if (left == null) return;
+
+		_dellaPanel = new VBoxContainer();
+		_dellaPanel.AddThemeConstantOverride("separation", 8);
+
+		// Header
+		var header = new HBoxContainer();
+		header.AddThemeConstantOverride("separation", 8);
+		var title = new Label();
+		title.Text = "🛠️  DELLA (The Commons)";
+		title.AddThemeColorOverride("font_color", new Color("4a90d9"));
+		title.AddThemeFontSizeOverride("font_size", 14);
+		header.AddChild(title);
+		_dellaPanel.AddChild(header);
+
+		// Description
+		var desc = new Label();
+		desc.Text = "Standing Work: A simple duel to keep the block running.";
+		desc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		desc.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f, 1f));
+		desc.AddThemeFontSizeOverride("font_size", 12);
+		_dellaPanel.AddChild(desc);
+
+		// Status / Reward
+		_dellaStatusLabel = new Label();
+		_dellaStatusLabel.AddThemeFontSizeOverride("font_size", 12);
+		_dellaPanel.AddChild(_dellaStatusLabel);
+
+		// Action Button
+		_dellaActionBtn = new Button();
+		_dellaActionBtn.CustomMinimumSize = new Vector2(0, 36);
+		_dellaActionBtn.Pressed += OnDellaContractPressed;
+		_dellaPanel.AddChild(_dellaActionBtn);
+
+		left.AddChild(_dellaPanel);
+		left.MoveChild(_dellaPanel, 3); // After Scrip label (index 2)
+
+		RefreshDellaPanel();
+	}
+
+	private void RefreshDellaPanel()
+	{
+		if (_dellaPanel == null || _dellaStatusLabel == null || _dellaActionBtn == null) return;
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		int available = session.DellaContractsAvailable;
+		int baseReward = 10;
+		int payout = (int)(baseReward * CredEffects.IncomeMultiplier(session.Cred.Tier));
+
+		if (available > 0)
+		{
+			_dellaStatusLabel.Text = $"Available: {available}/{GameSession.MaxDellaContracts}  |  Reward: {payout} scrip";
+			_dellaStatusLabel.AddThemeColorOverride("font_color", new Color("f0c040"));
+			_dellaActionBtn.Text = $"Accept Standing Work ({payout} scrip)";
+			_dellaActionBtn.Disabled = false;
+			_dellaActionBtn.TooltipText = "Play a low-risk match against a basic crew.";
+		}
+		else
+		{
+			_dellaStatusLabel.Text = "Contracts exhausted.";
+			_dellaStatusLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 1f));
+			_dellaActionBtn.Text = "Refresh by playing a district match";
+			_dellaActionBtn.Disabled = true;
+			_dellaActionBtn.TooltipText = "Complete any standard district match to refresh Della's board.";
+		}
+	}
+
+	private void OnDellaContractPressed()
+	{
+		var session = GameSession.Instance;
+		if (session == null) return;
+
+		if (!session.TryConsumeDellaContract())
+		{
+			RefreshDellaPanel();
+			return;
+		}
+
+		// Ensure we have a valid deck
+		if (_selectedDeck.Count != MaxDeckSize)
+		{
+			GD.Print("PreMatch: Della — must select a full 5-card deck first.");
+			// Refund the contract since they can't start the match
+			session.DellaContractsAvailable++; 
+			return;
+		}
+
+		session.SelectedDeck = new List<CardData>(_selectedDeck);
+		session.SelectedDistrictId = "the_stub"; // Fallback, though district doesn't matter for Della
+		session.IsDellaMatch = true;
+		session.ClearMatchResult();
+
+		GD.Print("PreMatch: launching Della Standing Work match.");
+		GetTree().ChangeSceneToFile("res://Scenes/Board/GameBoard.tscn");
 	}
 
 	private void BuildDistrictButtons()
@@ -225,7 +433,13 @@ public partial class PreMatchScreen : Control
 			RosterGrid.Columns = 4;
 		}
 
-		foreach (var card in GameSession.Instance.Roster)
+		// Apply scanner filter — show only cards matching the selected tier.
+		var allCards = GameSession.Instance.Roster;
+		var cards = _rosterFilter == RosterFilter.All
+			? allCards
+			: allCards.FindAll(c => c.Tier == FilterToTier(_rosterFilter));
+
+		foreach (var card in cards)
 		{
 			// Wrap card + button in a VBoxContainer so the button sits below,
 			// fully outside the CardNode — no mouse filter issues.
@@ -461,6 +675,14 @@ public partial class PreMatchScreen : Control
 	// ── Hunt panel ───────────────────────────────────────────────────────────
 	// Shown when the player's hero has been captured (systems.md §7).
 	// Injected as the first child of HSplit/Right so it sits above the roster.
+
+	private static Tier FilterToTier(RosterFilter filter) => filter switch
+	{
+		RosterFilter.Hero   => Tier.Hero,
+		RosterFilter.Pro    => Tier.Pro,
+		RosterFilter.Street => Tier.Street,
+		_                   => Tier.Street,
+	};
 
 	private void BuildHuntPanel()
 	{

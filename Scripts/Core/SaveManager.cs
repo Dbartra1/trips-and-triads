@@ -74,6 +74,7 @@ public static class SaveManager
         // ── Street Cred & district access ─────────────────────────────────────
         sess["cred"]  = session.Cred.Cred;
         sess["scrip"] = session.Scrip;
+        sess["dellaContracts"] = session.DellaContractsAvailable;
 
         var gracePeriods = new JsonObject();
         foreach (var kvp in session.DistrictGracePeriods)
@@ -175,6 +176,9 @@ public static class SaveManager
 
         int savedScrip = (int)(sess["scrip"] ?? 0);
         session.LoadScrip(savedScrip);
+
+        int savedDella = (int)(sess["dellaContracts"] ?? 3);
+        session.DellaContractsAvailable = System.Math.Clamp(savedDella, 0, GameSession.MaxDellaContracts);
 
         var savedGrace = sess["gracePeriods"]?.AsObject();
         if (savedGrace != null)

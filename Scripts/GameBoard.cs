@@ -109,10 +109,10 @@ public partial class GameBoard : Node2D
 
 		DistrictManager.Instance.SelectDistrict(districtId);
 
-		// Hunt (Reclaim) matches run base-capture only — no district protocols.
+		// Hunt (Reclaim) and Della (Standing Work) matches run base-capture only — no district protocols.
 		// systems.md §7.3 specifies only "AsFlipped, hero-stake rule" for Reclaim.
-		// Injecting Overflow / Wall Signature etc. was unintentional (Known Issues).
-		if (session?.IsHuntMatch == true)
+		// Della is a simple duel with no special district rules.
+		if (session?.IsHuntMatch == true || session?.IsDellaMatch == true)
 			_matchConfig = new MatchConfig();
 		else
 			_matchConfig = DistrictManager.Instance.BuildMatchConfig();
@@ -125,8 +125,9 @@ public partial class GameBoard : Node2D
 
 		if (DistrictLabel != null)
 		{
-			bool isHunt       = session?.IsHuntMatch == true;
-			string stakeName  = isHunt ? "As Flipped (Reclaim)" : (district?.Stake ?? "");
+			bool isHunt  = session?.IsHuntMatch == true;
+			bool isDella = session?.IsDellaMatch == true;
+			string stakeName  = isHunt ? "As Flipped (Reclaim)" : (isDella ? "Standing Work (No Stake)" : (district?.Stake ?? ""));
 			DistrictLabel.Text = $"{district?.Name ?? ""}  ·  {stakeName}";
 		}
 

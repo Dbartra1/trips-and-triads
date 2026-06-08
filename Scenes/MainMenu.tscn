@@ -1,51 +1,60 @@
 [gd_scene format=3 uid="uid://mainmenu001"]
 
 [ext_resource type="Script" uid="uid://c5g2bo3prmekv" path="res://Scripts/MainMenu.cs" id="1_tt5f1"]
+[ext_resource type="Texture2D" uid="uid://2avd1dugpj44" path="res://Assets/MainMenuBackground.png" id="2_bg"]
 
 [node name="MainMenu" type="Control" unique_id=2110343158 node_paths=PackedStringArray("NewRunButton", "ContinueButton", "QuitButton")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_tt5f1")
-NewRunButton    = NodePath("Center/VBox/NewRunButton")
-ContinueButton  = NodePath("Center/VBox/ContinueButton")
-QuitButton      = NodePath("Center/VBox/QuitButton")
+NewRunButton = NodePath("BottomArea/VBox/NewRunButton")
+ContinueButton = NodePath("BottomArea/VBox/ContinueButton")
+QuitButton = NodePath("BottomArea/VBox/QuitButton")
 
-[node name="Center" type="CenterContainer" parent="." unique_id=2110964651]
-layout_mode = 0
+[node name="Background" type="TextureRect" parent="." unique_id=2110964650]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+expand_mode = 2
+stretch_mode = 5
 
-[node name="VBox" type="VBoxContainer" parent="Center" unique_id=971658588]
+[node name="BottomArea" type="Control" parent="." unique_id=2110964651]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="BottomArea" unique_id=971658588]
 custom_minimum_size = Vector2(300, 0)
-layout_mode = 2
+layout_mode = 0
+offset_left = 176.0
+offset_top = 400.0
+offset_right = 476.0
+offset_bottom = 720.0
 theme_override_constants/separation = 20
-alignment = 1
+alignment = 2
 
-[node name="Title" type="Label" parent="Center/VBox" unique_id=106686039]
-layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "Antecedent"
-horizontal_alignment = 1
-
-[node name="Subtitle" type="Label" parent="Center/VBox" unique_id=907886959]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
-text = "A cyberpunk card game"
-horizontal_alignment = 1
-
-[node name="ContinueButton" type="Button" parent="Center/VBox" unique_id=123456789]
+[node name="ContinueButton" type="Button" parent="BottomArea/VBox" unique_id=123456789]
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 text = "Continue"
 
-[node name="NewRunButton" type="Button" parent="Center/VBox" unique_id=16933829]
+[node name="NewRunButton" type="Button" parent="BottomArea/VBox" unique_id=16933829]
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 text = "New Run"
 
-[node name="QuitButton" type="Button" parent="Center/VBox" unique_id=1099777760]
+[node name="QuitButton" type="Button" parent="BottomArea/VBox" unique_id=1099777760]
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 text = "Quit"

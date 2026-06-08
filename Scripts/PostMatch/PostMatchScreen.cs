@@ -87,7 +87,44 @@ public partial class PostMatchScreen : Control
 		session.TickGracePeriods(); // start/tick grace periods based on new cred tier
 
 		// ── Scrip payout (Phase 9) ───────────────────────────────────────────
-		ApplyScripPayout(session);
+		if (session.IsDellaMatch)
+		{
+			// Della Standing Work: flat 10 scrip base, scaled by cred.
+			// Contract was already consumed on match start.
+			int payout = (int)(10f * CredEffects.IncomeMultiplier(session.Cred.Tier));
+			if (session.PlayerWon)
+			{
+				session.AddScrip(payout);
+				GD.Print($"Scrip payout (Della): +{payout} (total: {session.Scrip}).");
+			}
+			else
+			{
+				GD.Print("Scrip payout (Della): 0 (match lost).");
+			}
+
+			if (ScripEarnedLabel != null)
+			{
+				ScripEarnedLabel.Visible = true;
+				if (session.PlayerWon && payout > 0)
+				{
+					ScripEarnedLabel.Text = $"+ {payout} scrip (Standing Work)";
+					ScripEarnedLabel.AddThemeColorOverride("font_color", new Color("f0c040"));
+				}
+				else
+				{
+					ScripEarnedLabel.Text = "No payout (lost contract)";
+					ScripEarnedLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f, 1f));
+				}
+			}
+			// Reset flag for next match
+			session.IsDellaMatch = false;
+		}
+		else
+		{
+			// Normal district match: apply standard payout AND refresh Della's board.
+			ApplyScripPayout(session);
+			session.RefreshDellaContracts();
+		}
 
 		// Apply to roster
 		session.ApplyStakeResult();

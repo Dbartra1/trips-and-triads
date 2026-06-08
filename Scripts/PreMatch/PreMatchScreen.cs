@@ -1118,7 +1118,11 @@ public partial class PreMatchScreen : Control
 		if (session.IsHeadless && nonHeroes >= MaxDeckSize - 1) return false;
 		// If Headless and nonHeroes < 4, fall through to run-over.
 
-		if (selectable >= MaxDeckSize) return false;
+		if (selectable >= MaxDeckSize)
+		{
+			if (StartButton != null) StartButton.Visible = true;
+			return false;
+		}
 
 		// Not enough cards to field a full deck — run is over
 		_isRunOver = true;
@@ -1126,10 +1130,7 @@ public partial class PreMatchScreen : Control
 
 		if (StartButton != null)
 		{
-			StartButton.Text     = "Run Over — New Run";
-			StartButton.Pressed -= OnStartPressed;
-			StartButton.Pressed += OnNewRun;
-			StartButton.Disabled = false;
+			StartButton.Visible = false;
 		}
 
 		if (DeckCountLabel != null)

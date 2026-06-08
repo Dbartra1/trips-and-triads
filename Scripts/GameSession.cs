@@ -316,6 +316,7 @@ public partial class GameSession : Node
 		SelectedDistrictId = "the_stub";
 		IsInitialized      = true;
 		Scrip              = 0;
+		DellaContractsAvailable = MaxDellaContracts; // Reset Della's board on a fresh run
 		Cred               = new CredManager(); // fresh run starts at Nameless
 		DistrictGracePeriods.Clear();
 		NewGracePeriodAlerts.Clear();

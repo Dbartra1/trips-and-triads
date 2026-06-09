@@ -12,7 +12,7 @@ namespace TripsAndTriads.UI
 
         private const int CardWidth  = 120;
         private const int CardHeight = 160;
-        private const int CardOffset = 16;
+        // CardOffset removed so cards perfectly fill the 120x160 cell
 
         private CardNode _currentCard;
         private bool     _isOccupied = false;
@@ -122,7 +122,8 @@ namespace TripsAndTriads.UI
             cardNode.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
 
             CardContainer.AddChild(cardNode);
-            cardNode.Position = new Vector2(CardOffset, CardOffset);
+            // Position at 0,0 so the card perfectly fills the 120x160 cell
+            cardNode.Position = Vector2.Zero;
 
             cardNode.CustomMinimumSize = new Vector2(CardWidth, CardHeight);
             cardNode.CallDeferred("set_size", new Vector2(CardWidth, CardHeight));

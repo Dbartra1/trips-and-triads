@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using TripsAndTriads.Core;
 using TripsAndTriads.Rules;
 using TripsAndTriads.UI;
@@ -73,10 +74,30 @@ public partial class PreMatchScreen : Control
 		BuildScripLabel();
 		BuildFixerTabs();
 		BuildRosterScanner();
-		RefreshDeckDisplay();
-		SelectDistrict("the_stub");
+		
+		// Hand Persistence: Pre-load the deck from the last match if those cards are still in the roster
+		_selectedDeck = new List<CardData>();
+		var session = GameSession.Instance;
+		if (session != null && session.LastPlayedDeck.Count > 0)
+		{
+			foreach (var card in session.LastPlayedDeck)
+			{
+				// Only add if it's still in the roster and we haven't hit 5 cards
+				if (session.Roster.Contains(card) && _selectedDeck.Count < MaxDeckSize)
+				{
+					// Prevent adding a second hero if one is already in the pre-loaded deck
+					if (card.Tier == Tier.Hero && _selectedDeck.Any(c => c.Tier == Tier.Hero))
+						continue;
+					
+					_selectedDeck.Add(card);
+				}
+			}
+		}
 
-		// Deck always starts empty — player picks manually each visit.
+		RefreshDeckDisplay();
+		if (!_isRunOver)
+			RefreshRoster(); // Re-refresh roster now that _selectedDeck is populated from LastPlayedDeck
+		SelectDistrict("the_stub");
 	}
 
 	// ── District selection ────────────────────────────────────────────────────
@@ -446,7 +467,7 @@ public partial class PreMatchScreen : Control
 
 			// Middle Row
 			var midRow = new HBoxContainer();
-			midRow.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			midRow.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; // Prevent vertical stretching
 
 			var lblLeft = new Label();
 			lblLeft.Text = agent.IsMet ? agent.Data.Left.ToString() : "?";
@@ -461,11 +482,15 @@ public partial class PreMatchScreen : Control
 
 			var centerBox = new VBoxContainer();
 			centerBox.Alignment = BoxContainer.AlignmentMode.Center;
+			centerBox.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; // Prevent vertical stretching
+			
 			var lblName = new Label();
 			lblName.Text = agent.IsMet ? agent.Data.Name : "?";
-			lblName.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
+			lblName.AddThemeFontSizeOverride("font_size", 18);
 			lblName.HorizontalAlignment = HorizontalAlignment.Center;
-			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart; // Allow wrapping for long names
+			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			lblName.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+			lblName.CustomMinimumSize = new Vector2(60, 0); // Force wrapping within a reasonable width to prevent card stretching
 			centerBox.AddChild(lblName);
 			midRow.AddChild(centerBox);
 
@@ -682,6 +707,14 @@ public partial class PreMatchScreen : Control
 
 	// ── Roster + deck builder ─────────────────────────────────────────────────
 
+	private bool IsCardInDeck(CardData card)
+	{
+		return _selectedDeck.Any(c => 
+			(!string.IsNullOrEmpty(c.Id) && c.Id == card.Id) || 
+			(string.IsNullOrEmpty(c.Id) && c.Name == card.Name)
+		);
+	}
+
 	private void RefreshRoster()
 	{
 		if (RosterGrid == null || GameSession.Instance == null) return;
@@ -733,7 +766,7 @@ public partial class PreMatchScreen : Control
 
 			// Dim cards already in the deck so the player can see at a glance
 			// what's selected. Full opacity when removed.
-			bool alreadySelected = _selectedDeck.Contains(card);
+			bool alreadySelected = IsCardInDeck(card);
 			cardNode.Modulate = alreadySelected
 				? new Color(1f, 1f, 1f, 0.35f)
 				: Colors.White;
@@ -860,7 +893,7 @@ public partial class PreMatchScreen : Control
 			GD.Print("PreMatch: deck is full (5 cards).");
 			return;
 		}
-		if (_selectedDeck.Contains(card))
+		if (IsCardInDeck(card))
 		{
 			GD.Print($"PreMatch: {card.Name} is already in the deck.");
 			return;
@@ -1017,8 +1050,9 @@ public partial class PreMatchScreen : Control
 		else
 		{
 			var needsStepUp = new Label();
-			needsStepUp.Text = "Step Up an interim hero before you can launch Reclaim.";
+			needsStepUp.Text = "⚠ You are Headless.\nClick '↑ Step Up' to promote a crew member, or select an existing Hero in your roster to lead the Reclaim attempt.";
 			needsStepUp.AddThemeColorOverride("font_color", new Color("ff8844"));
+			needsStepUp.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			bannerBox.AddChild(needsStepUp);
 		}
 

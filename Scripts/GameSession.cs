@@ -100,6 +100,13 @@ public partial class GameSession : Node
 	// ── Free Agents (Recruitment) ─────────────────────────────────────────────
 	public List<FreeAgent> CurrentFreeAgents { get; private set; } = new();
 
+	/// <summary>
+	/// Stores the 5-card deck the player used in their last match.
+	/// Used to pre-populate the deck builder on the next PreMatch screen, 
+	/// skipping any cards that were lost to match stakes.
+	/// </summary>
+	public List<CardData> LastPlayedDeck { get; set; } = new();
+
 	public void RefreshFreeAgents()
 	{
 		CurrentFreeAgents = FreeAgentGenerator.Generate(3, Cred.Tier, new System.Random());

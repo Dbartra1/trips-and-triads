@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using TripsAndTriads.Core;
 using TripsAndTriads.Rules;
@@ -24,9 +25,13 @@ public partial class GameBoard : Node2D
 
 	private const int CardWidth   = 120;
 	private const int CardHeight  = 160;
-	private const int CellPadding = 16;
-	private const int CellWidth   = CardWidth  + CellPadding * 2;
-	private const int CellHeight  = CardHeight + CellPadding * 2;
+	
+	[Export] public int GridSpacing { get; set; } = 20; // Space BETWEEN grid cells
+	
+	private int CellWidth  => CardWidth;
+	private int CellHeight => CardHeight;
+	private int CellStepX  => CardWidth + GridSpacing;
+	private int CellStepY  => CardHeight + GridSpacing;
 
 	private GameManager  _game;
 	private CellNode[,]  _cells                = new CellNode[BoardState.Size, BoardState.Size];
@@ -164,6 +169,10 @@ public partial class GameBoard : Node2D
 			return;
 		}
 
+		// Save the deck the player is bringing into this match for PreMatch persistence
+		if (session != null)
+			session.LastPlayedDeck = new List<CardData>(p1Cards);
+
 		_game.DealHands(p1Cards, p2Cards);
 		GD.Print($"P1 hand count: {_game.GetHand(1).Count}");
 
@@ -217,30 +226,14 @@ public partial class GameBoard : Node2D
 
 	private void SizeHandContainers()
 	{
-		float boardH     = BoardState.Size * CellHeight;
-		var   handSz     = new Vector2(150f, boardH);
-		var   boardPos   = BoardContainer?.GlobalPosition ?? Vector2.Zero;
-		float boardRight = boardPos.X + BoardState.Size * CellWidth;
-
-		// Player hand on the RIGHT, AI hand on the LEFT.
-		// 90 px gap between board edge and each hand container.
+		// We no longer force position/size here so you can freely align 
+		// HandContainer and AIHandContainer in the Godot Editor without them resetting.
+		// Just set their Size and Position directly in the scene inspector!
 		if (HandContainer != null)
-		{
-			HandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
-			HandContainer.CustomMinimumSize = handSz;
-			HandContainer.Size              = handSz;
-			HandContainer.GlobalPosition    = new Vector2(boardRight + 90f, boardPos.Y);
-			GD.Print($"HandContainer (player): pos={HandContainer.GlobalPosition}");
-		}
+			HandContainer.MouseFilter = Control.MouseFilterEnum.Ignore;
 
 		if (AIHandContainer != null)
-		{
-			AIHandContainer.MouseFilter       = Control.MouseFilterEnum.Ignore;
-			AIHandContainer.CustomMinimumSize = handSz;
-			AIHandContainer.Size              = handSz;
-			AIHandContainer.GlobalPosition    = new Vector2(boardPos.X - 240f, boardPos.Y);
-			GD.Print($"AIHandContainer: pos={AIHandContainer.GlobalPosition}");
-		}
+			AIHandContainer.MouseFilter = Control.MouseFilterEnum.Ignore;
 	}
 
 	private void SaveStandoffHands()
@@ -275,7 +268,8 @@ public partial class GameBoard : Node2D
 				var cell = _cellScene.Instantiate<CellNode>();
 				BoardContainer.AddChild(cell);
 				cell.Initialize(row, col);
-				cell.Position = new Vector2(col * CellWidth, row * CellHeight);
+				// Position cells with spacing BETWEEN them, not padding inside
+				cell.Position = new Vector2(col * CellStepX, row * CellStepY);
 				cell.CallDeferred("set_size", new Vector2(CellWidth, CellHeight));
 				cell.CellClicked += OnCellClicked;
 				_cells[row, col] = cell;
@@ -696,7 +690,7 @@ public partial class GameBoard : Node2D
 		// ── Animated card movement: hand area → board cell ────────────────────
 		Vector2 startPos = GetAICardStartPosition(bestHandIndex);
 		Vector2 cellGlobal = _cells[bestRow, bestCol].GlobalPosition
-		                   + new Vector2(CellPadding, CellPadding);
+		                   + new Vector2(GridSpacing, GridSpacing);
 
 		// Temporarily place card in the scene root for animation
 		AddChild(aiCard);

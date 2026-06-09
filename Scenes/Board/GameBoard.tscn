@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dc0okchbb2iqj" path="res://Scripts/GameBoard.cs" id="1_luxp4"]
 [ext_resource type="PackedScene" uid="uid://c3e74pivpja5s" path="res://Scenes/UI/HandNode.tscn" id="2_l414y"]
+[ext_resource type="Texture2D" uid="uid://bwjwyv5ky1jq8" path="res://Assets/GameBoard.png" id="3_boardbg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gameover"]
 bg_color = Color(0.08, 0.08, 0.14, 0.6)
@@ -15,11 +16,12 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "HandContainer", "AIHandContainer", "PlayerHand", "AIHand", "ScoreP1", "ScoreP2", "DistrictLabel", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
+[node name="GameBoard" type="Node2D" unique_id=1929585826 node_paths=PackedStringArray("BoardContainer", "HandContainer", "AIHandContainer", "KillFeedContainer", "PlayerHand", "AIHand", "ScoreP1", "ScoreP2", "DistrictLabel", "EndPanel", "EndResultLabel", "EndScoreLabel", "EndContinueBtn")]
 script = ExtResource("1_luxp4")
 BoardContainer = NodePath("CanvasLayer/BoardContainer")
 HandContainer = NodePath("CanvasLayer/HandContainer")
 AIHandContainer = NodePath("CanvasLayer/AIHandContainer")
+KillFeedContainer = NodePath("CanvasLayer/KillFeedContainer")
 PlayerHand = NodePath("CanvasLayer/HandContainer/HandNode")
 AIHand = NodePath("CanvasLayer/AIHandContainer/AIHandNode")
 ScoreP1 = NodePath("CanvasLayer/ScoreBar/LabelP1")
@@ -29,16 +31,27 @@ EndPanel = NodePath("CanvasLayer/GameOverPanel")
 EndResultLabel = NodePath("CanvasLayer/GameOverPanel/LabelResult")
 EndScoreLabel = NodePath("CanvasLayer/GameOverPanel/LabelScores")
 EndContinueBtn = NodePath("CanvasLayer/GameOverPanel/ButtonRestart")
+GridSpacing = 62
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1780249952]
+
+[node name="BackgroundBoard" type="TextureRect" parent="CanvasLayer" unique_id=1732956271]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_boardbg")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="ScoreBar" type="Control" parent="CanvasLayer" unique_id=111111001]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 424.0
-offset_top = 104.0
+offset_top = 8.0
 offset_right = 880.0
-offset_bottom = 146.0
+offset_bottom = 50.0
 
 [node name="LabelP2" type="Label" parent="CanvasLayer/ScoreBar" unique_id=111111003]
 layout_mode = 1
@@ -75,50 +88,52 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 theme_override_font_sizes/font_size = 16
-text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BoardContainer" type="Control" parent="CanvasLayer" unique_id=635805090]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 424.0
-offset_top = 168.0
-offset_right = 880.0
-offset_bottom = 744.0
+offset_left = 416.0
+offset_top = 56.0
+offset_right = 871.9999
+offset_bottom = 632.0
+scale = Vector2(0.99999774, 1.0769998)
 mouse_filter = 1
 
 [node name="AIHandContainer" type="Control" parent="CanvasLayer" unique_id=40941502]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 254.0
-offset_top = 168.0
-offset_right = 404.0
-offset_bottom = 744.0
+offset_left = 104.0
+offset_top = 192.0
+offset_right = 254.0
+offset_bottom = 768.0
 mouse_filter = 1
 
 [node name="AIHandNode" parent="CanvasLayer/AIHandContainer" unique_id=1094449165 instance=ExtResource("2_l414y")]
 layout_mode = 1
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 
 [node name="HandContainer" type="Control" parent="CanvasLayer" unique_id=40941501]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 900.0
-offset_top = 168.0
-offset_right = 1050.0
-offset_bottom = 744.0
+offset_left = 1064.0
+offset_top = 184.0
+offset_right = 1214.0
+offset_bottom = 760.0
 mouse_filter = 1
 
 [node name="HandNode" parent="CanvasLayer/HandContainer" unique_id=1094449164 instance=ExtResource("2_l414y")]
 layout_mode = 1
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+
+[node name="KillFeedContainer" type="Control" parent="CanvasLayer" unique_id=40941503]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 320.0
+offset_top = 760.0
+offset_right = 776.0
+offset_bottom = 860.0
+scale = Vector2(1.4411262, 1.5015419)
+mouse_filter = 1
 
 [node name="GameOverPanel" type="Panel" parent="CanvasLayer" unique_id=333333001]
 visible = false

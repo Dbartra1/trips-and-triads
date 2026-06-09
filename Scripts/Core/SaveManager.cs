@@ -95,6 +95,9 @@ public static class SaveManager
         }
         sess["freeAgents"] = agentsArr;
 
+        // Last Played Deck (for deck pre-loading on next PreMatch screen)
+        sess["lastPlayedDeck"] = SerializeCardList(session.LastPlayedDeck);
+
         root["session"] = sess;
 
         // ── Districts ─────────────────────────────────────────────────────────
@@ -222,6 +225,9 @@ public static class SaveManager
         {
             session.RefreshFreeAgents(); // Fallback for old saves
         }
+
+        // Last Played Deck (for deck pre-loading on next PreMatch screen)
+        session.LastPlayedDeck = DeserializeCardList(sess["lastPlayedDeck"]);
 
         // Pre-seed any hard-lock districts missing from the save file.
         // Covers: saves created before grace period support was added, and any

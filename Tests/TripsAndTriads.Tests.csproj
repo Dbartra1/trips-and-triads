@@ -21,6 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Logic\TripsAndTriads.Logic.csproj" />
+    <ProjectReference Include="..\Trips_and_Triads.csproj" />
   </ItemGroup>
 </Project>

@@ -73,5 +73,28 @@ namespace TripsAndTriads.Core
 			CredTier.Legend    => 2.00f,
 			_                  => 1.00f,
 		};
+
+		// ── Payroll Upkeep per Card (§11.1, Appendix A.3) ─────────────────────
+		// Street: 1, Pro: 2, Top-Tier: 4, Hero: 8.
+		// Hollowed (Touched+) cards pay half, rounded down, min 1.
+
+		public static int UpkeepCost(Tier tier, bool isHollowed = false)
+		{
+			int baseCost = tier switch
+			{
+				Tier.Street  => 1,
+				Tier.Pro     => 2,
+				Tier.TopTier => 4,
+				Tier.Hero    => 8,
+				_            => 1
+			};
+
+			if (isHollowed)
+			{
+				baseCost = System.Math.Max(1, baseCost / 2);
+			}
+
+			return baseCost;
+		}
 	}
 }

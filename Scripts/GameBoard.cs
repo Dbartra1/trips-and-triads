@@ -40,6 +40,8 @@ public partial class GameBoard : Node2D
 	private int          _selectedHandIndex    = -1;
 	private MatchConfig  _matchConfig;
 	private KillFeedNode _killFeed;
+	private CardContextMenu _contextMenu;
+	private CanvasLayer  _uiLayer;
 
 	/// <summary>
 	/// How long (seconds) the AI "thinks" before placing its card.
@@ -53,6 +55,14 @@ public partial class GameBoard : Node2D
 
 	public override void _Ready()
 	{
+		_uiLayer = GetNodeOrNull<CanvasLayer>("CanvasLayer");
+		if (_uiLayer != null)
+		{
+			_contextMenu = new CardContextMenu();
+			_uiLayer.AddChild(_contextMenu);
+			_contextMenu.Hide();
+		}
+
 		_cardScene = GD.Load<PackedScene>("res://Scenes/Card/CardNode.tscn");
 		_cellScene = GD.Load<PackedScene>("res://Scenes/Board/CellNode.tscn");
 
@@ -272,6 +282,8 @@ public partial class GameBoard : Node2D
 				cell.Position = new Vector2(col * CellStepX, row * CellStepY);
 				cell.CallDeferred("set_size", new Vector2(CellWidth, CellHeight));
 				cell.CellClicked += OnCellClicked;
+				cell.CardRightClicked += OnBoardCardRightClicked;
+				cell.CardRightClickReleased += OnBoardCardRightClickReleased;
 				_cells[row, col] = cell;
 			}
 	}
@@ -587,8 +599,49 @@ public partial class GameBoard : Node2D
 		GD.Print($"Card selected (drag starting): {_selectedCardInstance.Data.Name}");
 	}
 
+	private void OnBoardCardRightClickReleased()
+	{
+		if (_contextMenu != null && _contextMenu.Visible)
+			_contextMenu.Hide();
+	}
+
+	private void OnBoardCardRightClicked(CellNode cell, Vector2 globalPos)
+	{
+		if (_contextMenu == null) return;
+		if (cell == null || !cell.IsOccupied()) return;
+
+		BoardState board = _game?.Board;
+		var district = DistrictManager.Instance?.ActiveDistrict;
+
+		CardNode cardNode = cell.GetCurrentCard();
+		if (cardNode == null) return;
+
+		_contextMenu.Populate(cardNode.GetCardInstance(), board, _matchConfig, district);
+		_contextMenu.GlobalPosition = globalPos + new Vector2(16, -16);
+		_contextMenu.Show();
+
+		// Clamp to viewport so the menu stays fully visible.
+		var vp = GetViewport();
+		if (vp != null)
+		{
+			Vector2 screenSize = vp.GetVisibleRect().Size;
+			Vector2 menuSize = _contextMenu.Size;
+			Vector2 pos = _contextMenu.GlobalPosition;
+			pos.X = Mathf.Clamp(pos.X, 0, Mathf.Max(0, screenSize.X - menuSize.X));
+			pos.Y = Mathf.Clamp(pos.Y, 0, Mathf.Max(0, screenSize.Y - menuSize.Y));
+			_contextMenu.GlobalPosition = pos;
+		}
+	}
+
 	private void OnCellClicked(int row, int col)
 	{
+		// Hide context menu if it's open when the player interacts with the board
+		if (_contextMenu != null && _contextMenu.Visible)
+		{
+			_contextMenu.Hide();
+			// Don't return; let the click proceed to normal card placement.
+		}
+
 		if (_selectedCard == null || _selectedCardInstance == null)
 		{ GD.Print("No card dragged from hand yet."); return; }
 

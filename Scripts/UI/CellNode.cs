@@ -18,8 +18,25 @@ namespace TripsAndTriads.UI
         private bool     _isOccupied = false;
 
         [Signal] public delegate void CellClickedEventHandler(int row, int col);
+        [Signal] public delegate void CardRightClickedEventHandler(CellNode cell, Vector2 globalPosition);
+        [Signal] public delegate void CardRightClickReleasedEventHandler();
+
+        private Timer _rightClickTimer;
 
         // ── Setup ─────────────────────────────────────────────────────────────
+
+        public override void _Ready()
+        {
+            AddToGroup("cards");
+
+            _rightClickTimer = new Timer
+            {
+                WaitTime = 0.4f,
+                OneShot = true
+            };
+            _rightClickTimer.Timeout += OnRightClickHold;
+            AddChild(_rightClickTimer);
+        }
 
         public void Initialize(int row, int col)
         {
@@ -89,12 +106,31 @@ namespace TripsAndTriads.UI
 
         public override void _GuiInput(InputEvent ev)
         {
-            if (_isOccupied) return;
-            if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && !mb.Pressed)
+            if (ev is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Right)
             {
-                // Fallback: direct click on cell (no card was dragged — e.g. editor testing)
+                if (mb.Pressed)
+                {
+                    _rightClickTimer.Start();
+                    GetViewport().SetInputAsHandled();
+                }
+                else
+                {
+                    _rightClickTimer.Stop();
+                    EmitSignal(SignalName.CardRightClickReleased);
+                }
+            }
+            else if (_isOccupied) return;
+            
+            if (ev is InputEventMouseButton mb2 && mb2.ButtonIndex == MouseButton.Left && !mb2.Pressed)
+            {
                 EmitSignal(SignalName.CellClicked, Row, Col);
             }
+        }
+
+        private void OnRightClickHold()
+        {
+            if (_currentCard == null) return;
+            EmitSignal(SignalName.CardRightClicked, this, GetGlobalMousePosition());
         }
 
         private void OnMouseEntered()
@@ -150,6 +186,8 @@ namespace TripsAndTriads.UI
             int newOwnerId = _currentCard.GetCardInstance()?.OwnerId ?? 1;
             _currentCard.FlipToOwner(newOwnerId);
         }
+
+        public CardNode GetCurrentCard() => _currentCard;
 
         public bool IsOccupied() => _isOccupied;
     }

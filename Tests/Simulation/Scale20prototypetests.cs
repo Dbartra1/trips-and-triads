@@ -91,7 +91,7 @@ namespace TripsAndTriads.Tests.Simulation
                     var playerHand = GenerateScale20PlayerHand(rng);
                     for (int g = 0; g < GamesPerCrew; g++)
                     {
-                        TestLogger.Clear();
+                        // TestLogger.Clear();
                         var result = GameSimulator.RunGame(
                             playerHand, BuildScale20AIHand(rng),
                             GameSimulator.Strategy.Greedy,
@@ -155,13 +155,13 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var r1 = GameSimulator.RunGame(p1Factory(), p2Factory(),
                         GameSimulator.Strategy.Greedy, GameSimulator.Strategy.Greedy,
                         new MatchConfig(), rng);
                     baseCaptures += r1.TotalCaptures;
 
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var r2 = GameSimulator.RunGame(p1Factory(), p2Factory(),
                         GameSimulator.Strategy.Greedy, GameSimulator.Strategy.Greedy,
                         config.Clone(), rngBase);
@@ -263,7 +263,7 @@ namespace TripsAndTriads.Tests.Simulation
                 int winsWith = 0;
                 for (int g = 0; g < games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var p1 = MakeDomainHand(stats[0],stats[1],stats[2],stats[3], domain, rngWith);
                     var p2 = BuildScale20AIHand(rngWith);
                     var result = GameSimulator.RunGame(p1, p2,
@@ -278,7 +278,7 @@ namespace TripsAndTriads.Tests.Simulation
                 int winsWithout = 0;
                 for (int g = 0; g < games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var p1 = MakeDomainHand(stats[0],stats[1],stats[2],stats[3], DomainType.None, rngWithout);
                     var p2 = BuildScale20AIHand(rngWithout);
                     var result = GameSimulator.RunGame(p1, p2,
@@ -338,7 +338,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var p1With = MakeDomainHand(aegisStats[0],aegisStats[1],
                         aegisStats[2],aegisStats[3], DomainType.AegisProtocol, rngWith);
                     var r1 = GameSimulator.RunGame(p1With, BuildScale20AIHand(rngWith),
@@ -346,7 +346,7 @@ namespace TripsAndTriads.Tests.Simulation
                         config.Clone(), rngWith);
                     if (r1.Winner == 1) wWith++;
 
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var p1No = MakeDomainHand(aegisStats[0],aegisStats[1],
                         aegisStats[2],aegisStats[3], DomainType.None, rngWithout);
                     var r2 = GameSimulator.RunGame(p1No, BuildScale20AIHand(rngWithout),

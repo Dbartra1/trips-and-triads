@@ -168,7 +168,7 @@ namespace TripsAndTriads.Tests.Simulation
                 var playerHand = playerFactory(rng);
                 for (int g = 0; g < GamesPerCrew; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var result = GameSimulator.RunGame(
                         playerHand, aiFactory(rng),
                         GameSimulator.Strategy.Greedy,
@@ -335,7 +335,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < Games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var hand = GenerateScaledHand(rng,
                         sMin, sMax, eMin, eMax,
                         sMin, sMax, eMin, eMax,
@@ -399,7 +399,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                     for (int g = 0; g < GamesPerCrew; g++)
                     {
-                        TestLogger.Clear();
+                        // TestLogger.Clear();
                         var aiHand = BuildScaledAIHand(rng, scale,
                             sMin, sMax, eMin, eMax);
 
@@ -456,7 +456,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < Games; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var p1 = GenerateScaledHand(rng, sMin, sMax, eMin, eMax,
                         (int)(sMin*1.6), (int)(sMin*2.2), eMin, eMax,
                         scale, eMin, eMin+1, eMin+2, eMax-1);

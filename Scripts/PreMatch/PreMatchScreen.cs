@@ -438,11 +438,10 @@ public partial class PreMatchScreen : Control
 
 			// Left: Compact Card Visual
 			var cardVisual = new PanelContainer();
-			cardVisual.CustomMinimumSize = new Vector2(140, 180); // ~40% bigger for better readability
-			// Force the card to keep its shape and not stretch vertically/horizontally
+			cardVisual.CustomMinimumSize = new Vector2(140, 180);
 			cardVisual.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
 			cardVisual.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
-			
+
 			var style = new StyleBoxFlat();
 			style.BgColor = new Color(0.1f, 0.15f, 0.2f, 1f);
 			style.BorderWidthLeft = 2; style.BorderWidthTop = 2;
@@ -450,70 +449,90 @@ public partial class PreMatchScreen : Control
 			style.BorderColor = agent.Data.Tier == Tier.Pro ? new Color("f0c040") : new Color("3ecdef");
 			cardVisual.AddThemeStyleboxOverride("panel", style);
 
-			var cardInner = new VBoxContainer();
-			cardInner.AddThemeConstantOverride("margin_left", 10);
-			cardInner.AddThemeConstantOverride("margin_right", 10);
-			cardInner.AddThemeConstantOverride("margin_top", 10);
-			cardInner.AddThemeConstantOverride("margin_bottom", 10);
-			cardInner.AddThemeConstantOverride("separation", 8); // More separation between elements
-			cardVisual.AddChild(cardInner);
-
+			// Match standard CardNode layout: 4 corner stats + centered name
 			// Top
 			var lblTop = new Label();
 			lblTop.Text = agent.IsMet ? agent.Data.Top.ToString() : "?";
 			lblTop.HorizontalAlignment = HorizontalAlignment.Center;
-			lblTop.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
-			cardInner.AddChild(lblTop);
+			lblTop.AddThemeFontSizeOverride("font_size", 18);
+			lblTop.AddThemeColorOverride("font_color", agent.IsMet ? Colors.White : new Color("9ca3af"));
+			lblTop.LayoutMode = 1; // Absolute
+			lblTop.AnchorRight = 1f;
+			lblTop.AnchorBottom = 0f;
+			lblTop.OffsetRight = -10f;
+			lblTop.OffsetTop = 10f;
+			lblTop.OffsetBottom = 30f;
+			lblTop.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			lblTop.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+			cardVisual.AddChild(lblTop);
 
-			// Middle Row
-			var midRow = new HBoxContainer();
-			midRow.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; // Prevent vertical stretching
-
-			var lblLeft = new Label();
-			lblLeft.Text = agent.IsMet ? agent.Data.Left.ToString() : "?";
-			lblLeft.VerticalAlignment = VerticalAlignment.Center;
-			lblLeft.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-			lblLeft.AddThemeFontSizeOverride("font_size", 16);
-			midRow.AddChild(lblLeft);
-
-			var spacer1 = new Control();
-			spacer1.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-			midRow.AddChild(spacer1);
-
-			var centerBox = new VBoxContainer();
-			centerBox.Alignment = BoxContainer.AlignmentMode.Center;
-			centerBox.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter; // Prevent vertical stretching
-			
-			var lblName = new Label();
-			lblName.Text = agent.IsMet ? agent.Data.Name : "?";
-			lblName.AddThemeFontSizeOverride("font_size", 18);
-			lblName.HorizontalAlignment = HorizontalAlignment.Center;
-			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-			lblName.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-			lblName.CustomMinimumSize = new Vector2(60, 0); // Force wrapping within a reasonable width to prevent card stretching
-			centerBox.AddChild(lblName);
-			midRow.AddChild(centerBox);
-
-			var spacer2 = new Control();
-			spacer2.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-			midRow.AddChild(spacer2);
-
+			// Right
 			var lblRight = new Label();
 			lblRight.Text = agent.IsMet ? agent.Data.Right.ToString() : "?";
 			lblRight.VerticalAlignment = VerticalAlignment.Center;
-			lblRight.HorizontalAlignment = HorizontalAlignment.Right;
-			lblRight.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
 			lblRight.AddThemeFontSizeOverride("font_size", 16);
-			midRow.AddChild(lblRight);
+			lblRight.AddThemeColorOverride("font_color", agent.IsMet ? Colors.White : new Color("9ca3af"));
+			lblRight.LayoutMode = 1; // Absolute
+			lblRight.AnchorRight = 1f;
+			lblRight.AnchorTop = 0.5f;
+			lblRight.AnchorBottom = 0.5f;
+			lblRight.OffsetRight = -10f;
+			lblRight.OffsetTop = -12f;
+			lblRight.OffsetBottom = 12f;
+			lblRight.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
+			lblRight.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+			cardVisual.AddChild(lblRight);
 
-			cardInner.AddChild(midRow);
+			// Left
+			var lblLeft = new Label();
+			lblLeft.Text = agent.IsMet ? agent.Data.Left.ToString() : "?";
+			lblLeft.VerticalAlignment = VerticalAlignment.Center;
+			lblLeft.AddThemeFontSizeOverride("font_size", 16);
+			lblLeft.AddThemeColorOverride("font_color", agent.IsMet ? Colors.White : new Color("9ca3af"));
+			lblLeft.LayoutMode = 1; // Absolute
+			lblLeft.AnchorLeft = 0f;
+			lblLeft.AnchorTop = 0.5f;
+			lblLeft.AnchorBottom = 0.5f;
+			lblLeft.OffsetLeft = 10f;
+			lblLeft.OffsetTop = -12f;
+			lblLeft.OffsetBottom = 12f;
+			lblLeft.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+			lblLeft.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+			cardVisual.AddChild(lblLeft);
 
 			// Bottom
 			var lblBottom = new Label();
 			lblBottom.Text = agent.IsMet ? agent.Data.Bottom.ToString() : "?";
 			lblBottom.HorizontalAlignment = HorizontalAlignment.Center;
-			lblBottom.AddThemeFontSizeOverride("font_size", 18); // Larger, distinct font
-			cardInner.AddChild(lblBottom);
+			lblBottom.AddThemeFontSizeOverride("font_size", 18);
+			lblBottom.AddThemeColorOverride("font_color", agent.IsMet ? Colors.White : new Color("9ca3af"));
+			lblBottom.LayoutMode = 1; // Absolute
+			lblBottom.AnchorRight = 1f;
+			lblBottom.AnchorBottom = 1f;
+			lblBottom.OffsetRight = -10f;
+			lblBottom.OffsetTop = -30f;
+			lblBottom.OffsetBottom = -10f;
+			lblBottom.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			lblBottom.SizeFlagsVertical = Control.SizeFlags.ShrinkEnd;
+			cardVisual.AddChild(lblBottom);
+
+			// Center name
+			var lblName = new Label();
+			lblName.Text = agent.IsMet ? agent.Data.Name : "???";
+			lblName.HorizontalAlignment = HorizontalAlignment.Center;
+			lblName.VerticalAlignment = VerticalAlignment.Center;
+			lblName.AddThemeFontSizeOverride("font_size", 18);
+			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			lblName.LayoutMode = 0; // Anchors
+			lblName.AnchorLeft = 0f; lblName.AnchorTop = 0.5f;
+			lblName.AnchorRight = 1f; lblName.AnchorBottom = 0.5f;
+			lblName.OffsetTop = -15f; lblName.OffsetBottom = 15f;
+			lblName.OffsetLeft = 15f; lblName.OffsetRight = -15f;
+			lblName.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			lblName.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			lblName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			lblName.AddThemeColorOverride("font_color", Colors.White);
+			cardVisual.AddChild(lblName);
 
 			cardBox.AddChild(cardVisual);
 

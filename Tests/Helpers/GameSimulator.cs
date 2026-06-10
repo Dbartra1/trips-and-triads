@@ -159,7 +159,7 @@ namespace TripsAndTriads.Tests.Helpers
 
             for (int i = 0; i < games; i++)
             {
-                TestLogger.Clear(); // suppress noise between games
+                // // TestLogger.Clear(); // suppress noise between games (disabled to fix compilation)
 
                 var game = RunGame(
                     p1Factory(), p2Factory(),

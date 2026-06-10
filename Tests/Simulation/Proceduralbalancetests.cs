@@ -86,7 +86,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < GamesPerCrew; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var aiHand = BuildAIHand(rng);
 
                     var result = GameSimulator.RunGame(
@@ -157,7 +157,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < GamesPerCrew; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var result = GameSimulator.RunGame(
                         playerHand, BuildAIHand(rng),
                         GameSimulator.Strategy.Greedy,
@@ -216,7 +216,7 @@ namespace TripsAndTriads.Tests.Simulation
 
                 for (int g = 0; g < GamesPerCrew; g++)
                 {
-                    TestLogger.Clear();
+                    // TestLogger.Clear();
                     var result = GameSimulator.RunGame(
                         playerHand, BuildAIHand(rng),
                         GameSimulator.Strategy.Greedy,

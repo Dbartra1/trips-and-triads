@@ -5,24 +5,28 @@ using Godot;
 /// Continue loads an existing save; New Run wipes it and generates a fresh crew.
 ///
 /// Background:
-///   The scene displays a static PNG (MainMenuBackground.png) by default.
-///   If an OGV (Theora) video file exists at res://Assets/Art/UI/MainMenuBackground.ogv,
-///   it is played fullscreen instead, replacing the static background. If the file
-///   is absent, the static PNG remains visible — no scene changes needed when
-///   the video arrives.
+///   By default the scene displays the static PNG (MainMenuBackground.png)
+///   referenced in MainMenu.tscn.
 ///
-///   Why OGV and not WebM/MP4: Godot 4 only ships a Theora (OGV) loader natively.
-///   WebM playback in Godot 4 requires a third-party GDExtension.
+///   If an animated sprite sheet exists at:
+///     res://Assets/Art/UI/MainMenuBackground_sheet.png
+///   ...and a matching metadata file exists at:
+///     res://Assets/Art/UI/MainMenuBackground_sheet.json
+///   ...then the static PNG is replaced at runtime by a Sprite2D playing the
+///   sheet on a loop.
 ///
-///   To swap in an animated background later, drop a Theora OGV file at the path
-///   above. From an animated source via FFmpeg:
-///     ffmpeg -i input.gif -vf "scale=1920:1080,format=yuv420p" \
-///            -c:v libtheora -q:v 9 -an MainMenuBackground.ogv
-///   (-q:v range is 0–10, higher = better quality / larger file. Try 9–10 to
-///    minimize compression artifacts.)
+///   The metadata JSON describes the sheet layout so we can change frame
+///   counts or grid arrangements without touching code:
+///   {
+///     "columns": 6,
+///     "rows": 4,
+///     "frame_count": 24,
+///     "fps": 24
+///   }
 ///
-///   Asset pipeline note for Procreate exports: see lore.md §14 for guidance on
-///   exporting animations from Procreate to a format Godot can consume cleanly.
+///   If either file is missing or the metadata fails to parse, the static
+///   PNG remains visible — no scene or code changes required to swap in the
+///   animation later. See lore.md §14 for the artist export pipeline.
 /// </summary>
 public partial class MainMenu : Control
 {
@@ -30,7 +34,8 @@ public partial class MainMenu : Control
 	[Export] public Button ContinueButton  { get; set; }
 	[Export] public Button QuitButton      { get; set; }
 
-	private const string VideoPath = "res://Assets/Art/UI/MainMenuBackground.ogv";
+	private const string SheetPath    = "res://Assets/Art/UI/MainMenuBackground_sheet.png";
+	private const string MetadataPath = "res://Assets/Art/UI/MainMenuBackground_sheet.json";
 
 	public override void _Ready()
 	{
@@ -54,51 +59,130 @@ public partial class MainMenu : Control
 		TryPlayAnimatedBackground();
 	}
 
-	/// <summary>
-	/// Loads the OGV background video and plays it fullscreen behind the UI.
-	/// Falls back silently to the static PNG TextureRect if the file is missing
-	/// or cannot be loaded.
-	/// </summary>
+	// ── Sprite-sheet animation ────────────────────────────────────────────
+
+	private Sprite2D _animatedBg;
+	private int      _frameCount;
+	private int      _columns;
+	private int      _rows;
+	private double   _frameDuration;
+	private double   _frameTimer;
+	private int      _currentFrame;
+	private bool     _animationActive;
+
 	private void TryPlayAnimatedBackground()
 	{
-		// FileAccess.FileExists checks the actual file on disk and works whether
-		// or not the resource has been imported yet.
-		if (!FileAccess.FileExists(VideoPath))
+		if (!FileAccess.FileExists(SheetPath) || !FileAccess.FileExists(MetadataPath))
 			return;
 
-		VideoStream video;
+		// Load metadata
+		var json = FileAccess.GetFileAsString(MetadataPath);
+		var parser = new Json();
+		if (parser.Parse(json) != Error.Ok)
+		{
+			GD.PushWarning($"[MainMenu] Failed to parse sprite-sheet metadata: {MetadataPath}");
+			return;
+		}
+
+		var data = parser.Data.AsGodotDictionary();
+		_columns       = data.ContainsKey("columns")     ? (int)data["columns"]     : 1;
+		_rows          = data.ContainsKey("rows")        ? (int)data["rows"]        : 1;
+		_frameCount    = data.ContainsKey("frame_count") ? (int)data["frame_count"] : (_columns * _rows);
+		double fps     = data.ContainsKey("fps")         ? (double)data["fps"]      : 24.0;
+
+		if (_frameCount <= 0 || _columns <= 0 || _rows <= 0 || fps <= 0.0)
+		{
+			GD.PushWarning("[MainMenu] Sprite-sheet metadata has invalid values.");
+			return;
+		}
+
+		_frameDuration = 1.0 / fps;
+
+		// Load the sheet texture
+		Texture2D sheet;
 		try
 		{
-			video = ResourceLoader.Load<VideoStream>(VideoPath);
+			sheet = ResourceLoader.Load<Texture2D>(SheetPath);
 		}
 		catch (System.Exception ex)
 		{
-			GD.PushWarning($"[MainMenu] Failed to load background video: {ex.Message}");
+			GD.PushWarning($"[MainMenu] Failed to load sprite sheet: {ex.Message}");
 			return;
 		}
+		if (sheet == null) return;
 
-		if (video == null)
-			return;
+		int sheetWidth   = sheet.GetWidth();
+		int sheetHeight  = sheet.GetHeight();
+		int frameWidth   = sheetWidth  / _columns;
+		int frameHeight  = sheetHeight / _rows;
 
-		// Hide the static fallback background only after we know the video loaded.
+		// Hide the static fallback background.
 		var staticBg = GetNodeOrNull<TextureRect>("Background");
 		if (staticBg != null)
 			staticBg.Visible = false;
 
-		var player = new VideoStreamPlayer();
-		player.Name     = "AnimatedBackground";
-		player.Stream   = video;
-		player.Autoplay = true;
-		player.Loop     = true;
-		player.MouseFilter = Control.MouseFilterEnum.Ignore;
+		// Build the Sprite2D with an AtlasTexture pointing at frame 0.
+		_animatedBg = new Sprite2D
+		{
+			Name     = "AnimatedBackground",
+			Centered = false,
+			Texture  = MakeFrameAtlas(sheet, 0, frameWidth, frameHeight)
+		};
 
-		player.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		// Scale to fill the viewport.
+		var viewport = GetViewportRect().Size;
+		_animatedBg.Scale = new Vector2(
+			viewport.X / frameWidth,
+			viewport.Y / frameHeight
+		);
+		_animatedBg.Position = Vector2.Zero;
 
-		// Insert at index 0 so it sits behind the buttons.
-		AddChild(player);
-		MoveChild(player, 0);
-		player.Play();
+		AddChild(_animatedBg);
+		MoveChild(_animatedBg, 0); // Behind the buttons.
+
+		_currentFrame    = 0;
+		_frameTimer      = 0.0;
+		_animationActive = true;
 	}
+
+	public override void _Process(double delta)
+	{
+		if (!_animationActive || _animatedBg == null) return;
+
+		_frameTimer += delta;
+		if (_frameTimer < _frameDuration) return;
+
+		_frameTimer -= _frameDuration;
+		_currentFrame = (_currentFrame + 1) % _frameCount;
+
+		if (_animatedBg.Texture is AtlasTexture atlas)
+		{
+			int col = _currentFrame % _columns;
+			int row = _currentFrame / _columns;
+			int frameWidth  = (int)atlas.Region.Size.X;
+			int frameHeight = (int)atlas.Region.Size.Y;
+			atlas.Region = new Rect2(
+				col * frameWidth,
+				row * frameHeight,
+				frameWidth,
+				frameHeight
+			);
+		}
+	}
+
+	private static AtlasTexture MakeFrameAtlas(Texture2D sheet, int frameIndex, int frameWidth, int frameHeight)
+	{
+		int columns = sheet.GetWidth() / frameWidth;
+		int col = frameIndex % columns;
+		int row = frameIndex / columns;
+		return new AtlasTexture
+		{
+			Atlas  = sheet,
+			Region = new Rect2(col * frameWidth, row * frameHeight, frameWidth, frameHeight)
+		};
+	}
+
+	// ── Scene transitions ─────────────────────────────────────────────────
 
 	private void OnContinue()
 	{

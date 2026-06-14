@@ -274,7 +274,36 @@ All systems are implemented in `Scripts/`. The `Logic/` prototype layer was reti
 
 Domains, decay, and compounding are all *end-of-turn* or *adjacency* effects and slot into the turn loop in `GameManager` after capture resolution. See `Scripts/Rules/` for implementations.
 
-**Asset pipeline:** All art lives in `Assets/Art/UI/`. Animated backgrounds use GIF format; Godot 4.3+ imports these as `AnimatedTexture` automatically. Preferred export from art tools: **APNG** (lossless, Godot-native) or **WebM VP8** (for large/complex animations). GIF is supported but has 256-color palette limits. See §15 for art pipeline guidance.
+**Asset pipeline:** All art lives in `Assets/Art/UI/`.
+
+*Static assets* — PNG with transparent alpha, authored at 2× display resolution. Full alpha is preserved end to end.
+
+*Animated assets — sprite sheets.* We use sprite-sheet animation, not video. Godot 4.6 has no good native video codec (only Theora, which is lossy and lacks alpha), so we sidestep video entirely. A sprite sheet is a single PNG containing all the animation frames laid out in a grid, plus a tiny JSON sidecar describing the grid layout. The engine reads the JSON, slices the PNG into frames at runtime, and animates them. This gives us full PNG quality, full alpha, no codec, no conversion artifacts, and no third-party dependencies.
+
+*Procreate export pipeline (the artist's workflow):*
+
+1. Build the animation in Procreate using **Actions → Canvas → Animation Assist**. Each frame is one layer (or one layer-group if a frame needs multiple layers composited together).
+2. When the animation looks right, **Actions → Share → Share Layers**. This exports one PNG per frame, named sequentially (`Frame_01.png`, `Frame_02.png`, …) into a folder.
+3. Send the folder over. That is the entire artist-side workflow — no codecs, no FFmpeg, no format conversions.
+
+*Engineer-side packing (one command):*
+
+```
+python tools/pack_spritesheet.py <frames_folder> Assets/Art/UI/<basename>_sheet --fps 24
+```
+
+Writes `<basename>_sheet.png` (the grid) and `<basename>_sheet.json` (the metadata). Drop both into `Assets/Art/UI/`. Requires `pip install pillow`. See `tools/pack_spritesheet.py --help` for options (`--columns`, `--fps`).
+
+*Animation specs for the artist:*
+
+- **Frame count:** 12–24 frames is plenty for a looping background. More is fine for hero animations, key art, etc.
+- **Frame rate:** 24 fps is the standard target. The JSON's `fps` field is per-asset, so this is tunable per animation.
+- **Resolution:** every frame must have identical dimensions. Author at the final display resolution (typically 1920×1080 for a full-screen background, or smaller for UI elements).
+- **Alpha:** preserved end to end. Transparent backgrounds are fine and expected for non-fullscreen elements (icon animations, glow effects, ornamental UI).
+- **Looping:** the final frame should flow naturally back to the first. The animation player loops on its own.
+- **Naming:** Procreate's "Share Layers" already produces sortable names. If frames need re-ordering, rename them so they sort alphanumerically (`01.png`, `02.png`, … `10.png`).
+
+*Main menu specifically:* `Scripts/MainMenu.cs` looks for `MainMenuBackground_sheet.png` + `MainMenuBackground_sheet.json` in `Assets/Art/UI/`. If both are present, the static PNG is replaced at runtime with the animated sheet. If absent, the static PNG (`MainMenuBackground.png`) stays visible. No scene or code changes needed when the animation arrives — drop both files in and it plays.
 
 ---
 

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dc0okchbb2iqj" path="res://Scripts/GameBoard.cs" id="1_luxp4"]
 [ext_resource type="PackedScene" uid="uid://c3e74pivpja5s" path="res://Scenes/UI/HandNode.tscn" id="2_l414y"]
-[ext_resource type="Texture2D" uid="uid://bwjwyv5ky1jq8" path="res://Assets/GameBoard.png" id="3_boardbg"]
+[ext_resource type="Texture2D" uid="uid://bwjwyv5ky1jq8" path="res://Assets/Art/UI/GameBoard.png" id="3_boardbg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gameover"]
 bg_color = Color(0.08, 0.08, 0.14, 0.6)

@@ -578,15 +578,239 @@ The Dead Line's scrip was real, and it was always a loan. A crew either climbs i
 
 ## 14. Open Threads
 
-Most earlier threads are now resolved (§10.1 Named contracts, §11.4 terminal Collector, §11.5–§11.6 debt design, §12.4 Prestige threshold, §6.4 AI crews, §5.1 Shaken, the title). What genuinely remains:
+Most earlier threads are now resolved (§10.1 Named contracts, §11.4 terminal Collector, §11.5–§11.6 debt design, §12.4 Prestige threshold, §6.4 AI crews, §5.1 Shaken, the title). What genuinely remains from before the scope additions:
 
 - **The Tailor's collection** (§9.3) — the *doubles* hook is seeded mechanically; the larger story of what Effigy is building toward is left open on purpose.
-- **The tutorial, built around Athena.** The campaign's onboarding should be delivered diegetically by the Athena Protocol (`lore.md` §7) — she is the guide voice. The exact reveal beat (when the player learns *what* she is) and the tutorial's pacing across the early districts still need a structural pass.
+- **The tutorial, built around Athena.** The campaign's onboarding should be delivered diegetically by the Athena Protocol — she is the guide voice. The exact reveal beat and tutorial pacing still need a structural pass.
 - **All Appendix A numbers** — these are first-pass baselines, explicitly meant to be played and revised. They are a skeleton, not a balance pass.
+- **Shaken mechanic** (`§5.1`) — not yet implemented in `Scripts/`.
+- **Contamination re-enable** — `BondResolver.ContaminationEnabled = false`; wire to district controller check when campaign layer is live.
+- **Hunt-protocol stripping** — Hunt (Reclaim) matches should be base-capture-only AsFlipped per §7.3, not inherit district protocols. Fix: branch on `session.IsHuntMatch` in `GameBoard._Ready`.
+- **Conscription AI roster** — AI always uses generated hand under Conscription; needs a persistent roster.
+- **Multi-Hunt** — only one hero Hunt active at a time; second capture while Headless silently drops. Needs `List<HuntEntry>`, cap=3, expiry, selector UI.
+
+New scope additions approved in Session 10 — full design specs in §15–§20 below:
+
+- **§15 — District Node Maps & Roguelike Campaign Structure**
+- **§16 — Bosses & Mini-Bosses**
+- **§17 — The Debt Collector as a Named Character**
+- **§18 — Fixer Reputation & Cross-Run Boons**
+- **§19 — Kill Feed Narrative Layer**
+- **§20 — Narrative Missions**
+
+---
+
+## 15. District Node Maps — The Roguelike Campaign Structure
+
+*Status: design approved, not yet implemented.*
+
+### 15.1 The Premise
+
+Each district is not a single match — it is a **procedurally generated node map** that the crew navigates at the start of each run. The map is generated once per run and persists until the district is cleared or the crew is wiped. The map is the roguelike layer: the sequence of encounters, the risk/reward of path choice, and the encounter variety that makes each run feel different.
+
+### 15.2 Map Structure
+
+- Maps are **horizontally oriented** — the crew enters from the left and exits to the right (or reaches the boss node).
+- The map is a **branching node graph**: multiple paths, each with different encounter chains. The player picks a path at each fork.
+- Maps are **procedurally generated at the start of every run**. Seed is per-run, not per-district, so a New Run generates all district maps simultaneously.
+- The number of nodes and branching density should scale with district danger: The Stub is shallow and linear; The Vault is deep and chaotic.
+
+### 15.3 Node Types (Encounter Types)
+
+Each node on the map is one encounter type, visible to the player before they commit to the path:
+
+| Node type | Icon | Description |
+|---|---|---|
+| **Fight** | Crossed cards | A standard contract duel against a faction crew. The district's Protocols and Stake apply. |
+| **Free Agent Meet** | Person silhouette | A free agent encounter — the Meet → Audition → Sign flow (`systems.md §9.6`). |
+| **Ripper Doc** | Scalpel | A vendor selling card modifications (Items). Costs scrip. Stock is randomised per visit. |
+| **Debt Collector** | Ledger | A Collector duel — one rung of the escalating ladder (`systems.md §11.4`). Appears only when debt is active. |
+| **Fixer Contact** | Envelope | A fixer encounter — receive a contract offer, loyalty tick, or cross-run boon opportunity (`systems.md §18`). |
+| **Narrative Event** | Eye | A district story beat or overworld mission event (`systems.md §20`). |
+| **Cache** | Crate | Free scrip or a card reward, no fight required. Rare. |
+| **Mini-Boss** | Half skull | A named mid-tier boss with a rule-bending mechanic (`systems.md §16`). One per district map. |
+| **Boss** | Full skull | The district's named boss. Required to clear the district. One per map, always at the exit node. |
+
+### 15.4 Generation Rules
+
+- Every map is guaranteed to contain: at least 2 Fight nodes, at least 1 Mini-Boss, exactly 1 Boss (exit).
+- The Ripper Doc, Free Agent Meet, Fixer Contact, and Narrative Event nodes are placed probabilistically — weighted by district and run state.
+- Debt Collector nodes only appear if the crew carries debt; they can appear on any path, not just one.
+- Cache nodes are rare and never appear adjacent to the Boss node (no free power spike before the final fight).
+- Path length between entry and Boss: minimum 4 nodes, maximum 8 (tunable per district).
+
+### 15.5 Map UI Direction
+
+- The map renders as a horizontal flowchart: nodes connected by lines, branching left to right.
+- Completed nodes are greyed out or stamped. Current position is highlighted.
+- Node type is always visible; node contents (which crew, which fixer, etc.) are partially hidden until the player enters.
+- The map persists between sessions via `SaveManager`.
+
+---
+
+## 16. Bosses & Mini-Bosses
+
+*Status: design approved, not yet implemented.*
+
+### 16.1 Design Mandate
+
+Every district boss and mini-boss is a **rule-bending encounter** — not just a harder version of a standard fight, but a match that changes a fundamental tenant of how the game works. The boss *is* the mechanic. Each one requires a unique fight-mode modifier in `GameManager` or `BoardState`.
+
+### 16.2 Boss Structure
+
+Each district has:
+- **One mini-boss** — appears midway through the node map. A named Hero + named Pro + procedurally generated Streets. Rule-bending modifier is narrower/more tactical than the full boss.
+- **One boss** — the exit node. A named Hero + named Pro + named Top-Tier + procedurally generated Streets. Rule-bending modifier is more dramatic.
+
+Mini-boss and boss cards are **unique** (not drawn from the faction card pool). They can be captured by the player under the right Stake — winning their card is a meaningful reward.
+
+### 16.3 Rule-Bending Modifier Concepts (to be designed per-district)
+
+These are direction-setting concepts, not final designs. Each needs a lore justification before shipping (design principle 7):
+
+| Concept | Mechanical description | Lore hook |
+|---|---|---|
+| **Grid Expansion** | The board becomes 4×4 or 3×4 for the duration of the fight. Both players get 6 or 7 cards. | Ascendant boss: "Corporate acquisition — the territory expanded mid-negotiation." |
+| **Rotating Board** | At the end of each full round (both players play), the board rotates 90°. Edge adjacencies shift. | Ghostwire boss: "The net shifted. What was a wall is now a floor." |
+| **Card Migration** | At the end of each turn, one card on the board moves one cell in a random direction (or directed by the boss). | Razorkin boss: "She doesn't hold ground. She just keeps hitting." |
+| **Blind Hand** | Both players play with face-down cards — neither can see the edges until the card is placed. Intercept does not override this. | Effigy boss: "You don't know which face is real until it's already on the table." |
+| **Mirror Protocol** | Any card the boss plays is immediately mirrored — a copy appears in the diagonally opposite cell at 0/0/0/0, then inherits the original's edges. | Effigy mini-boss: The Understudy effect at scale. |
+| **Decaying Board** | All cards on the board lose 1 from their highest edge at the end of each round. | Hollow Choir boss: "The Wall noticed you." |
+| **Cascading Everything** | The Cascade protocol is permanently active for the entire fight, not just protocol-triggered captures. | Hollow Choir mini-boss: Breach leak. |
+| **Debt Call** | If the player wins, they owe a scrip debt to the boss's faction equal to the margin of victory × 10. | Lacquer boss: "She let you win. The Ledger remembers." |
+
+### 16.4 Named Boss Roster (stub — to be fully designed)
+
+One named mini-boss and boss per district. These are new unique characters, not drawn from the existing faction card pool. Their stat shapes must follow design principles (geometry is lore, one A, one soft side) unless the subversion *is* their character.
+
+Districts and their bosses will be documented here as they are designed. The Hollow Choir boss in particular should tie directly into the Antecedent/Vesna lore — this is where the horror of the Black Wall becomes a face.
+
+---
+
+## 17. The Debt Collector — Named Character & Escalating Threat
+
+*Status: design approved, not yet implemented. Partially specified in §11.4 (terminal Collector = Madame Sumi's crew).*
+
+### 17.1 The Named Collector Ladder
+
+The Collector escalation ladder (`§11.4`) currently describes increasingly difficult crews. With this addition, those crews become **named characters** — recurring antagonists with their own card identities and escalating threat levels.
+
+The ladder has three named rungs before the terminal Collector:
+
+| Rung | Named Collector | Tone |
+|---|---|---|
+| 1 | **The Notary** | A Lacquer bureaucrat. Polite, patient. Fields a clean mid-tier deck. Makes the offer again before sending it up the chain. |
+| 2 | **The Auditor** | A harder operative. Not patient. Fields a dangerous deck including at least one named Top-Tier. Clear message: pay or it goes to her. |
+| 3 | **Aoi** *(Lacquer Top-Tier, "the collector")* | The actual enforcer. Fields a boss-tier deck. This fight is intended to be very difficult. |
+| Terminal | **Madame Sumi's full crew** | The matriarch in person. See §17.2. |
+
+### 17.2 The Terminal Collector — Madame Sumi
+
+Madame Sumi appearing in person is the campaign's debt-death sequence. The fight is designed to be extremely difficult but not mechanically impossible: her compound ability means that if the fight drags out, she becomes unbeatable. The counterplay — kill her early — is the same as always, just under maximum pressure.
+
+If the crew loses, it is broken up (§11.4). If the crew **wins** — a two-to-three percent probability encounter at the terminal rung — they may recruit **one card** from Sumi's deck, excluding Sumi herself. This is the recruitment easter egg: the terminal Collector's crew contains named cards not available anywhere else, and winning grants one of them. Sumi herself cannot be recruited — she is the debt, not a person you hire.
+
+Balance note: the exact win probability, deck composition, and which cards are recruitable should be established via unit tests and simulation before shipping. The target is genuinely difficult but beatable by a skilled, well-built crew — not a scripted loss.
+
+### 17.3 Debt Collector Node on the District Map
+
+Debt Collector encounters appear as nodes on the district node map (`§15.3`) when the crew carries debt. They are not hidden — the player can see the node coming and choose a path to avoid it if alternatives exist. But avoiding it does not clear the debt, only defers the encounter to the next map.
+
+---
+
+## 18. Fixer Reputation & Cross-Run Boons
+
+*Status: design approved, not yet implemented.*
+
+### 18.1 The System
+
+Each Fixer tracks a **loyalty standing** within a run. Taking their contracts, completing their chains, and not abandoning their work raises loyalty. Each Fixer has a **loyalty threshold** — if the crew reaches it by the time they Prestige (or before the run ends), the Fixer offers a **cross-run boon**: a modifier the player may choose to carry into the next run.
+
+The boon is **not permanent progression** — it is a run-start modifier, chosen at New Run, that applies for one run only. The player can decline it. Each Fixer has a pool of thematic boons; one is offered at random from their pool when the threshold is met.
+
+### 18.2 Fixer Boon Pools (Direction — final pool to be designed)
+
+| Fixer | Faction | Boon theme | Sample boons |
+|---|---|---|---|
+| **Della** | The Commons | Survival, community | Start with 1 extra Street card; Upkeep for Street cards is waived for the first 3 matches; begin with Mutual Aid credit already built |
+| **Vig** | Unaffiliated | High variance, gambling | First Wager of the run is double-or-triple instead of double-or-nothing; one random card in starting hand has boosted edges |
+| **Atlas** | Ghostwire | Information, map knowledge | District map is fully revealed at run start (all node types visible); one rival crew's hand is pre-scouted |
+| **Mrs. Oba** | Lacquer | Debt leverage, compounding | Begin run with a moderate debt already taken but with no interest for 10 matches — pure leverage if managed; or begin with a named Lacquer card on loan |
+| **The Tailor** | Effigy | Identity, doubles | Begin run with one copy of an enemy card from the previous run (at 0/0/0/0, copies on first placement); one card in the starting roster has a face the Tailor stored |
+
+### 18.3 Boon Selection UI
+
+At New Run, if any Fixer boons are available from the previous run, a boon selection screen appears before crew generation. The player sees: which Fixer is offering, the boon description, and a decline option. Only boons earned (threshold reached) in the immediately preceding run are offered — they do not accumulate across multiple runs.
+
+---
+
+## 19. Kill Feed Narrative Layer
+
+*Status: design approved, not yet implemented.*
+
+### 19.1 Current State
+
+"The Wire" kill feed (`Scripts/UI/KillFeedNode.cs`) is a scrollable capture log that records capture events. It currently displays mechanical information: who captured whom, by what protocol.
+
+### 19.2 The Addition
+
+The Wire becomes a **narrative channel** alongside its mechanical log. Two additions:
+
+**Flavour lines on captures.** Each named card has a small pool of capture lines — short, character-voiced fragments that play when that card captures an enemy. These are written to sound like field comms, street gossip, or the card's inner voice. They must be consistent with the card's character and faction.
+
+**Narrative event injections.** Certain game states inject a Wire message that has nothing to do with the current capture — a fragment of city news, a rumour, an echo of an overworld mission event (`§20`). These are not tied to captures; they are ambient narrative texture that makes the city feel alive during a match.
+
+### 19.3 Constraints
+
+- Wire entries are single lines, 60–80 characters maximum.
+- Flavour lines are optional — the Wire functions without them if the pool is empty.
+- Narrative injections should never appear more than once per match (no repetition within a session).
+- The Wire should never break immersion by referencing metagame systems directly.
+
+### 19.4 Named Card Capture Line Seeds (to be written)
+
+Each named hero and named Top-Tier card needs 3–5 capture lines. These will be written as a separate content pass with the art director / narrative pass.
+
+---
+
+## 20. Narrative Missions
+
+*Status: design approved, not yet implemented.*
+
+### 20.1 The Premise
+
+Narrative missions are **optional, named story chains** that run parallel to contracts and district progression. They are encountered via Narrative Event nodes on the district map (`§15.3`) and via triggered events when the crew enters a district for the first time, reaches a cred threshold, or completes a specific fight. They do not replace contracts — they are the city's story pushing through.
+
+### 20.2 Mission Structure
+
+Each narrative mission is a **chain of 3–5 events**, spread across multiple district maps and runs. They are not completable in a single session. Progress persists via `SaveManager`.
+
+Events are one of:
+- **Information reveal** — a Wire injection, a Fixer dialogue beat, or an atlas contact that gives the player new context about the world.
+- **Choice beat** — the player chooses between two options. The choice affects how the mission chain proceeds and may affect cred, scrip, or faction relationships.
+- **Triggered fight** — a specific named crew appears as an additional node on the current district map. Not blocking — the player can avoid it, but doing so locks off that mission branch.
+
+### 20.3 Mission Seeds (to be fully written)
+
+These are direction-setting premises for narrative missions, not final scripts:
+
+| Mission | Hook | Districts touched | Thematic payload |
+|---|---|---|---|
+| **The First Voice** | Fragments of Vesna's history appear in Wire injections across multiple districts. A Choir contact offers to explain — for a price. | The Hush, Dead Channel | Vesna's backstory; Antecedent's first contact |
+| **The Ledger Never Closes** | A former crew member's name appears in a Lacquer debt notice. They were recruited by Sumi after being captured. | The Powder Room | Moral weight of the recruitment system; Lacquer's reach |
+| **Ghost in the Machine** | Atlas pays the crew to investigate a node on the Dead Channel map that has appeared and disappeared. It shouldn't be there. | Dead Channel, The Hush | Antecedent bleed; setup for Dead Line revelation |
+| **The Long Con** | Mrs. Oba offers a Long Account chain that looks unusually profitable. Each link reveals something is wrong with the mark. | The Powder Room, Glass Spire | Effigy / Lacquer relationship; The Tailor's collection |
+| **What the Stub Remembers** | An old operator in The Stub recognises the crew's hero from a previous run. They have a message. | The Stub | Prestige / Skyline setup; first hint that the city has memory |
+
+### 20.4 Lore Constraint
+
+All narrative missions must have a lore justification for why the player encounters them (design principle 7). The city does not deliver story beats arbitrarily — there is always a reason a fixer called, a wire fragment appeared, or a crew showed up uninvited.
 
 ---
 
 ## Appendix A — First-Pass Numbers
+
+**Read this as a skeleton, not a balance pass.** Every value below is a starting point chosen to be internally consistent for a **medium campaign (~40–60 contracts, Nameless → Prestige)**. They exist so playtesting has something concrete to push against instead of adjectives. Expect to revise all of them. — First-Pass Numbers
 
 **Read this as a skeleton, not a balance pass.** Every value below is a starting point chosen to be internally consistent for a **medium campaign (~40–60 contracts, Nameless → Prestige)**. They exist so playtesting has something concrete to push against instead of adjectives. Expect to revise all of them.
 

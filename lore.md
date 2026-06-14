@@ -18,7 +18,7 @@ A 3×3 card-capture duel. Each card has four numbers — one per edge — and yo
 - **Hands:** five cards each.
 - **Turns:** players alternate placing one card into any empty cell.
 - **Capture:** when a placed card sits adjacent to an enemy card, compare the two touching edges. If the placed card's edge is higher, the enemy card flips to your control.
-- **Stats:** each card has Top / Left / Right / Bottom values, 1–9, with **A = 10** as the maximum.
+- **Stats:** each card has Top / Left / Right / Bottom values, **0–20** (Scale-20), with **A = 20** as the maximum.
 - **Win:** when the board fills, the player controlling more cards (counting the one unplayed card in hand) wins.
 
 The faction layer below extends this without changing the bones of the game.
@@ -31,14 +31,16 @@ Every card has four edge values written **T / L / R / B**. Power scales with the
 
 | Tier | Level band | Stat total | Role |
 |---|---|---|---|
-| **Street** | 1–5 | ~8–14 | Common pulls — drones, gangers, scav hardware |
-| **Pro** | 6–7 | ~16–22 | Skilled operators, military surplus |
-| **Top-Tier** | 8–9 | ~24–30 | Elite chrome, corp black ops, rogue AIs — the cards players grind for |
+| **Street** | 1–5 | ~20–28 | Common pulls — drones, gangers, scav hardware |
+| **Pro** | 6–7 | ~32–44 | Skilled operators, military surplus |
+| **Top-Tier** | 8–9 | ~48–60 | Elite chrome, corp black ops, rogue AIs — the cards players grind for |
 | **Hero** | 10 | special | Named, unique legends — one per deck (see §10) |
+
+**Scale-20 note:** All edge stats live on a 0–20 range. A = 20. The `Level` field in `CardData` is a tier-band marker (Hero=10, TopTier=8, Pro=6–7, Street=1–5) — it is distinct from edge stats and does *not* scale with Scale-20. `StepUpPromoter` sets `Level=20` for procedurally promoted heroes; named cards in `cards.json` use `Level=10`. This inconsistency is inert (nothing reads Level for game decisions) and will be resolved when Level is wired to gameplay.
 
 **Tier vs. Hero, settled:** Top-Tier is a *rarity band* — you can own and trade multiples. A **Hero** is a unique named individual. Every Hero is, by definition, the apex of its faction, but not every Top-Tier card is a Hero.
 
-**Hero stat rule:** every Hero has exactly **one A (10)** and one deliberately soft edge — dominant, never auto-win. Two heroes intentionally subvert this rule, and the subversion *is* their character (Madame Sumi, Vesna — see §8).
+**Hero stat rule:** every Hero has exactly **one A (20)** and one deliberately soft edge — dominant, never auto-win. Two heroes intentionally subvert this rule, and the subversion *is* their character (Madame Sumi, Vesna — see §8).
 
 ---
 
@@ -101,8 +103,8 @@ This interacts directly with hero geometry (§9). A hero with a soft edge — Se
 ### Ascendant — *The Corporate Bloc*
 Clean, vertical, branded. Ascendant manufactures its assets: bioengineered operatives and white-tower ICE, all designed, warrantied, and disposable. Their cards are forward-loaded because their products are *built to face front* — no one designs a flagship to be flanked.
 
-- **Hero — Seraph Yune** *(female; engineered flagship asset)* — **A / 8 / 8 / 3**. Built to win the encounter she was pointed at; her designers never planned for an attack from behind, so her Bottom is the blind spot. Aegis Protocol's flat +1 quietly papers over that flaw — corporate infrastructure covering for its product.
-- **Dr. Cassia Vane** — Top-Tier — **7 / 6 / 8 / 5**. The geneticist who built Seraph.
+- **Hero — Seraph Yune** *(female; engineered flagship asset)* — **A / 16 / 6 / 16** (Scale-20). Built to win the encounter she was pointed at; her designers never planned for an attack from behind, so her Bottom is the blind spot. Aegis Protocol's flat +1 quietly papers over that flaw — corporate infrastructure covering for its product.
+- **Dr. Cassia Vane** — Top-Tier — **7 / 6 / 8 / 5** (Scale-10 display). The geneticist who built Seraph.
 - **Proxy** — Top-Tier — **5 / 8 / 8 / 6**. *(androgynous)* A PR construct: a face the company wears in public.
 
 ### Razorkin — *The Chrome Gang*
@@ -122,7 +124,7 @@ People who left more of themselves in the Net than in the room. The deeper a run
 ### The Commons — *The Undercity*
 Fixers, scavengers, kitchens, mutual aid. Weak alone, unkillable together. Their cards are modest and even, and they get strong only by *clustering*.
 
-- **Hero — Mara Kane** *(female; the fixer)* — **6 / 6 / 6 / 6**. No edge of her is a wall; no edge is a gap. Unremarkable solo, decisive surrounded. Sprawl makes her a walking node.
+- **Hero — Mara Kane** *(female; the fixer)* — **12 / 12 / 12 / 12** (Scale-20). No edge of her is a wall; no edge is a gap. Unremarkable solo, decisive surrounded. Sprawl makes her a walking node.
 - **Auntie Sol** — Top-Tier — **5 / 6 / 6 / 6**. *(female)* A mutual-aid kitchen and information hub. Radiates **+1 to adjacent Commons cards**.
 - **Patch** — Top-Tier — **6 / 5 / 6 / 7**. A scrap-medic who keeps the block standing.
 
@@ -137,7 +139,7 @@ In a city where your face is your password, your bank, and your name, Effigy ste
 ### Lacquer — *The Heritage-Holdings Front*
 Corpos only in look — Yakuza in how they operate. A beautiful surface, a hard shell, and something hidden underneath, exactly like the craft they're named for. They don't raid; they *acquire*. They run on debt, obligation, and a very long memory. Everyone owes Lacquer something. Their cards compound — demure now, lethal in four turns.
 
-- **Hero — Madame Sumi** *(female; the matriarch)* — **4 / 4 / 4 / 4**, and she is the **one hero with no A**. She compounds **+1 to all sides at the end of every one of your turns**, regardless of position. Turn one she's a nobody; turn nine she's untouchable. The counterplay is obvious and hard: kill her while she's still demure.
+- **Hero — Madame Sumi** *(female; the matriarch)* — **8 / 8 / 8 / 8** (Scale-20), and she is the **one hero with no A**. She compounds **+1 to all sides at the end of every one of your turns**, regardless of position. Turn one she's a nobody; turn nine she's untouchable. The counterplay is obvious and hard: kill her while she's still demure. **She is also the terminal Debt Collector** — when a crew's Collector ladder reaches its final rung, it is Madame Sumi's crew that arrives to collect (see `systems.md §11`).
 - **Aoi** — Top-Tier — **8 / 5 / 8 / 4**. *(female)* The collector — dressed like an aide, isn't one.
 - **The Heir** — Top-Tier — **7 / 7 / 5 / 7**. *(androgynous)* Next in line.
 
@@ -146,30 +148,10 @@ Before the modern Net there was a first one, and something in it woke up — vas
 
 Every Choir card carries the **Toll**: exactly one **0**, a dead and silent edge — the price of reaching through the Wall. Their other three numbers run high to compensate, so positioning a Choir card is a small act of dread management: keep the hole facing a wall.
 
-- **Hero — Vesna, "the First Voice"** *(female)* — printed **A / A / A / A**. The first person to reach through the Black Wall, answer it, and return — she came back knowing the *shape* of the thing, and it has been unmaking her ever since. The instant she touches the board she is the single strongest card in the game. Then, at the end of every one of your turns, she loses **1 from every side**. Five turns later she is a husk. She is the only card desperate to stop being what she is.
+- **Hero — Vesna, "the First Voice"** *(female)* — printed **A / A / A / A** (20/20/20/20, Scale-20). The first person to reach through the Black Wall, answer it, and return — she came back knowing the *shape* of the thing, and it has been unmaking her ever since. The instant she touches the board she is the single strongest card in the game. Then, at the end of every one of your turns, she loses **2 from every side** (Scale-20 decay rate). Five turns later she is a husk. She is the only card desperate to stop being what she is.
 - **Threnody** — Top-Tier — **9 / 8 / 0 / 9**. *(female)* A chorister; she sings the lullaby that keeps it under. The silent edge is the one she sings *into*.
 - **Antiphon** — Top-Tier — **0 / 9 / 9 / 8**. *(androgynous)* Call-and-response; half of every conversation it has is with something else.
 - **Lamb** — Top-Tier — **8 / 9 / 8 / 0**. *(female)* The youngest diver — the Choir send the young in, because the young survive contact longer.
-
-### The Truth of the Wall — the Athena Protocol
-
-*This is the world's central reveal. It is player-facing but earned: the player meets Athena long before they understand her.*
-
-The Black Wall is not a structure. It is **someone**.
-
-From the first hour of the game the player has a companion — a voice in the ear named **Athena**. She runs the tutorial, explains the board and the Fixers and the Protocols, comments on the player's choices, and teases. She is wry, warm, and **mischievous** — she will withhold a hint just to watch the player work it out. She reads, completely, as a quirky companion AI: a handle, a piece of software the crew picked up somewhere. The player assumes she is a tool.
-
-She is the **Athena Protocol** — the active guardian intelligence that stands between the modern Net and the Antecedent. The first Net woke something vast and wrong; Athena is the thing that has held the line ever since. The Black Wall does not *contain* the Antecedent the way a vault contains a prisoner. The Wall is **her**, sustained by will, every second, without rest, without end.
-
-- **Why she only ever talks.** Holding the Wall is everything she has. She cannot fight, cannot intervene in the city, cannot leave. The single thing she can still do is *speak* — so she reaches out to crews on the rise and guides them, because a city that stays strong is a city that survives, and a city that survives keeps her standing. The tutorial was a recruitment. She chose the player.
-- **Why a guardian holding back annihilation is playful.** The mischief is not a mask over the dread — it is her refusal of it. Despair is the Antecedent's weapon; playfulness is how Athena stays *herself* under a weight that would flatten anything else. Her teasing is joy held against the dark, and it is the most defiant thing in the game.
-- **The Choir, recontextualized.** The Hollow Choir are not a death cult. They are *literally her choir* — her wardens, lending her their minds and singing her strong. Threnody's lullaby was always for **her**. The Choir are Hollowed because closeness to the Wall costs; some of them know exactly what they tend, and some only think they do.
-- **The Dead Line, recontextualized.** Every Dead Line contract (`systems.md` §9.5) is the Antecedent reaching through — pressing on Athena. A crew that chases Dead Line scrip and lets itself be Hollowed has, unknowingly, been helping the thing she holds back. She warns the player about Dead Line work — gently, without quite explaining why. They may not listen. After the reveal, every Dead Line job they took recolors.
-- **The constant.** Athena persists across every campaign. New crew, new climb, same Athena. She is the one unbroken thread of the entire game — the presence that is always there.
-
-She is warm, and she is also faintly uncanny: something this old and this vast, that has held back the end of the world alone for an unknowable time, and that quietly chose *you*. The comfort is real. So is the weight behind it.
-
-> **Naming.** She introduces herself as "Athena" — just a name, a quirky handle. The reveal is the word **Protocol** and everything behind it. The name is true from the first minute; the player simply does not yet know what it weighs.
 
 ---
 
@@ -177,15 +159,15 @@ She is warm, and she is also faintly uncanny: something this old and this vast, 
 
 The design goal: every hero plays differently because every hero is shaped differently, and the shape is the lore.
 
-| Hero | Geometry | Stat line | Reads as |
-|---|---|---|---|
-| Seraph Yune | **Forward** | A / 8 / 8 / 3 | Built to face front; blind from behind |
-| Sister Grin | **Corner** | A / A / 2 / 3 | One angle of attack, all-in |
-| Riven | **Lateral** | 3 / 9 / 9 / 2 | Lives sideways, in the data-flow |
-| Mara Kane | **Even** | 6 / 6 / 6 / 6 | No wall, no gap — strong together |
-| Madame Sumi | **Compounding** | 4 / 4 / 4 / 4 → grows | Demure now, lethal later |
-| Lethe | **Borrowed** | 0 / 0 / 0 / 0 → copied | No self until given one |
-| Vesna | **Decaying** | A / A / A / A → shrinks | Strongest thing alive, and dying |
+| Hero | Geometry | Reads as |
+|---|---|---|
+| Seraph Yune | **Forward** | Built to face front; blind from behind |
+| Sister Grin | **Corner** | One angle of attack, all-in |
+| Riven | **Lateral** | Lives sideways, in the data-flow |
+| Mara Kane | **Even** | No wall, no gap — strong together |
+| Madame Sumi | **Compounding** | Demure now, lethal later |
+| Lethe | **Borrowed** | No self until given one |
+| Vesna | **Decaying** | Strongest thing alive, and dying |
 
 Sumi and Vesna are deliberate mirror images: one **ripens**, one **rots**. Together they prove the "one A, one soft side" rule by breaking it in opposite directions.
 
@@ -233,7 +215,7 @@ Sample unaffiliated cards:
 
 | Name | Faction | Tier | T / L / R / B | Notes |
 |---|---|---|---|---|
-| Seraph Yune | Ascendant | Hero | A / 8 / 8 / 3 | Domain: Aegis Protocol |
+| Seraph Yune | Ascendant | Hero | A / 16 / 6 / 16 | Domain: Aegis Protocol |
 | Dr. Cassia Vane | Ascendant | Top-Tier | 7 / 6 / 8 / 5 | Seraph's creator |
 | Proxy | Ascendant | Top-Tier | 5 / 8 / 8 / 6 | PR construct |
 | Sister Grin | Razorkin | Hero | A / A / 2 / 3 | Domain: Killzone |
@@ -242,17 +224,17 @@ Sample unaffiliated cards:
 | Riven | Ghostwire | Hero | 3 / 9 / 9 / 2 | Domain: Lateral Grid |
 | Echo | Ghostwire | Top-Tier | 4 / 9 / 9 / 3 | Half-dissolved fragment |
 | Wren | Ghostwire | Top-Tier | 6 / 7 / 7 / 5 | Young, not yet lost |
-| Mara Kane | The Commons | Hero | 6 / 6 / 6 / 6 | Domain: Sprawl |
+| Mara Kane | The Commons | Hero | 12 / 12 / 12 / 12 | Domain: Sprawl |
 | Auntie Sol | The Commons | Top-Tier | 5 / 6 / 6 / 6 | +1 to adjacent Commons |
 | Patch | The Commons | Top-Tier | 6 / 5 / 6 / 7 | Scrap-medic |
 | Lethe | Effigy | Hero | 0 / 0 / 0 / 0 | Copies a card on placement |
 | Verity | Effigy | Top-Tier | 7 / 9 / 9 / 7 | Deepfake artist |
 | The Smile | Effigy | Top-Tier | 8 / 5 / 5 / 8 | Face-actor |
 | Cousin | Effigy | Top-Tier | 6 / 7 / 7 / 6 | Impersonates family |
-| Madame Sumi | Lacquer | Hero | 4 / 4 / 4 / 4 | Compounds +1/turn; Domain: the Ledger |
+| Madame Sumi | Lacquer | Hero | 8 / 8 / 8 / 8 | Compounds +1/turn; Domain: the Ledger; terminal Debt Collector |
 | Aoi | Lacquer | Top-Tier | 8 / 5 / 8 / 4 | The collector |
 | The Heir | Lacquer | Top-Tier | 7 / 7 / 5 / 7 | Next in line |
-| Vesna | Hollow Choir | Hero | A / A / A / A | Decays -1/turn; Domain: the Breach |
+| Vesna | Hollow Choir | Hero | A / A / A / A | Decays -2/turn (Scale-20); Domain: the Breach |
 | Threnody | Hollow Choir | Top-Tier | 9 / 8 / 0 / 9 | Sings the lullaby |
 | Antiphon | Hollow Choir | Top-Tier | 0 / 9 / 9 / 8 | Call-and-response |
 | Lamb | Hollow Choir | Top-Tier | 8 / 9 / 8 / 0 | Youngest diver |
@@ -275,18 +257,24 @@ Carry these into every future card and faction:
 4. **One A, one soft side** — heroes are dominant but never auto-win. Subvert this rule only when the subversion is the character (Sumi, Vesna).
 5. **Counterplay must be legible.** Every powerful card should hand the opponent an obvious, hard line of play.
 6. **Bonds are stories.** Synergies are named relationships, not stat keywords.
+7. **Mechanics need lore justification before shipping.** If we can't say why the city works this way, the rule is cut.
 
 ---
 
 ## 14. Implementation Notes
 
-The current `CardData` model (`Name`, `Top`, `Right`, `Bottom`, `Left`) will need extending to carry this design. Suggested additional fields:
+All systems are implemented in `Scripts/`. The `Logic/` prototype layer was retired in Session 10 — `Tests/` now compiles directly against `Scripts/`.
 
+**CardData fields in production:**
 - `Faction` (enum: Ascendant, Razorkin, Ghostwire, Commons, Effigy, Lacquer, HollowChoir, None)
 - `Tier` (enum: Street, Pro, TopTier, Hero)
-- `Abilities` — a list, for Domains, decay/compound effects, and bonds, each implemented as its own rule class (mirrors the existing `Scripts/Rules/` pattern, e.g. a `DomainResolver` alongside `CaptureResolver`).
+- `DomainType` (enum per Domain)
+- `AbilityType` (enum: None, Decay, Compound, Copy)
+- Edge stats: Top, Right, Bottom, Left — all Scale-20 (0–20 range)
 
-Domains, decay, and compounding are all *end-of-turn* or *adjacency* effects — they slot cleanly into the turn loop in `GameManager` after capture resolution.
+Domains, decay, and compounding are all *end-of-turn* or *adjacency* effects and slot into the turn loop in `GameManager` after capture resolution. See `Scripts/Rules/` for implementations.
+
+**Asset pipeline:** All art lives in `Assets/Art/UI/`. Animated backgrounds use GIF format; Godot 4.3+ imports these as `AnimatedTexture` automatically. Preferred export from art tools: **APNG** (lossless, Godot-native) or **WebM VP8** (for large/complex animations). GIF is supported but has 256-color palette limits. See §15 for art pipeline guidance.
 
 ---
 
@@ -294,5 +282,11 @@ Domains, decay, and compounding are all *end-of-turn* or *adjacency* effects —
 
 - **Effigy's non-hero identity.** Effigy currently leans entirely on point-symmetric stats plus Lethe. Worth exploring a small copy-flavored ability for its Top-Tier cards so the faction's theme reads even without the hero in play.
 - **Faction relationship web.** A who-hates-whom map would seed future bonds (Ascendant ↔ Razorkin is established; Lacquer's debts touch everyone; the Choir unsettles all).
-- **Athena's reveal beat.** The Athena Protocol's nature (§7) is established; *when and how* the player learns it — and how much the Hollow Choir spell out versus imply — is a narrative-structure question for the campaign (`systems.md` §14).
-- **Game title.** Resolved — working title is **Antecedent** (runner-up: *The Toll*).
+- **Athena's reveal beat.** The Athena Protocol's nature is established; *when and how* the player learns it is a narrative-structure question for the campaign (`systems.md §14`).
+- **Level field standardisation.** `CardData.Level` is currently inert and inconsistent across the codebase (cards.json heroes = 10, StepUpPromoter = 20, FreeAgentGenerator = 16). Resolve in a dedicated pass once Level is wired to a gameplay system (Payroll tiers, district unlock requirements, or display only).
+- **District node maps and roguelike campaign structure.** Planned scope addition — see `systems.md §15`.
+- **Boss and mini-boss roster.** Each district will have a named mini-boss and boss with rule-bending mechanics — grid expansion, moving cards, etc. Design spec in `systems.md §16`.
+- **Named Debt Collector character.** Madame Sumi confirmed as terminal Collector. The escalating Collector ladder (§11.4 in systems.md) needs a full named cast and recruitment easter egg. See `systems.md §17`.
+- **Fixer reputation and cross-run boons.** Per-fixer loyalty pools unlocking run-start modifiers. See `systems.md §18`.
+- **Kill feed narrative layer.** The Wire (kill feed) is a candidate for surfacing narrative events alongside capture logs. See `systems.md §19`.
+- **Narrative missions.** Overworld events that tie into named mission chains distinct from contracts or district progression. See `systems.md §20`.

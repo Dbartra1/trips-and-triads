@@ -9,12 +9,12 @@ namespace TripsAndTriads.Tests.Math
     /// Verifies StepUpPromoter — the succession system that promotes a Top-Tier
     /// merc to hero when the crew loses their leader (systems.md §7.5).
     ///
-    /// Promotion rules:
+    /// Promotion rules (Scale-20):
     ///   1. Highest-total non-hero card is selected from the deck.
-    ///   2. Highest edge → A (10).
-    ///   3. Lowest edge → capped to 3 if it was above 3; left alone if ≤ 3.
+    ///   2. Highest edge → A (20).
+    ///   3. Lowest remaining edge → capped to 6 if it was above 6; left alone if ≤ 6.
     ///   4. Middle edges are untouched.
-    ///   5. Tier → Hero. Level → 10.
+    ///   5. Tier → Hero. Level → 20 (Scale-20 hero tier value; see StepUpPromoter doc NOTE).
     ///   6. DomainType → faction-appropriate default.
     ///   7. AbilityType → None (promoted heroes start without active abilities).
     ///   8. Hero cards in the deck are skipped as candidates.
@@ -73,7 +73,7 @@ namespace TripsAndTriads.Tests.Math
             Assert.Null(promoted);
         }
 
-        // ── Highest edge becomes A (10) ───────────────────────────────────────
+        // ── Highest edge becomes A (20, Scale-20) ───────────────────────────────
 
         [Fact]
         public void Promote_HighestEdge_BecomesA()
@@ -82,7 +82,7 @@ namespace TripsAndTriads.Tests.Math
             var card = CardFactory.Street("Card", t:8, r:5, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Top);
+            Assert.Equal(20, card.Top);
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace TripsAndTriads.Tests.Math
             var card = CardFactory.Street("Card", t:5, r:9, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Right);
+            Assert.Equal(20, card.Right);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace TripsAndTriads.Tests.Math
             var card = CardFactory.Street("Card", t:5, r:4, b:8, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Bottom);
+            Assert.Equal(20, card.Bottom);
         }
 
         [Fact]
@@ -109,34 +109,37 @@ namespace TripsAndTriads.Tests.Math
             var card = CardFactory.Street("Card", t:5, r:4, b:3, l:7).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Left);
+            Assert.Equal(20, card.Left);
         }
 
-        // ── Lowest edge capped to 3 ───────────────────────────────────────────
+        // ── Lowest remaining edge capped to 6 (Scale-20) ────────────────────────
 
         [Fact]
-        public void Promote_LowestEdgeAboveThree_CappedToThree()
+        public void Promote_LowestEdgeAboveSix_CappedToSix()
         {
-            // Lowest is Left=4 — above 3, should be capped
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data;
+            // Top=9 is highest → A. Among the rest (Right=7, Bottom=8, Left=7),
+            // Right is the first-found lowest at 7 — above 6, should be capped.
+            var card = CardFactory.Street("Card", t:9, r:7, b:8, l:7).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(3, card.Left);
+            Assert.Equal(6, card.Right);
         }
 
         [Fact]
-        public void Promote_LowestEdgeAlreadyThree_Unchanged()
+        public void Promote_LowestEdgeAlreadySix_Unchanged()
         {
-            var card = CardFactory.Street("Card", t:8, r:6, b:5, l:3).Data;
+            // Top=9 is highest → A. Among the rest (Right=8, Bottom=7, Left=6),
+            // Left is the lowest at 6 — already at the cap, left unchanged.
+            var card = CardFactory.Street("Card", t:9, r:8, b:7, l:6).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(3, card.Left);
+            Assert.Equal(6, card.Left);
         }
 
         [Fact]
-        public void Promote_LowestEdgeBelowThree_LeftAlone()
+        public void Promote_LowestEdgeBelowSix_LeftAlone()
         {
-            // Lowest is Left=1 — below 3, must not be raised
+            // Lowest is Left=1 — well below the Scale-20 cap of 6, must not be raised
             var card = CardFactory.Street("Card", t:8, r:6, b:5, l:1).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
@@ -157,15 +160,15 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void Promote_MiddleEdges_Unchanged()
         {
-            // Top=8 (highest → A), Left=2 (lowest → unchanged ≤3)
+            // Top=8 (highest → A=20), Left=2 (lowest → unchanged, ≤6)
             // Middle: Right=6, Bottom=5 — must not change
             var card = CardFactory.Street("Card", t:8, r:6, b:5, l:2).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Top);    // promoted
+            Assert.Equal(20, card.Top);    // promoted
             Assert.Equal(6,  card.Right);  // middle — unchanged
             Assert.Equal(5,  card.Bottom); // middle — unchanged
-            Assert.Equal(2,  card.Left);   // lowest — unchanged (≤3)
+            Assert.Equal(2,  card.Left);   // lowest — unchanged (≤6)
         }
 
         // ── Tier, Level, DomainType, AbilityType ─────────────────────────────
@@ -182,12 +185,17 @@ namespace TripsAndTriads.Tests.Math
         }
 
         [Fact]
-        public void Promote_LevelBecomesToen()
+        public void Promote_LevelBecomesHeroTierValue()
         {
+            // StepUpPromoter sets Level=20 (Scale-20 hero tier value).
+            // Note: Level semantics are inconsistent across the codebase —
+            // cards.json heroes use Level=10, simulation helpers use Level=20.
+            // The assertion here pins the StepUpPromoter's own behaviour.
+            // See StepUpPromoter class doc NOTE for the full picture.
             var card = CardFactory.Street("Card", t:7, r:5, b:4, l:3).Data;
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Level);
+            Assert.Equal(20, card.Level);
         }
 
         [Fact]
@@ -242,14 +250,28 @@ namespace TripsAndTriads.Tests.Math
         [Fact]
         public void PreviewPromotion_ReturnsCorrectProjectedStats()
         {
-            // Top=8 (highest → 10), Left=4 (lowest, >3 → 3), Right/Bottom unchanged
+            // Top=8 (highest → 20), Left=4 (lowest, ≤6 → unchanged), Right/Bottom unchanged
             var card = CardFactory.Street("Card", t:8, r:6, b:5, l:4).Data;
             var (top, right, bottom, left) = StepUpPromoter.PreviewPromotion(card);
 
-            Assert.Equal(10, top);
+            Assert.Equal(20, top);
             Assert.Equal(6,  right);
             Assert.Equal(5,  bottom);
-            Assert.Equal(3,  left);
+            Assert.Equal(4,  left);
+        }
+
+        [Fact]
+        public void PreviewPromotion_CapsLowestAboveSix()
+        {
+            // Top=9 (highest → 20). Among the rest (Right=7, Bottom=8, Left=7),
+            // Right is the first-found lowest at 7 — above 6, capped to 6.
+            var card = CardFactory.Street("Card", t:9, r:7, b:8, l:7).Data;
+            var (top, right, bottom, left) = StepUpPromoter.PreviewPromotion(card);
+
+            Assert.Equal(20, top);
+            Assert.Equal(6,  right);
+            Assert.Equal(8,  bottom);
+            Assert.Equal(7,  left);
         }
 
         // ── PromoteSpecific ────────────────────────────────────────────────────
@@ -291,20 +313,21 @@ namespace TripsAndTriads.Tests.Math
 
             StepUpPromoter.Promote(new List<CardData> { card });
 
-            Assert.Equal(10, card.Right);   // highest: 8 → A
+            Assert.Equal(20, card.Right);   // highest: 8 → A (Scale-20)
             Assert.Equal(7,  card.Left);    // middle: unchanged
             Assert.Equal(3,  card.Top);     // middle: unchanged
-            Assert.Equal(2,  card.Bottom);  // lowest: 2 ≤ 3, left alone
+            Assert.Equal(2,  card.Bottom);  // lowest: 2 ≤ 6, left alone
             Assert.Equal(DomainType.LateralGrid, card.DomainType);
         }
 
         [Fact]
         public void Promote_EvenCard_HighestEdgeGetsA_LowestCapped()
         {
-            // Mara-style even card: all edges equal
-            // When all edges tie, first found (Top, index 0) becomes A
+            // Mara Kane's actual Scale-20 stat line (lore.md §7: 6/6/6/6 ×2).
+            // When all edges tie, first found (Top, index 0) becomes A; the
+            // next-lowest found among the rest (12 > 6) is capped to 6.
             var card = CardFactory.Create("Commons Merc")
-                .Stats(6, 6, 6, 6)
+                .Stats(12, 12, 12, 12)
                 .Faction(Faction.Commons).Tier(Tier.TopTier)
                 .Data();
 
@@ -312,16 +335,16 @@ namespace TripsAndTriads.Tests.Math
 
             Assert.Equal(Tier.Hero, card.Tier);
             Assert.Equal(DomainType.Sprawl, card.DomainType);
-            // One edge should be 10, one should be ≤3
+            // One edge should be 20 (A), one should be capped to ≤6
             int a    = 0;
             int soft = 0;
             foreach (var v in new[] { card.Top, card.Right, card.Bottom, card.Left })
             {
-                if (v == 10) a++;
-                if (v <= 3)  soft++;
+                if (v == 20) a++;
+                if (v <= 6)  soft++;
             }
             Assert.Equal(1, a);    // exactly one A
-            Assert.True(soft >= 1); // at least one soft edge
+            Assert.True(soft >= 1); // at least one soft edge, capped to 6
         }
     }
 }

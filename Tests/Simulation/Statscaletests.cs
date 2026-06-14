@@ -487,7 +487,7 @@ namespace TripsAndTriads.Tests.Simulation
             Assert.True(true);
         }
 
-        // ── Stat helpers (mirrors Logic/CrewGenerator internals) ──────────────
+        // ── Stat helpers (mirrors Scripts/Core/CrewGenerator.cs internals) ──────
 
         private static int[] DistributeStats(int total, int minEdge, int maxEdge, Random rng)
         {

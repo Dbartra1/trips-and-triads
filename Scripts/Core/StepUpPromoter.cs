@@ -7,14 +7,21 @@ namespace TripsAndTriads.Core
 	///
 	/// When a Reclaim window closes, the player promotes one non-hero card
 	/// from the deck that lost the hero into a new hero. That card gains:
-	///   • An A (10) placed on its current highest edge.
-	///   • Its current lowest edge capped to 3 (the "soft" side, lore-true).
+	///   • An A (20, Scale-20) placed on its current highest edge.
+	///   • Its current lowest edge (excluding the new A) capped to 6 if it
+	///     was above 6 — the "soft" side, lore-true.
 	///   • A faction-appropriate DomainType.
 	///   • AbilityType.None (most promoted heroes start without an active ability).
-	///   • Tier promoted to Hero, Level set to 10.
+	///   • Tier promoted to Hero, Level set to 20 (Scale-20 hero tier value).
 	///
 	/// The card is mutated in place — it remains the same CardData object in the
 	/// roster so all existing list references stay valid.
+	///
+	/// NOTE: Level semantics are not yet consistent across the codebase.
+	/// Named cards in cards.json use Level=10 for heroes; simulation test helpers
+	/// and StepUpPromoter use Level=20; FreeAgentGenerator uses Level=16. Nothing
+	/// in live game logic currently reads Level to make decisions — it is inert
+	/// metadata. Resolve in a future pass when Level is wired to gameplay.
 	/// </summary>
 	public static class StepUpPromoter
 	{
@@ -95,14 +102,14 @@ namespace TripsAndTriads.Core
 		{
 			int[] edges = { best.Top, best.Right, best.Bottom, best.Left };
 
-			// Find highest edge — this becomes the A (10).
+			// Find highest edge — this becomes the A (20, Scale-20).
 			int highIdx = 0;
 			for (int i = 1; i < 4; i++)
 				if (edges[i] > edges[highIdx]) highIdx = i;
 
 			// Promote highest to A FIRST, then find lowest among remaining edges.
 			// Finding lowIdx before promotion causes a bug when all edges are equal:
-			// highIdx and lowIdx would both be 0, setting edges[0] to 10 then to 3,
+			// highIdx and lowIdx would both be 0, setting edges[0] to 20 then to 6,
 			// resulting in no A on the card.
 			edges[highIdx] = 20; // Scale-20 A
 
@@ -122,11 +129,11 @@ namespace TripsAndTriads.Core
 			best.Left   = edges[3];
 
 			best.Tier        = Tier.Hero;
-			best.Level       = 20;
+			best.Level       = 20; // Scale-20 hero tier value (see NOTE in class doc)
 			best.DomainType  = DefaultDomain(best.Faction);
 			best.AbilityType = AbilityType.None;
 
 			return best;
 		}
-}
+	}
 }

@@ -12,7 +12,7 @@ namespace TripsAndTriads.Tests.Simulation
     /// <summary>
     /// Path A prototype: scale protocols and domain bonuses alongside stats.
     ///
-    /// Changes tested (Logic only, not production yet):
+    /// Changes tested (prototype experiment, not the production MatchConfig):
     ///   HandshakeProtocol(tolerance: 1)  — fires when |attack - defend| &lt;= 1
     ///   TallyProtocol(sumTolerance: 2)   — fires when |sum1 - sum2| &lt;= 2
     ///   WallSignatureProtocol(wallValue: 20) — board edge counts as 20

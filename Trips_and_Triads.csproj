@@ -6,9 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Exclude the standalone Logic library and xUnit test suite from Godot's build.
-         These have their own project files and are built separately via dotnet CLI. -->
-    <Compile Remove="Logic/**" />
+    <!-- Exclude the xUnit test suite from Godot's build.
+         It has its own project file and is built separately via dotnet CLI,
+         referencing this project directly (see Tests/TripsAndTriads.Tests.csproj). -->
     <Compile Remove="Tests/**" />
   </ItemGroup>
 </Project>

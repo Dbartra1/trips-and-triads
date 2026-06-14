@@ -10,10 +10,10 @@ namespace TripsAndTriads.Tests.Integration
     /// These tests are statistical — they generate large batches and assert
     /// that every output falls within spec. A single outlier is a real bug.
     ///
-    /// Rules being verified (from lore.md and CrewGenerator source):
-    ///   Street: total 10–14, all edges 2–5
-    ///   Pro:    total 16–22, all edges 2–9
-    ///   Hero:   exactly one A (10), one soft edge ≤ 4, Tier=Hero, Level=10
+    /// Rules being verified (from lore.md and CrewGenerator source, Scale-20):
+    ///   Street: total 20–28, all edges 4–10
+    ///   Pro:    total 32–44, all edges 4–18
+    ///   Hero:   exactly one A (20), one soft edge ≤ 8, Tier=Hero, Level=10
     ///   Crew:   1 Hero + 1 Pro + 5 Street = 7 cards
     ///   SelectBestFive: always includes the hero, picks 4 highest-total others
     ///   AbilityWeights: Decay never appears on player hero
@@ -74,7 +74,7 @@ namespace TripsAndTriads.Tests.Integration
         // ── Street card stat bands ────────────────────────────────────────────
 
         [Fact]
-        public void Street_TotalAlwaysInBand_10to14()
+        public void Street_TotalAlwaysInBand_20to28()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
@@ -83,13 +83,13 @@ namespace TripsAndTriads.Tests.Integration
                 foreach (var card in crew.FindAll(c => c.Tier == Tier.Street))
                 {
                     int total = card.Top + card.Right + card.Bottom + card.Left;
-                    Assert.InRange(total, 10, 14);
+                    Assert.InRange(total, 20, 28);
                 }
             }
         }
 
         [Fact]
-        public void Street_AllEdgesAtLeast2()
+        public void Street_AllEdgesAtLeast4()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
@@ -97,16 +97,16 @@ namespace TripsAndTriads.Tests.Integration
                 var crew = CrewGenerator.Generate(rng);
                 foreach (var card in crew.FindAll(c => c.Tier == Tier.Street))
                 {
-                    Assert.True(card.Top    >= 2, $"Street {card.Name} Top={card.Top} < 2");
-                    Assert.True(card.Right  >= 2, $"Street {card.Name} Right={card.Right} < 2");
-                    Assert.True(card.Bottom >= 2, $"Street {card.Name} Bottom={card.Bottom} < 2");
-                    Assert.True(card.Left   >= 2, $"Street {card.Name} Left={card.Left} < 2");
+                    Assert.True(card.Top    >= 4, $"Street {card.Name} Top={card.Top} < 4");
+                    Assert.True(card.Right  >= 4, $"Street {card.Name} Right={card.Right} < 4");
+                    Assert.True(card.Bottom >= 4, $"Street {card.Name} Bottom={card.Bottom} < 4");
+                    Assert.True(card.Left   >= 4, $"Street {card.Name} Left={card.Left} < 4");
                 }
             }
         }
 
         [Fact]
-        public void Street_AllEdgesAtMost5()
+        public void Street_AllEdgesAtMost10()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
@@ -114,10 +114,10 @@ namespace TripsAndTriads.Tests.Integration
                 var crew = CrewGenerator.Generate(rng);
                 foreach (var card in crew.FindAll(c => c.Tier == Tier.Street))
                 {
-                    Assert.True(card.Top    <= 5, $"Street {card.Name} Top={card.Top} > 5");
-                    Assert.True(card.Right  <= 5, $"Street {card.Name} Right={card.Right} > 5");
-                    Assert.True(card.Bottom <= 5, $"Street {card.Name} Bottom={card.Bottom} > 5");
-                    Assert.True(card.Left   <= 5, $"Street {card.Name} Left={card.Left} > 5");
+                    Assert.True(card.Top    <= 10, $"Street {card.Name} Top={card.Top} > 10");
+                    Assert.True(card.Right  <= 10, $"Street {card.Name} Right={card.Right} > 10");
+                    Assert.True(card.Bottom <= 10, $"Street {card.Name} Bottom={card.Bottom} > 10");
+                    Assert.True(card.Left   <= 10, $"Street {card.Name} Left={card.Left} > 10");
                 }
             }
         }
@@ -125,7 +125,7 @@ namespace TripsAndTriads.Tests.Integration
         // ── Pro card stat bands ───────────────────────────────────────────────
 
         [Fact]
-        public void Pro_TotalAlwaysInBand_16to22()
+        public void Pro_TotalAlwaysInBand_32to44()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
@@ -133,35 +133,35 @@ namespace TripsAndTriads.Tests.Integration
                 var crew = CrewGenerator.Generate(rng);
                 var pro  = crew.Find(c => c.Tier == Tier.Pro)!;
                 int total = pro.Top + pro.Right + pro.Bottom + pro.Left;
-                Assert.InRange(total, 16, 22);
+                Assert.InRange(total, 32, 44);
             }
         }
 
         [Fact]
-        public void Pro_AllEdgesAtLeast2()
+        public void Pro_AllEdgesAtLeast4()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
             {
                 var pro = CrewGenerator.Generate(rng).Find(c => c.Tier == Tier.Pro)!;
-                Assert.True(pro.Top    >= 2);
-                Assert.True(pro.Right  >= 2);
-                Assert.True(pro.Bottom >= 2);
-                Assert.True(pro.Left   >= 2);
+                Assert.True(pro.Top    >= 4);
+                Assert.True(pro.Right  >= 4);
+                Assert.True(pro.Bottom >= 4);
+                Assert.True(pro.Left   >= 4);
             }
         }
 
         [Fact]
-        public void Pro_AllEdgesAtMost9()
+        public void Pro_AllEdgesAtMost18()
         {
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
             {
                 var pro = CrewGenerator.Generate(rng).Find(c => c.Tier == Tier.Pro)!;
-                Assert.True(pro.Top    <= 9);
-                Assert.True(pro.Right  <= 9);
-                Assert.True(pro.Bottom <= 9);
-                Assert.True(pro.Left   <= 9);
+                Assert.True(pro.Top    <= 18);
+                Assert.True(pro.Right  <= 18);
+                Assert.True(pro.Bottom <= 18);
+                Assert.True(pro.Left   <= 18);
             }
         }
 
@@ -170,7 +170,7 @@ namespace TripsAndTriads.Tests.Integration
         [Fact]
         public void Hero_AlwaysHasExactlyOneOrTwoA()
         {
-            // Most heroes: exactly 1 A (lore.md §3 design rule 4).
+            // Most heroes: exactly 1 A (lore.md §3 design rule 4; Scale-20: A=20).
             // Effigy heroes are point-symmetric (T=B, L=R) and deliberately have 2 As.
             // Both are intentional — the test allows either.
             var rng = new Random(42);
@@ -178,7 +178,7 @@ namespace TripsAndTriads.Tests.Integration
             {
                 var hero  = CrewGenerator.Generate(rng).Find(c => c.Tier == Tier.Hero)!;
                 var edges = new[] { hero.Top, hero.Right, hero.Bottom, hero.Left };
-                int aCount = System.Array.FindAll(edges, e => e == 10).Length;
+                int aCount = System.Array.FindAll(edges, e => e == 20).Length;
                 Assert.InRange(aCount, 1, 2);
                 // Effigy is the only faction allowed two As
                 if (aCount == 2)
@@ -187,20 +187,21 @@ namespace TripsAndTriads.Tests.Integration
         }
 
         [Fact]
-        public void Hero_AlwaysHasAtLeastOneSoftEdge_AtMostFive()
+        public void Hero_AlwaysHasAtLeastOneSoftEdge_AtMostEight()
         {
-            // lore.md §3: "one deliberately soft edge". Most factions cap soft at 4.
-            // Lacquer's soft edge goes up to 5 by design (demure now, lethal later).
-            // We use ≤ 5 as the threshold so Lacquer heroes pass.
+            // lore.md §3: "one deliberately soft edge". CrewGenerator draws the
+            // soft edge from rng.Next(4, 9) for most factions (4-8, Scale-20),
+            // and rng.Next(6, 9) for Lacquer (6-8, Scale-20).
+            // We use ≤ 8 as the threshold so every faction's hero passes.
             var rng = new Random(42);
             for (int i = 0; i < Samples; i++)
             {
                 var hero  = CrewGenerator.Generate(rng).Find(c => c.Tier == Tier.Hero)!;
                 var edges = new[] { hero.Top, hero.Right, hero.Bottom, hero.Left };
-                int softCount = System.Array.FindAll(edges, e => e <= 5).Length;
+                int softCount = System.Array.FindAll(edges, e => e <= 8).Length;
                 Assert.True(softCount >= 1,
                     $"Hero {hero.Name} ({hero.Top}/{hero.Right}/{hero.Bottom}/{hero.Left}) " +
-                    $"has no soft edge (≤5)");
+                    $"has no soft edge (≤8)");
             }
         }
 

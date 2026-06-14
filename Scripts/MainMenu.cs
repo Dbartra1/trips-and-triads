@@ -155,17 +155,16 @@ public partial class MainMenu : Control
 		_frameTimer -= _frameDuration;
 		_currentFrame = (_currentFrame + 1) % _frameCount;
 
-		if (_animatedBg.Texture is AtlasTexture atlas)
+		// Build a fresh AtlasTexture per frame and reassign Sprite2D.Texture.
+		// Mutating an existing AtlasTexture's Region in place does not reliably
+		// trigger a redraw in Godot 4 — the Sprite2D needs the texture *property*
+		// to change to invalidate its cached visual.
+		if (_animatedBg.Texture is AtlasTexture current && current.Atlas != null)
 		{
-			int col = _currentFrame % _columns;
-			int row = _currentFrame / _columns;
-			int frameWidth  = (int)atlas.Region.Size.X;
-			int frameHeight = (int)atlas.Region.Size.Y;
-			atlas.Region = new Rect2(
-				col * frameWidth,
-				row * frameHeight,
-				frameWidth,
-				frameHeight
+			int frameWidth  = (int)current.Region.Size.X;
+			int frameHeight = (int)current.Region.Size.Y;
+			_animatedBg.Texture = MakeFrameAtlas(
+				current.Atlas, _currentFrame, frameWidth, frameHeight
 			);
 		}
 	}

@@ -75,7 +75,7 @@ namespace TripsAndTriads.Rules
 						if (target == null) continue;
 						target.OwnerId = placed.OwnerId;
 						captured.Add((tr, tc));
-						GD.Print($"The Tally — {target.Data.Name} captured (sum={sum}, tolerance={_sumTolerance}).");
+						Log.Print($"The Tally — {target.Data.Name} captured (sum={sum}, tolerance={_sumTolerance}).");
 					}
 				}
 			}

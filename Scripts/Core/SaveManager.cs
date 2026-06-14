@@ -35,7 +35,7 @@ public static class SaveManager
     public static string GetSaveFilePath()
     {
         var path = ProjectSettings.GlobalizePath(SavePath);
-        GD.Print($"SaveManager: save file path = {path}");
+        Log.Print($"SaveManager: save file path = {path}");
         return path;
     }
 
@@ -113,13 +113,13 @@ public static class SaveManager
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (file == null)
         {
-            GD.PrintErr($"SaveManager: could not open {SavePath} for writing. " +
+            Log.PrintErr($"SaveManager: could not open {SavePath} for writing. " +
                         $"OS path: {ProjectSettings.GlobalizePath(SavePath)}. " +
                         $"FileAccess error: {FileAccess.GetOpenError()}");
             return;
         }
         file.StoreString(root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        GD.Print("SaveManager: game saved.");
+        Log.Print("SaveManager: game saved.");
     }
 
     public static bool LoadGame()
@@ -127,11 +127,11 @@ public static class SaveManager
         if (!SaveExists()) return false;
 
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
-        if (file == null) { GD.PrintErr("SaveManager: could not open save file."); return false; }
+        if (file == null) { Log.PrintErr("SaveManager: could not open save file."); return false; }
 
         JsonNode root;
         try { root = JsonNode.Parse(file.GetAsText()); }
-        catch (System.Exception e) { GD.PrintErr($"SaveManager: JSON parse error — {e.Message}"); return false; }
+        catch (System.Exception e) { Log.PrintErr($"SaveManager: JSON parse error — {e.Message}"); return false; }
 
         var session = GameSession.Instance;
         var dm      = DistrictManager.Instance;
@@ -251,7 +251,7 @@ public static class SaveManager
                     dm.SetMeter(kvp.Key, (int)(kvp.Value ?? 50));
         }
 
-        GD.Print($"SaveManager: game loaded. Roster: {session.Roster.Count} cards. " +
+        Log.Print($"SaveManager: game loaded. Roster: {session.Roster.Count} cards. " +
                  $"Cred: {session.Cred.Cred} ({session.Cred.Tier}).");
         return true;
     }
@@ -268,13 +268,13 @@ public static class SaveManager
         {
             var err = dir.Remove("savegame.json");
             if (err == Error.Ok)
-                GD.Print("SaveManager: save deleted.");
+                Log.Print("SaveManager: save deleted.");
             else
-                GD.PrintErr($"SaveManager: failed to delete save — error {err}.");
+                Log.PrintErr($"SaveManager: failed to delete save — error {err}.");
         }
         else
         {
-            GD.PrintErr("SaveManager: could not open user:// directory to delete save.");
+            Log.PrintErr("SaveManager: could not open user:// directory to delete save.");
         }
     }
 

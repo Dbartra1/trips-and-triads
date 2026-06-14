@@ -42,7 +42,7 @@ namespace TripsAndTriads.Rules
 
 			if (best == null)
 			{
-				GD.Print("Lethe placed on empty board — stays 0/0/0/0.");
+				Log.Print("Lethe placed on empty board — stays 0/0/0/0.");
 				return;
 			}
 
@@ -51,7 +51,7 @@ namespace TripsAndTriads.Rules
 			card.BottomOverride = best.GetBaseValue(Direction.Bottom);
 			card.LeftOverride   = best.GetBaseValue(Direction.Left);
 
-			GD.Print($"Lethe copies {best.Data.Name} (base values) — " +
+			Log.Print($"Lethe copies {best.Data.Name} (base values) — " +
 			         $"becomes {card.GetBaseValue(Direction.Top)}/" +
 			         $"{card.GetBaseValue(Direction.Right)}/" +
 			         $"{card.GetBaseValue(Direction.Bottom)}/" +

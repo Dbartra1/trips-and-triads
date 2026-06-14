@@ -65,7 +65,7 @@ namespace TripsAndTriads.Rules
 					if (target == null) continue;
 					target.OwnerId = placed.OwnerId;
 					captured.Add((tr, tc));
-					GD.Print($"Handshake — {target.Data.Name} captured by tied edges (tolerance={_tolerance}).");
+					Log.Print($"Handshake — {target.Data.Name} captured by tied edges (tolerance={_tolerance}).");
 				}
 			}
 

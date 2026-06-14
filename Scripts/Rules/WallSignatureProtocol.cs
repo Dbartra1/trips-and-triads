@@ -91,7 +91,7 @@ namespace TripsAndTriads.Rules
 
 						target.OwnerId = placed.OwnerId;
 						captured.Add(((int)tr, (int)tc));
-						GD.Print($"Wall Signature — {target.Data.Name} captured " +
+						Log.Print($"Wall Signature — {target.Data.Name} captured " +
 						         $"(sum={sum}, wallValue={_wallValue}, tolerance={_sumTolerance}).");
 					}
 				}

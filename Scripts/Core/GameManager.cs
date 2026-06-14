@@ -88,7 +88,7 @@ namespace TripsAndTriads.Core
 					_hands[2].Add(instance);
 				}
 
-				GD.Print("Conscription active — P1 hand drawn randomly from roster.");
+				Log.Print("Conscription active — P1 hand drawn randomly from roster.");
 			}
 			else
 			{
@@ -114,7 +114,7 @@ namespace TripsAndTriads.Core
 						instance.RightOverride  = System.Math.Min(card.Right,  cap);
 						instance.BottomOverride = System.Math.Min(card.Bottom, cap);
 						instance.LeftOverride   = System.Math.Min(card.Left,   cap);
-						GD.Print($"Vesna enters at {instance.TopOverride}/{instance.RightOverride}/{instance.BottomOverride}/{instance.LeftOverride} (cap={cap}).");
+						Log.Print($"Vesna enters at {instance.TopOverride}/{instance.RightOverride}/{instance.BottomOverride}/{instance.LeftOverride} (cap={cap}).");
 					}
 
 					_hands[2].Add(instance);
@@ -122,9 +122,9 @@ namespace TripsAndTriads.Core
 			}
 
 			if (Config.Intercept)
-				GD.Print("Intercept active — both hands are open.");
+				Log.Print("Intercept active — both hands are open.");
 
-			GD.Print($"Hands dealt. P1: {_hands[1].Count} cards, P2: {_hands[2].Count} cards.");
+			Log.Print($"Hands dealt. P1: {_hands[1].Count} cards, P2: {_hands[2].Count} cards.");
 		}
 
 		private static ICardAbility CreateAbility(CardData data) => data.AbilityType switch
@@ -141,7 +141,7 @@ namespace TripsAndTriads.Core
 		{
 			if (GameOver)
 			{
-				GD.PrintErr("GameManager: game is already over.");
+				Log.PrintErr("GameManager: game is already over.");
 				return null;
 			}
 
@@ -149,13 +149,13 @@ namespace TripsAndTriads.Core
 
 			if (handIndex < 0 || handIndex >= hand.Count)
 			{
-				GD.PrintErr($"GameManager: invalid hand index {handIndex}.");
+				Log.PrintErr($"GameManager: invalid hand index {handIndex}.");
 				return null;
 			}
 
 			if (!Board.IsEmpty(row, col))
 			{
-				GD.PrintErr($"GameManager: cell ({row},{col}) is already occupied.");
+				Log.PrintErr($"GameManager: cell ({row},{col}) is already occupied.");
 				return null;
 			}
 
@@ -177,7 +177,7 @@ namespace TripsAndTriads.Core
 
 			var captured = _resolver.Resolve(Board, row, col, LastTurnEvents);
 
-			GD.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
+			Log.Print($"P{CurrentPlayerId} played {card.Data.Name} at ({row},{col}). " +
 			         $"Captured: {captured.Count}.");
 
 			ApplyTurnEndAbilities();
@@ -243,7 +243,7 @@ namespace TripsAndTriads.Core
 
 						if (attackVal > defendVal)
 						{
-							GD.Print($"{card.Data.Name} flipped by decay — " +
+							Log.Print($"{card.Data.Name} flipped by decay — " +
 							         $"{neighbor.Data.Name}'s {attackDir}({attackVal}) " +
 							         $"beats {card.Data.Name}'s {dir}({defendVal}).");
 							card.OwnerId = neighbor.OwnerId;
@@ -264,7 +264,7 @@ namespace TripsAndTriads.Core
 			// Standoff — draws trigger an immediate rematch with board-state hands
 			if (Config.Standoff && p1Score == p2Score)
 			{
-				GD.Print("Standoff — draw! Rematch with board-state hands.");
+				Log.Print("Standoff — draw! Rematch with board-state hands.");
 				StandoffTriggered = true;
 				// Don't set GameOver — GameBoard will rebuild hands from board state
 				// and restart the match. Board is NOT cleared.
@@ -272,16 +272,16 @@ namespace TripsAndTriads.Core
 			}
 
 			GameOver = true;
-			GD.Print($"Game Over! P1: {p1Score} | P2: {p2Score}");
+			Log.Print($"Game Over! P1: {p1Score} | P2: {p2Score}");
 
-			if (p1Score > p2Score)      GD.Print("Player 1 wins!");
-			else if (p2Score > p1Score) GD.Print("Player 2 wins!");
-			else                        GD.Print("It's a draw!");
+			if (p1Score > p2Score)      Log.Print("Player 1 wins!");
+			else if (p2Score > p1Score) Log.Print("Player 2 wins!");
+			else                        Log.Print("It's a draw!");
 		}
 
 		public void PrintScores()
 		{
-			GD.Print($"Scores — P1: {Board.GetScore(1)} | P2: {Board.GetScore(2)}");
+			Log.Print($"Scores — P1: {Board.GetScore(1)} | P2: {Board.GetScore(2)}");
 		}
 	}
 }

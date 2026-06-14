@@ -21,7 +21,7 @@ namespace TripsAndTriads.Core
 			var file = FileAccess.Open("res://Data/Districts/districts.json", FileAccess.ModeFlags.Read);
 			if (file == null)
 			{
-				GD.PrintErr("DistrictDatabase: could not open districts.json");
+				Log.PrintErr("DistrictDatabase: could not open districts.json");
 				return;
 			}
 
@@ -37,7 +37,7 @@ namespace TripsAndTriads.Core
 			var list = JsonSerializer.Deserialize<List<DistrictData>>(json, options);
 			if (list == null)
 			{
-				GD.PrintErr("DistrictDatabase: deserialization returned null.");
+				Log.PrintErr("DistrictDatabase: deserialization returned null.");
 				return;
 			}
 
@@ -48,7 +48,7 @@ namespace TripsAndTriads.Core
 			}
 
 			_loaded = true;
-			GD.Print($"DistrictDatabase: loaded {_districts.Count} districts.");
+			Log.Print($"DistrictDatabase: loaded {_districts.Count} districts.");
 		}
 
 		public DistrictData       GetDistrict(string id)    => _districts.TryGetValue(id, out var d) ? d : null;

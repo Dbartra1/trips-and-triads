@@ -64,7 +64,7 @@ namespace TripsAndTriads.Core
 					var card = _grid[r, c];
 					row += card == null ? "[ . ] " : $"[P{card.OwnerId}] ";
 				}
-				GD.Print(row);
+				Log.Print(row);
 			}
 		}
 	}

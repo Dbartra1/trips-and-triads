@@ -20,7 +20,7 @@ namespace TripsAndTriads.Core
 			var file = FileAccess.Open("res://Data/Cards/cards.json", FileAccess.ModeFlags.Read);
 			if (file == null)
 			{
-				GD.PrintErr("CardDatabase: could not open cards.json");
+				Log.PrintErr("CardDatabase: could not open cards.json");
 				return;
 			}
 
@@ -36,7 +36,7 @@ namespace TripsAndTriads.Core
 			var cards = JsonSerializer.Deserialize<List<CardData>>(json, options);
 			if (cards == null)
 			{
-				GD.PrintErr("CardDatabase: deserialization returned null.");
+				Log.PrintErr("CardDatabase: deserialization returned null.");
 				return;
 			}
 
@@ -44,7 +44,7 @@ namespace TripsAndTriads.Core
 				_cards[card.Id] = card;
 
 			_loaded = true;
-			GD.Print($"CardDatabase: loaded {_cards.Count} cards.");
+			Log.Print($"CardDatabase: loaded {_cards.Count} cards.");
 		}
 
 		public CardData GetCard(string id) =>

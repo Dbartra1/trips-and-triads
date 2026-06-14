@@ -16,7 +16,7 @@ namespace TripsAndTriads.Rules
 		{
 			// Sumi compounds herself
 			card.AdjustAllEdges(+1);
-			GD.Print($"Sumi compounds — base now {card.GetBaseValue(Direction.Top)}/" +
+			Log.Print($"Sumi compounds — base now {card.GetBaseValue(Direction.Top)}/" +
 			         $"{card.GetBaseValue(Direction.Right)}/" +
 			         $"{card.GetBaseValue(Direction.Bottom)}/" +
 			         $"{card.GetBaseValue(Direction.Left)}");
@@ -33,7 +33,7 @@ namespace TripsAndTriads.Rules
 				if (adj == null || adj.OwnerId != card.OwnerId) continue;
 
 				adj.AdjustAllEdges(+1);
-				GD.Print($"Ledger: {adj.Data.Name} compounds +1 via Sumi's Ledger.");
+				Log.Print($"Ledger: {adj.Data.Name} compounds +1 via Sumi's Ledger.");
 			}
 
 			// The Inheritance — The Heir also compounds if on the board (any position)
@@ -46,7 +46,7 @@ namespace TripsAndTriads.Rules
 					if (heir.OwnerId != card.OwnerId) continue;
 
 					heir.AdjustAllEdges(+1);
-					GD.Print($"The Inheritance — The Heir compounds +1 alongside Sumi.");
+					Log.Print($"The Inheritance — The Heir compounds +1 alongside Sumi.");
 				}
 		}
 	}

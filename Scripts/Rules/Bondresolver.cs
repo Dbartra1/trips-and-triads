@@ -43,13 +43,13 @@ namespace TripsAndTriads.Rules
 			if (FindCard(board, "rzk_hero_sister_grin", out _, out _))
 			{
 				yune.RivalryActive = true;
-				GD.Print("The Rivalry active — Seraph Yune and Sister Grin.");
+				Log.Print("The Rivalry active — Seraph Yune and Sister Grin.");
 			}
 
 			if (FindCard(board, "asc_top_cassia_vane", out _, out _))
 			{
 				yune.BondBonusBottom += 2;
-				GD.Print($"Maker's Mark — Yune's Bottom now {yune.GetValue(Direction.Bottom)} (+2 from Vane).");
+				Log.Print($"Maker's Mark — Yune's Bottom now {yune.GetValue(Direction.Bottom)} (+2 from Vane).");
 			}
 		}
 
@@ -69,7 +69,7 @@ namespace TripsAndTriads.Rules
 				riven.BondBonusRight  += 1;
 				riven.BondBonusBottom += 1;
 				riven.BondBonusLeft   += 1;
-				GD.Print("The Last Crew — Riven +1 all sides.");
+				Log.Print("The Last Crew — Riven +1 all sides.");
 
 				var mara = board.GetCard(mr, mc);
 				if (mara != null)
@@ -78,14 +78,14 @@ namespace TripsAndTriads.Rules
 					mara.BondBonusRight  += 1;
 					mara.BondBonusBottom += 1;
 					mara.BondBonusLeft   += 1;
-					GD.Print("The Last Crew — Mara Kane +1 all sides.");
+					Log.Print("The Last Crew — Mara Kane +1 all sides.");
 				}
 			}
 
 			if (FindCard(board, "hch_hero_vesna", out _, out _))
 			{
 				riven.BlockChoir = true;
-				GD.Print("The Listener active — Riven will not capture Choir cards.");
+				Log.Print("The Listener active — Riven will not capture Choir cards.");
 			}
 		}
 
@@ -123,7 +123,7 @@ namespace TripsAndTriads.Rules
 						case Direction.Left:   adj.LeftOverride   = current - 1; break;
 					}
 					adj.IsContaminated = true;
-					GD.Print($"Contamination — {adj.Data.Name}'s {lowest} reduced to {current - 1}.");
+					Log.Print($"Contamination — {adj.Data.Name}'s {lowest} reduced to {current - 1}.");
 				}
 			}
 		}
@@ -155,7 +155,7 @@ namespace TripsAndTriads.Rules
 				lethe.ClampEdge(letheHigh, 5);
 				adj.ClampEdge(adjHigh, 5);
 
-				GD.Print($"The Understudy — Lethe adjacent to {adj.Data.Name}. " +
+				Log.Print($"The Understudy — Lethe adjacent to {adj.Data.Name}. " +
 				         $"Both highest edges clamped to 5.");
 				break;
 			}

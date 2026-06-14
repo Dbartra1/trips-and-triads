@@ -24,7 +24,7 @@ namespace TripsAndTriads.Rules
 			int r = card.RightOverride  ?? card.Data.Right;
 			int b = card.BottomOverride ?? card.Data.Bottom;
 			int l = card.LeftOverride   ?? card.Data.Left;
-			GD.Print($"Vesna decays — base now {t}/{r}/{b}/{l} (effective with domain bonuses may differ).");
+			Log.Print($"Vesna decays — base now {t}/{r}/{b}/{l} (effective with domain bonuses may differ).");
 		}
 	}
 }

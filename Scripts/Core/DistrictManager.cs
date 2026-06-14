@@ -37,7 +37,7 @@ namespace TripsAndTriads.Core
 				_controlMeters[district.Id] = district.Controller == "Contested"
 					|| district.Controller == "Neutral" ? 50 : 75;
 			}
-			GD.Print("DistrictManager: initialized.");
+			Log.Print("DistrictManager: initialized.");
 		}
 
 		/// <summary>Select a district for the next match.</summary>
@@ -46,17 +46,17 @@ namespace TripsAndTriads.Core
 			var district = DistrictDatabase.Instance.GetDistrict(districtId);
 			if (district == null)
 			{
-				GD.PrintErr($"DistrictManager: district '{districtId}' not found.");
+				Log.PrintErr($"DistrictManager: district '{districtId}' not found.");
 				return false;
 			}
 			if (district.IsLocked)
 			{
-				GD.Print($"DistrictManager: '{district.Name}' is locked.");
+				Log.Print($"DistrictManager: '{district.Name}' is locked.");
 				return false;
 			}
 
 			ActiveDistrictId = districtId;
-			GD.Print($"DistrictManager: selected '{district.Name}'.");
+			Log.Print($"DistrictManager: selected '{district.Name}'.");
 			return true;
 		}
 
@@ -104,16 +104,16 @@ namespace TripsAndTriads.Core
 				_controlMeters[districtId] + shift, 0, 100);
 
 			int meter = _controlMeters[districtId];
-			GD.Print($"Spreading Rule: {districtId} control meter now {meter}.");
+			Log.Print($"Spreading Rule: {districtId} control meter now {meter}.");
 
 			// When meter crosses a threshold, update the controller
 			var district = DistrictDatabase.Instance.GetDistrict(districtId);
 			if (district == null) return;
 
 			if (meter <= 25)
-				GD.Print($"{district.Name} shifting toward player control.");
+				Log.Print($"{district.Name} shifting toward player control.");
 			else if (meter >= 75)
-				GD.Print($"{district.Name} shifting toward AI control.");
+				Log.Print($"{district.Name} shifting toward AI control.");
 		}
 
 		public int GetControlMeter(string districtId) =>

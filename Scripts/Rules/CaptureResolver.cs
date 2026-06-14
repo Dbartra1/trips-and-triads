@@ -64,7 +64,7 @@ namespace TripsAndTriads.Rules
 			{
 				foreach (var (cr, cc) in protocolCaptured)
 				{
-					GD.Print($"Overflow triggered from protocol capture at ({cr},{cc}).");
+					Log.Print($"Overflow triggered from protocol capture at ({cr},{cc}).");
 					ResolveChain(board, cr, cc, allCaptured, visited, events, "Overflow");
 				}
 			}
@@ -104,7 +104,7 @@ namespace TripsAndTriads.Rules
 				int attackVal = placed.GetValue(dir);
 				int defendVal = neighbor.GetValue(placed.Data.Opposite(dir));
 
-				GD.Print($"The Rivalry — {placed.Data.Name}({attackVal}) vs " +
+				Log.Print($"The Rivalry — {placed.Data.Name}({attackVal}) vs " +
 				         $"{neighbor.Data.Name}({defendVal}).");
 
 				if (attackVal > defendVal)
@@ -117,11 +117,11 @@ namespace TripsAndTriads.Rules
 						placed.Data.Name,   placed.Data.Faction,
 						attackVal, defendVal, dir,
 						"", "The Rivalry"));
-					GD.Print($"The Rivalry — {placed.Data.Name} wins.");
+					Log.Print($"The Rivalry — {placed.Data.Name} wins.");
 				}
 				else
 				{
-					GD.Print($"The Rivalry — {neighbor.Data.Name} holds.");
+					Log.Print($"The Rivalry — {neighbor.Data.Name} holds.");
 				}
 				break;
 			}
@@ -143,7 +143,7 @@ namespace TripsAndTriads.Rules
 				if (visited.Contains((nr, nc))) continue;
 				allCaptured.Add((nr, nc));
 				visited.Add((nr, nc));
-				GD.Print($"Chain: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
+				Log.Print($"Chain: {board.GetCard(nr, nc)?.Data.Name} captured at ({nr},{nc}).");
 				ResolveChain(board, nr, nc, allCaptured, visited, events, protocolNote);
 			}
 		}
@@ -169,7 +169,7 @@ namespace TripsAndTriads.Rules
 				// The Listener — Riven refuses to capture Choir cards
 				if (attacker.BlockChoir && neighbor.Data.Faction == Faction.HollowChoir)
 				{
-					GD.Print($"The Listener — Riven will not capture {neighbor.Data.Name}.");
+					Log.Print($"The Listener — Riven will not capture {neighbor.Data.Name}.");
 					continue;
 				}
 

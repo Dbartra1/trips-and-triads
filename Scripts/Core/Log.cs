@@ -5,84 +5,69 @@ namespace TripsAndTriads.Core
 	/// <summary>
 	/// Logging shim for production code.
 	///
-	/// PROBLEM
+	/// CONTEXT
 	/// -------
-	/// Production rule code lives in Scripts/ and is exercised by xUnit tests
-	/// in Tests/. When tests instantiate game objects, any direct call to
-	/// Godot.GD.Print, Godot.GD.PrintErr, etc. crashes the test host with
-	/// AccessViolationException, because the Godot.NativeInterop bindings
-	/// dereference engine-allocated memory that is not initialised outside
-	/// the Godot runtime.
+	/// Production rule code in Scripts/ is exercised both by the Godot runtime
+	/// (where logging is useful diagnostic noise in the editor's Output panel)
+	/// and by the xUnit test suite in Tests/ (where logging from 369 simulated
+	/// games produces hundreds of megabytes of output and crashes the test
+	/// host's output collector).
+	///
+	/// Direct Godot.GD.* calls also crash the test host with
+	/// AccessViolationException, because Godot.NativeInterop bindings
+	/// dereference engine-allocated memory that is not initialised under
+	/// xUnit. That exception is corrupted-state and cannot be caught.
 	///
 	/// SOLUTION
 	/// --------
-	/// All production logging goes through Log.Print / Log.PrintErr /
-	/// Log.PushWarning. At runtime the shim probes once whether the Godot
-	/// engine is available; if yes, calls are forwarded to GD; if no
-	/// (i.e. running under xUnit), they go to Console.
+	/// - The shim uses only System.Console — no Godot bindings, so the test
+	///   host never crashes on a log call.
+	/// - By default, Log.Print is SILENT (early return). Routine play-by-play
+	///   logging is opt-in.
+	/// - Game code (GameSession, GameBoard, etc.) enables logging at startup
+	///   by setting Log.Verbose = true, so editor / runtime players still get
+	///   the diagnostic noise in the Output panel.
+	/// - Tests leave Log.Verbose at its default false, so the suite produces
+	///   a manageable amount of output.
+	/// - Log.PrintErr and Log.PushWarning ALWAYS write — errors and warnings
+	///   should never be silently dropped, in either context.
 	///
 	/// USAGE
 	/// -----
-	///   Log.Print("Hand dealt.");
-	///   Log.PrintErr("Save file unreadable.");
-	///   Log.PushWarning("Sprite-sheet metadata invalid.");
+	///   Log.Print("Hand dealt.");           // routine play-by-play, gated
+	///   Log.PrintErr("Save unreadable.");   // always writes
+	///   Log.PushWarning("Stale metadata."); // always writes
 	///
-	/// MIGRATION
-	/// ---------
-	/// Replace every "GD.Print" / "GD.PrintErr" / "GD.PushWarning" call site
-	/// in Scripts/Core/ and Scripts/Rules/ with the matching Log.* call.
-	/// UI / scene / autoload code may keep direct GD calls — those are not
-	/// reachable from the test runner.
+	/// Game code that wants the editor logging back on should call
+	/// Log.Verbose = true once at startup (e.g. in MainMenu._Ready or an
+	/// autoload's _Ready).
 	/// </summary>
 	public static class Log
 	{
-		// Cached detection result. Computed once on first call.
-		// True when Godot engine bindings are loadable and safe to call.
-		private static bool? _godotAvailable;
+		/// <summary>
+		/// When false (default), Log.Print is a no-op. Game code should set
+		/// this to true at startup. Tests leave it false so the suite stays
+		/// quiet.
+		/// </summary>
+		public static bool Verbose { get; set; } = false;
 
-		private static bool GodotAvailable
-		{
-			get
-			{
-				if (_godotAvailable.HasValue) return _godotAvailable.Value;
-
-				// Try to touch a Godot type that requires the native runtime.
-				// If the binding throws or fails to load, we're outside Godot.
-				try
-				{
-					// Engine.GetVersionInfo touches native code; if outside Godot
-					// it throws DllNotFoundException or AccessViolationException.
-					_ = Godot.Engine.GetVersionInfo();
-					_godotAvailable = true;
-				}
-				catch
-				{
-					_godotAvailable = false;
-				}
-
-				return _godotAvailable.Value;
-			}
-		}
-
-		/// <summary>Normal log line.</summary>
+		/// <summary>Routine play-by-play log line. Silent unless Verbose is set.</summary>
 		public static void Print(string message)
 		{
-			if (GodotAvailable) Godot.GD.Print(message);
-			else                Console.WriteLine(message);
+			if (!Verbose) return;
+			Console.WriteLine(message);
 		}
 
-		/// <summary>Error log line. Stderr in test mode; GD.PrintErr under Godot.</summary>
+		/// <summary>Error log line. Always written.</summary>
 		public static void PrintErr(string message)
 		{
-			if (GodotAvailable) Godot.GD.PrintErr(message);
-			else                Console.Error.WriteLine(message);
+			Console.Error.WriteLine("[ERROR] " + message);
 		}
 
-		/// <summary>Non-fatal warning. Tagged as such in both environments.</summary>
+		/// <summary>Non-fatal warning. Always written.</summary>
 		public static void PushWarning(string message)
 		{
-			if (GodotAvailable) Godot.GD.PushWarning(message);
-			else                Console.Error.WriteLine("[warn] " + message);
+			Console.Error.WriteLine("[WARN] " + message);
 		}
 	}
 }

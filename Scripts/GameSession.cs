@@ -317,6 +317,11 @@ public partial class GameSession : Node
 
 	public override void _Ready()
 	{
+		// Enable game logging in editor / runtime. Tests do not instantiate
+		// GameSession, so they leave Log.Verbose at its default false and
+		// stay quiet. See Scripts/Core/Log.cs.
+		Log.Verbose = true;
+
 		_instance = this;
 		if (!IsInitialized)
 		{

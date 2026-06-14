@@ -8,3 +8,6 @@
 /Logic/obj/
 /Tests/bin/
 /Tests/obj/
+/Tools/bin/
+/Tools/obj/ 
+test_output.txt

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://mainmenu001"]
 
 [ext_resource type="Script" uid="uid://c5g2bo3prmekv" path="res://Scripts/MainMenu.cs" id="1_tt5f1"]
-[ext_resource type="Texture2D" uid="uid://c8xfrom_sel01" path="res://Assets/Art/UI/From_selection.gif" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://2avd1dugpj44" path="res://Assets/Art/UI/MainMenuBackground.png" id="2_bg"]
 
 [node name="MainMenu" type="Control" unique_id=2110343158 node_paths=PackedStringArray("NewRunButton", "ContinueButton", "QuitButton")]
 layout_mode = 3
